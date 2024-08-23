@@ -1,0 +1,3 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+LyoPronto = "86014da0-a5b3-40a4-ad76-3e66dfc3e269"
