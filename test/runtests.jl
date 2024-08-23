@@ -1,8 +1,4 @@
-using DrWatson, Test
-@quickactivate "LyoPronto.jl"
-
-# Here you include files using `srcdir`
-# include(srcdir("file.jl"))
+using LyoPronto, Test
 
 # Run test suite
 println("Starting tests")
