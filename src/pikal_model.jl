@@ -3,6 +3,16 @@ export lyo_1d!, lyo_1d_dae_f, subflux_Tsub
 const ΔHsub = 678u"cal/g"
 const k_ice = 2.45u"W/m/K"
 
+"""
+    calc_psub(T)
+
+Compute pressure (in Pascals) of sublimation at temperature `T` in Kelvin.
+
+From...somewhere else. Used in LyoPRONTO
+"""
+calc_psub(T::F) where F<:Number = 359.7e10 * exp(-6144.96/T)
+calc_psub(T::Q) where Q<:Quantity = 359.7e10*u"Pa" * exp(-6144.96u"K"/uconvert(u"K",T))
+
 end_cond(u, t, integ) = u[1] - 1e-10 # When reaches 1e-10, is basically zero
 const end_drying_callback = ContinuousCallback(end_cond, terminate!)
 

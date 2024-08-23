@@ -1,13 +1,4 @@
 export lumped_cap_rf, lumped_cap_rf_julian!
-"""
-    calc_psub(T)
-
-Compute pressure (in Pascals) of sublimation at temperature `T` in Kelvin.
-
-From...somewhere else. Used in LyoPRONTO
-"""
-calc_psub(T::F) where F<:Number = 359.7e10 * exp(-6144.96/T)
-calc_psub(T::Q) where Q<:Quantity = 359.7e10*u"Pa" * exp(-6144.96u"K"/uconvert(u"K",T))
 
 # Constant properties
 const rho_ice = 0.918u"g/cm^3" 
