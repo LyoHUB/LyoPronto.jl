@@ -1,4 +1,4 @@
-using LyoPronto, Test
+using Test
 
 # Run test suite
 println("Starting tests")
