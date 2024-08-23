@@ -2,7 +2,7 @@ export get_vial_radii, get_vial_mass, get_vial_shape, make_outlines
 # Get dimensions from here: https://www.schott.com/en-us/products/vials/-/media/project/onex/products/v/vials/application-variants/schott-brochure-schott-vials-english-20092017.pdf
 
 # Added to "vial_sizes.csv", read in here
-const VIAL_DIMS = CSV.File(srcdir("vial_sizes.csv"))
+const VIAL_DIMS = CSV.File(raw"src/vial_sizes.csv")
 
 """
     get_vial_radii(vialsize::String)
@@ -64,7 +64,9 @@ function get_vial_shape(vialsize::String)
     neck_inner = alldims.d4/2*u"mm"
     neck_outer = alldims.d3/2*u"mm"
     neck_curve = alldims.r1*u"mm"
-    return @dict rad_i rad_o bot_thick barrel_height curve_height full_height neck_inner neck_outer neck_curve
+    dims = Dict{Symbol, Any}()
+    @pack! dims = rad_i, rad_o, bot_thick, barrel_height, curve_height, full_height, neck_inner, neck_outer, neck_curve
+    return dims
 end
 
 

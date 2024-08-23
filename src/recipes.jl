@@ -161,7 +161,7 @@ end
     t_end = tp.args[1]
     @series begin
         seriestype := :vline
-        label --> L"t_\text{end}"
+        label --> "\$t_\\text{end}\$"
         color --> :gray
         ls --> :dot
         return [ustrip(u"hr", t_end)]
