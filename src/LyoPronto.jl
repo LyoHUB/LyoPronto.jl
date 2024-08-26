@@ -3,6 +3,7 @@ module LyoPronto
 using Reexport
 @reexport using DifferentialEquations
 using RecipesBase
+using ColorTypes: RGB
 using CSV
 using Unitful
 using UnPack
