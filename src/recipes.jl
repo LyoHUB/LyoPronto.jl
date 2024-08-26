@@ -1,5 +1,5 @@
 # export blankplot_hrC
-export qplotrf, qrf_integrate
+export qrf_integrate
 
 # function blankplot_hrC()
 #     plot([Inf]*u"hr", [Inf]*u"°C", lw=0, marker=:none, label="")
@@ -232,28 +232,25 @@ end
 end
 
 
-function qplotrf(sol, RF_params; kw...)
-    Qcontrib = map(sol.t) do ti
-        lumped_cap_rf(sol(ti), RF_params, ti, energy_output=true)[2]
-    end
-    Qcontrib = hcat(Qcontrib...)
-    Qsub = Qcontrib[1,:]
-    Qshf = Qcontrib[2,:]
-    Qvwf = Qcontrib[3,:]
-    QRFf = Qcontrib[4,:]
-    QRFvw = Qcontrib[5,:]
-
-    # names = ["sub", "sh-f", "vw-f", "RF-f", "RF-vw", "sh-vw"]
-    names = ["RF-f", "vw-f", "sh-f"]
-    labs = ["\$Q_\\text{$nm}\$" for nm in names]
-
-    pl = plot(u"hr", u"W", kw...)
-    areastackplot!(sol.t, QRFf, Qvwf, Qshf, labels=permutedims(labs))
-    plot!(sol.t, Qshf.+Qvwf.+QRFf, c=:black, label="Total")
-    plot!(xlabel="Time [hr]", ylabel="Heating [W]")
-
-    return pl
-end
+# function qplotrf(sol, RF_params; kw...)
+#     Qcontrib = map(sol.t) do ti
+#         lumped_cap_rf(sol(ti), RF_params, ti, energy_output=true)[2]
+#     end
+#     Qcontrib = hcat(Qcontrib...)
+#     Qsub = Qcontrib[1,:]
+#     Qshf = Qcontrib[2,:]
+#     Qvwf = Qcontrib[3,:]
+#     QRFf = Qcontrib[4,:]
+#     QRFvw = Qcontrib[5,:]
+#     # names = ["sub", "sh-f", "vw-f", "RF-f", "RF-vw", "sh-vw"]
+#     names = ["RF-f", "vw-f", "sh-f"]
+#     labs = ["\$Q_\\text{$nm}\$" for nm in names]
+#     pl = plot(u"hr", u"W", kw...)
+#     areastackplot!(sol.t, QRFf, Qvwf, Qshf, labels=permutedims(labs))
+#     plot!(sol.t, Qshf.+Qvwf.+QRFf, c=:black, label="Total")
+#     plot!(xlabel="Time [hr]", ylabel="Heating [W]")
+#     return pl
+# end
 
 @userplot BarStackPlot
 @recipe function f(bsp::BarStackPlot)
