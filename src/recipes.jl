@@ -1,10 +1,10 @@
-export blankplot_hrC
-export qplotrf, qrf_integrate
+# export blankplot_hrC
+export qrf_integrate
 
-function blankplot_hrC()
-    plot([Inf]*u"hr", [Inf]*u"°C", lw=0, marker=:none, label="")
-    # plot!(xlabel = "Time [hr]", ylabel="Temperature [°C]")
-end
+# function blankplot_hrC()
+#     plot([Inf]*u"hr", [Inf]*u"°C", lw=0, marker=:none, label="")
+#     # plot!(xlabel = "Time [hr]", ylabel="Temperature [°C]")
+# end
 
 @recipe function f(::Type{Val{:samplemarkers}}, x, y, z; step = 10, offset=1)
     n = length(y)
@@ -45,9 +45,11 @@ tplotexperimental
     time, Ts... = tpe.args
     step = size(time, 1) ÷ 10
     n = size(Ts, 1)
-    # pal = palette(:tab20c).colors
-    # pal = palette(:blues, n+1).colors[begin+1:end]
-    pal = palette(:Blues_5,)[end:-1:begin]
+    # pal = palette(:Blues_5,)[end:-1:begin] # Requires Plots for palette, so hard-code this default
+    pal = [RGB{Float64}(0.031,0.318,0.612), 
+           RGB{Float64}(0.192,0.51,0.741), 
+           RGB{Float64}(0.42,0.682,0.839), 
+           RGB{Float64}(0.741,0.843,0.906)]
     
     for (i, T) in enumerate(Ts)
         @series begin
@@ -79,9 +81,8 @@ tplotexpvw
 @recipe function f(tpev::TPlotExpVW)
     time, T = tpev.args
     step = size(time, 1) ÷ 10
-    # pal = palette(:tab20c).colors
-    # pal = palette(:blues, n+1).colors[begin+1:end]
-    color = palette(:Blues_5)[end]
+    # color = palette(:Blues_5)[end]
+    color = RGB{Float64}(0.031,0.318,0.612)
     
     @series begin
         seriestype := :samplemarkers
@@ -101,10 +102,12 @@ end
 @userplot TPlotModelConv
 @recipe function f(tpmc::TPlotModelConv)
     sols = tpmc.args
-    # step = size(time, 1) ÷ 10
-    # t_nd = range(0, sol.t[end-2], length=11)
-    # time = t_nd*u"hr"
-    pal = palette(:Oranges_4).colors[end:-1:begin+1]
+    # pal = palette(:Oranges_4).colors[end:-1:begin+1] # Requires Plots as dependency...
+    pal = [
+    RGB{Float64}(0.851,0.278,0.004)
+    RGB{Float64}(0.992,0.553,0.235)
+    RGB{Float64}(0.992,0.745,0.522)
+    ]
     
     for (i, sol) in enumerate(sols)
         @series begin
@@ -129,8 +132,8 @@ end
     sol = tpmr.args[1]
     t_nd = range(0, sol.t[end-2], length=31)
     time = t_nd*u"hr"
-    # pal = palette(:Oranges_4,).colors[end:-1:begin+1]
-    color = palette(:Oranges_3)[end]
+    # color = palette(:Oranges_3)[end]
+    color = RGB{Float64}(0.902,0.333,0.051)
     # Frozen temperature: tends to have a crazy time point at end
     @series begin
         # time = sol.t[1:end-2]*u"hr"
@@ -229,28 +232,25 @@ end
 end
 
 
-function qplotrf(sol, RF_params; kw...)
-    Qcontrib = map(sol.t) do ti
-        lumped_cap_rf(sol(ti), RF_params, ti, energy_output=true)[2]
-    end
-    Qcontrib = hcat(Qcontrib...)
-    Qsub = Qcontrib[1,:]
-    Qshf = Qcontrib[2,:]
-    Qvwf = Qcontrib[3,:]
-    QRFf = Qcontrib[4,:]
-    QRFvw = Qcontrib[5,:]
-
-    # names = ["sub", "sh-f", "vw-f", "RF-f", "RF-vw", "sh-vw"]
-    names = ["RF-f", "vw-f", "sh-f"]
-    labs = ["\$Q_\\text{$nm}\$" for nm in names]
-
-    pl = plot(u"hr", u"W", kw...)
-    areastackplot!(sol.t, QRFf, Qvwf, Qshf, labels=permutedims(labs))
-    plot!(sol.t, Qshf.+Qvwf.+QRFf, c=:black, label="Total")
-    plot!(xlabel="Time [hr]", ylabel="Heating [W]")
-
-    return pl
-end
+# function qplotrf(sol, RF_params; kw...)
+#     Qcontrib = map(sol.t) do ti
+#         lumped_cap_rf(sol(ti), RF_params, ti, energy_output=true)[2]
+#     end
+#     Qcontrib = hcat(Qcontrib...)
+#     Qsub = Qcontrib[1,:]
+#     Qshf = Qcontrib[2,:]
+#     Qvwf = Qcontrib[3,:]
+#     QRFf = Qcontrib[4,:]
+#     QRFvw = Qcontrib[5,:]
+#     # names = ["sub", "sh-f", "vw-f", "RF-f", "RF-vw", "sh-vw"]
+#     names = ["RF-f", "vw-f", "sh-f"]
+#     labs = ["\$Q_\\text{$nm}\$" for nm in names]
+#     pl = plot(u"hr", u"W", kw...)
+#     areastackplot!(sol.t, QRFf, Qvwf, Qshf, labels=permutedims(labs))
+#     plot!(sol.t, Qshf.+Qvwf.+QRFf, c=:black, label="Total")
+#     plot!(xlabel="Time [hr]", ylabel="Heating [W]")
+#     return pl
+# end
 
 @userplot BarStackPlot
 @recipe function f(bsp::BarStackPlot)
