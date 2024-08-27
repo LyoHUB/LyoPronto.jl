@@ -1,11 +1,20 @@
-# LyoPronto.jl
+# LyoPRONTO.jl
+[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://LyoHUB.github.io/LyoPronto.jl/dev)
 
-This is a Julia reimplementation of some core functionality in LyoPRONTO, an open source package at https://github.com/LyoHUB/LyoPronto .
+This package is a Julia reimplementation of some core functionality of LyoPRONTO, an open source Python package at https://github.com/LyoHUB/LyoPronto.
+This code is authored by Isaac S. Wheeler
 
-Some documentation has been set up for this project. It can be viewed by
-running the file `docs/make.jl`, and then launching the generated file
-`docs/build/index.html`.
-Alternatively, the documentation may be already hosted online.
-If this is the case it should be at:
+## Install
 
-https://lyohub.github.io/LyoPronto.jl/dev/
+From the Julia REPL's Pkg mode (open a REPL and type `]` so that the prompt turns blue), add this package as a Git repo:
+```
+add https://github.com/LyoHUB/LyoPronto.jl.git
+```
+
+## Documentation
+
+The "badge" up above is a link to the documentation, such as it is.
+
+## Versioning
+
+In an attempt to adhere to Julia community conventions, this package uses [semantic versioning](semver.org).

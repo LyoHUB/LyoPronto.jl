@@ -10,9 +10,10 @@ makedocs(;
     sitename = "LyoPronto.jl",
     # This argument is only so that the sequence of pages in the sidebar is configured
     # By default all markdown files in `docs/src` are expanded and included.
-    # pages = [
-    #     "index.md",
-    # ],
+    pages = [
+        "Home" => "index.md",
+        "All docstrings" => "alldocstrings.md",
+    ],
     # Don't worry about what `CI` does in this line.
     format = Documenter.HTML(prettyurls = CI),
 )

@@ -1,11 +1,12 @@
 module LyoPronto
 
 using Reexport
-@reexport using DifferentialEquations
+@reexport using OrdinaryDiffEqRosenbrock
+@reexport using DiffEqCallbacks
+@reexport using Unitful
 using RecipesBase
 using ColorTypes: RGB
 using CSV
-using Unitful
 using UnPack
 # using PrecompileTools
 using SpecialFunctions: besselj0, besselj1
