@@ -106,5 +106,5 @@ function make_outlines(dims, Vfill)
         (-rad_i, bot_thick+fheight),
         (-rad_i, bot_thick),
     ]
-    return Shape(vpoints), Shape(fpoints)
+    return vpoints, fpoints
 end
