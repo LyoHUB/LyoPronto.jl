@@ -27,13 +27,13 @@ const S_samp = shapefac.(Bi_samp)
 const S_interp = linear_interpolation(Bi_samp, S_samp, extrapolation_bc=Line())
 
 
-"""
+@doc raw"""
     lumped_cap_rf(u, params, tn)
 
 Compute the right-hand-side function for the ODEs making up the lumped-capacitance microwave-assisted model.
 
 Specifically, this is `[dmf/dt, dTf/dt, dTvw/dt]` given `u = [mf, Tf, Tvw]`.
-`u` is taken without units but assumed to have the units of [g, K, K] (which is internally added).
+`u` is taken without units but assumed to have the units of `[g, K, K]` (which is internally added).
 `tn` is assumed to be in hours (internally added), so `dudt` is returned with units [g/hr, K/hr, K/hr] to be consistent.
 
 The full set of necessary parameters is given in the form of a tuple-of-tuples:
@@ -48,22 +48,22 @@ params = (
 )
 ```
 These should all be Unitful quantities with appropriate dimensions, with some exceptions which are callables returning quantities.
-See [RpFormFit](@ref) and [RampedVariable](@ref) for convenience types that can help with these cases.
+See [`RpFormFit`](@ref) and [`RampedVariable](@ref) for convenience types that can help with these cases.
 - `Rp(x)` with `x` a length returns mass transfer resistance (as a Unitful quantity)
 - `K_shf_f(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
 - `Tsh(t)`, `pch(t)`, `P_per_vial(t)` return shelf temperature, chamber pressure, and microwave power respectively at time `t`.
 
-For implementation details, see [lumped_cap_rf_model](@ref).
+For implementation details, see [`lumped_cap_rf_model`](@ref).
 """
 function lumped_cap_rf(u, params, tn)
     lumped_cap_rf_model(u, params, tn)[1]
 end
 
 
-"""
+@doc raw"""
     lumped_cap_rf_model(u, params, tn)
 
-This does the work for [lumped_cap_rf](@ref), but returns `dudt,  [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw]` with `Q_...` as Unitful quantities in watts. 
+This does the work for [`lumped_cap_rf`](@ref), but returns `dudt,  [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw]` with `Q_...` as Unitful quantities in watts. 
 The extra results are helpful in investigating the significance of the various heat transfer modes.
 """
 function lumped_cap_rf_model(u, params, tn)

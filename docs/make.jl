@@ -8,6 +8,7 @@ using Documenter
 @info "Building Documentation"
 makedocs(;
     sitename = "LyoPronto.jl",
+    modules = [LyoPronto],
     # This argument is only so that the sequence of pages in the sidebar is configured
     # By default all markdown files in `docs/src` are expanded and included.
     pages = [

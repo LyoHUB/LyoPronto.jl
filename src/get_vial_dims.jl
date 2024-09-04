@@ -4,7 +4,7 @@ export get_vial_radii, get_vial_mass, get_vial_shape, make_outlines
 # Added to "vial_sizes.csv", read in here
 const VIAL_DIMS = CSV.File((@__DIR__) * raw"/vial_sizes.csv")
 
-"""
+@doc raw"""
     get_vial_radii(vialsize::String)
 
 Return inner and outer radius for passed ISO vial size.
@@ -22,7 +22,7 @@ function get_vial_radii(vialsize::String)
     return rad_i, rad_o
 end
 
-"""
+@doc raw"""
     get_vial_thickness(vialsize::String)
 
 Return vial wall thickness for given ISO vial size.
@@ -39,7 +39,7 @@ function get_vial_thickness(vialsize::String)
     return thickness
 end
 
-"""
+@doc raw"""
     get_vial_mass(vialsize::String)
 
 Return vial mass for given ISO vial size.
@@ -56,10 +56,10 @@ function get_vial_mass(vialsize::String)
     return thickness
 end
 
-"""
+@doc raw"""
     get_vial_shape(vialsize::String)
 
-Return a Dict{Symbol, Any} with a slew of vial dimensions, useful for drawing the shape of the vial with [make_outlines](@ref).
+Return a Dict{Symbol, Any} with a slew of vial dimensions, useful for drawing the shape of the vial with [`make_outlines`](@ref).
 """
 function get_vial_shape(vialsize::String)
     alldims = [row for row in VIAL_DIMS if row.Size == vialsize]
@@ -82,7 +82,7 @@ function get_vial_shape(vialsize::String)
 end
 
 
-"""
+@doc raw"""
     make_outlines(dims, Vfill)
 
 Return a sequence of points (ready to be made into `Plots.Shape`s for the vial and fill volume, with Unitful dimensions, for given vial dimensions.

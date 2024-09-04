@@ -5,7 +5,7 @@ const Mw = 18.015u"g/mol"
 const θsub = ΔHsub*Mw/(8.3145u"J/mol/K")
 const k_ice = 2.45u"W/m/K"
 
-"""
+@doc raw"""
     calc_psub(T::F) where F<:Number
     calc_psub(T::Q) where Q<:Quantity
 
@@ -17,16 +17,16 @@ psub = pref * exp(-ΔHsub*Mw / R T)
 calc_psub(T::F) where F<:Number = 359.7e10 * exp(θsub/(T*u"K"))
 calc_psub(T::Q) where Q<:Quantity = 359.7e10*u"Pa" * exp(θsub/uconvert(u"K",T))
 
-"""
+@doc raw"""
     end_cond(u, t, integ)
 
 Compute the end condition for primary drying (that `mf` or `hf` approaches zero).
 """
 end_cond(u, t, integ) = u[1] - 1e-10 # When reaches 1e-10, is basically zero
-"""
+@doc raw"""
 A callback for use in simulating either the Pikal or RF model.
 
-Terminates the time integration when [end_cond](@ref) evaluates to `true`.
+Terminates the time integration when [`end_cond`](@ref) evaluates to `true`.
 """
 const end_drying_callback = ContinuousCallback(end_cond, terminate!)
 
@@ -34,11 +34,11 @@ const end_drying_callback = ContinuousCallback(end_cond, terminate!)
 # Incorporate the nonlinear algebraic part in a DAE formulation.
 # This has the advantage that, afterward, temperatures can be cheaply interpolated by builtin solutions
 
-"""
+@doc raw"""
     lyo_1d_dae!(du, u, params, t)
 
 Internal implementation of the Pikal model.
-See [lyo_1d_dae_f](@ref) for the wrapped version, which is more fully documented.
+See [`lyo_1d_dae_f`](@ref) for the wrapped version, which is more fully documented.
 """
 function lyo_1d_dae!(du, u, params, t)
 
@@ -69,14 +69,14 @@ end
 
 const lyo_1d_mm = [1.0 0.0; 0.0 0.0]
 
-"""
+@doc raw"""
     lyo_1d_dae_f = ODEFunction(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
 
 Compute the right hand side function for the Pikal model.
 
 The DAE system which is the Pikal model (1 ODE, one nonlinear algebraic equation for pseudosteady conditions)
 is here treated as a constant-mass-matrix implicit ODE system.
-The implementation is in [lyo_1d_dae!](@ref)
+The implementation is in [`lyo_1d_dae!`](@ref)
 
 The initial conditions `u0 = [h_f, Tf]` should be unitless, but are internally assigned to be in `[cm, K]`.
 The unitless time is taken to be in hours, so derivatives are given in unitless `[cm/hr, K/hr]`.
@@ -90,7 +90,7 @@ params = (
 )
 ```
 where some quantities with Unitful units and some are callables returning quantities
-See [RpFormFit](@ref) and [RampedVariable](@ref) for convenience types that can help with the callables.
+See [`RpFormFit`](@ref LyoPronto.RpFormFit) and [`RampedVariable`](@ref LyoPronto.RampedVariable) for convenience types that can help with the callables.
 - `Rp(x)` with `x` a length returns mass transfer resistance (as a Unitful quantity)
 - `K_shf_f(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
 - `Tsh(t)`, `pch(t)` return shelf temperature and chamber pressure respectively at time `t`.

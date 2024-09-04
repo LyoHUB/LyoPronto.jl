@@ -30,7 +30,7 @@ export qrf_integrate
     y := sy
 end
 
-"""
+@doc raw"""
     tplotexperimental(time, T1, [T2, ...])
     tplotexperimental!(time, T1, [T2, ...])
 
@@ -71,7 +71,7 @@ tplotexperimental
     end
 end
 
-"""
+@doc raw"""
     tplotexpvw(time, temperature)
     tplotexpvw!(time, temperature)
 
@@ -102,11 +102,11 @@ tplotexpvw
     end
 end
 
-"""
+@doc raw"""
     tplotmodelconv(sols)
     tplotmodelconv!(sols)
 
-Plot recipe for one or multiple solutions to the Pikal model, e.g. the output of [gen_sol_conv_dim](@ref).
+Plot recipe for one or multiple solutions to the Pikal model, e.g. the output of [`gen_sol_conv_dim`](@ref LyoPronto.gen_sol_conv_dim).
 This adds one series to the plot for each passed solution, so pass as many labels (e.g. ["Tf1" "Tf2"]) to this plot call as solutions to add labels to the legend.
 """
 tplotmodelconv
@@ -142,11 +142,11 @@ tplotmodelconv
 end
 
 
-"""
+@doc raw"""
     tplotmodelrf(sol)
     tplotmodelrf!(sol)
 
-Plot recipe for one solution to the lumped capacitance model, e.g. the output of [gen_sol_rf_dim](@ref).
+Plot recipe for one solution to the lumped capacitance model, e.g. the output of [`gen_sol_rf_dim`](@ref LyoPronto.gen_sol_rf_dim).
 This adds two series to the plot, so pass two labels (e.g. ["Tf" "Tvw"]) to this plot call to add labels to the legend.
 """
 tplotmodelrf
@@ -184,7 +184,7 @@ tplotmodelrf
     end
 end
 
-"""
+@doc raw"""
     tendplot(t_end)
     tendplot!(t_end)
 
@@ -206,7 +206,7 @@ tendplot
     end
 end
 
-"""
+@doc raw"""
     qrf_integrate(sol, RF_params)
 
 Compute the integral over time of each heat transfer mode in the lumped capacitance model.

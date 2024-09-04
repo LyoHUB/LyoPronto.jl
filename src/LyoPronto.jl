@@ -14,7 +14,7 @@ using Roots
 using Interpolations
 
 include(raw"structs.jl")
-include(raw"rf_model_lumcap.jl")
+include(raw"rf_lumcap_model.jl")
 include(raw"pikal_model.jl")
 include(raw"paramfits.jl")
 include(raw"recipes.jl")
