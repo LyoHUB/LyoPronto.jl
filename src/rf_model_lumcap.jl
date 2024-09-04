@@ -1,4 +1,4 @@
-export lumped_cap_rf, lumped_cap_rf_julian!
+export lumped_cap_rf
 
 # Constant properties
 const rho_ice = 0.918u"g/cm^3" 
@@ -28,18 +28,43 @@ const S_interp = linear_interpolation(Bi_samp, S_samp, extrapolation_bc=Line())
 
 
 """
-    function lumped_cap_rf(du, u, p, t)
+    lumped_cap_rf(u, params, tn)
 
-TODO: include all parameters
-TODO: handle dimensionality
+Compute the right-hand-side function for the ODEs making up the lumped-capacitance microwave-assisted model.
+Specifically, this is `[dmf/dt, dTf/dt, dTvw/dt]` given `u = [mf, Tf, Tvw]`.
+`u` and `du/dt` are without units, but assumed to have the units of [g, K, K] (which is internally added).
+
+The full set of necessary parameters is given in the form of a tuple-of-tuples:
+```
+params = (   
+    (Rp, h_f0, cSolid, ρ_solution),
+    (K_shf_f, A_v, A_p),
+    (pch, Tsh, P_per_vial),
+    (m_f0, cp_f, m_v, cp_v, A_rad),
+    (f_RF, epp_f, epp_vw),
+    (alpha, K_vwf, B_f, B_vw),
+)
+```
+These should all be Unitful quantities with appropriate dimensions, with some exceptions.
+See [RpFormFit](@ref) and [RampedVariable](@ref) for convenience types that can help with these cases.
+- `Rp(x)` with `x` a length returns mass transfer resistance (as a Unitful quantity)
+- `K_shf_f(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
+- `Tsh(t)`, `pch(t)`, `P_per_vial(t)` return shelf temperature, chamber pressure, and microwave power respectively at time `t`.
+
+For implementation details, see [lumped_cap_rf_model](@ref).
 """
-function lumped_cap_rf(u, params, tn; energy_output=false)
-    # R0, A1, A2, cSolid, ρ_solution = params[1]
-    # K_shf_f = params[2]
-    # h_f0, m_f0, A_p, cp_f, A_v, m_v, cp_v, A_rad= params[3]
-    # shelf_ramp_func, pch, P_per_vial = params[4] # P_per_vial in W
-    # f_RF, epp_f, epp_vw,  = params[5] # f_RF in 1/s
-    # alpha, K_vwf, B_f, B_vw = params[6]
+function lumped_cap_rf(u, params, tn)
+    lumped_cap_rf_model(u, params, tn)[1]
+end
+
+
+"""
+    lumped_cap_rf_model(u, params, tn)
+
+This does the work for [lumped_cap_rf](@ref), but returns `dudt,  [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw]` with `Q_...` as Unitful quantities in watts. 
+The extra results are helpful in investigating the significance of the various heat transfer modes.
+"""
+function lumped_cap_rf_model(u, params, tn)
     Rp, h_f0, cSolid, ρ_solution = params[1]
     K_shf_f, A_v, A_p, = params[2]
     pch, Tsh, P_per_vial = params[3] 
@@ -64,7 +89,6 @@ function lumped_cap_rf(u, params, tn; energy_output=false)
     h_d = h_f0 - h_f
     A_sub = A_p + alpha*sqrt(abs(h_d))
     
-    # R_p = R0 + A1*h_d/(1 + A2*h_d) #cm^2-s-Torr/g
     mflow = A_sub/Rp(h_d)*(calc_psub(T_f) - pch(t)) # g/s
 
     Bi = uconvert(NoUnits, K_vwf*rad/k_dry)
@@ -72,8 +96,8 @@ function lumped_cap_rf(u, params, tn; energy_output=false)
 
     Q_sub = mflow*ΔH_sub
     Q_shf = K_shf*A_v*(Tsh(t)-T_f)
-    Q_shw = 0.9*σ*(Tsh(t)^4-T_vw^4)*A_rad # As if exchanging heat above vial?
-    Qppp_RF_f = 2*pi*f_RF*e_0*epp_f*P_per_vial(t) * B_f # W / m^3
+    Q_shw = 0.9*σ*(Tsh(t)^4-T_vw^4)*A_rad # As if exchanging heat above vial
+    Qppp_RF_f  = 2*pi*f_RF*e_0*epp_f *P_per_vial(t) * B_f # W / m^3
     Qppp_RF_vw = 2*pi*f_RF*e_0*epp_vw*P_per_vial(t) * B_vw # W / m^3
     Q_RF_f = Qppp_RF_f*A_p*h_f # W
     Q_RF_vw = Qppp_RF_vw*V_vial # W
@@ -85,13 +109,5 @@ function lumped_cap_rf(u, params, tn; energy_output=false)
     dT_f = (Q_RF_f -Q_sub + Q_vwf+ Q_shf) / (m_f * cp_f) - T_f*dm_f/m_f
     dT_vw = (Q_RF_vw + Q_shw - Q_vwf) / (m_v * cp_v)
 
-    #     if Q_RF_f + Q_RF_vw > P_per_vial(t):
-    #         print("Energy balance of EM terms not satisfied.")
-    if energy_output
-        # Q_vwf1 = 2π*(K_vwf*rad*h_f)*(T_vw-T_f)
-        # Q_vwf2 = 2π*(k_dry*(h_f0-h_f))*(T_vw-T_f)
-        return [ustrip(u"g/hr", dm_f), ustrip(u"K/hr", dT_f), ustrip(u"K/hr", dT_vw)], uconvert.(u"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw, ])
-    else
-        return [ustrip(u"g/hr", dm_f), ustrip(u"K/hr", dT_f), ustrip(u"K/hr", dT_vw)]
-    end
+    return [ustrip(u"g/hr", dm_f), ustrip(u"K/hr", dT_f), ustrip(u"K/hr", dT_vw)], uconvert.(u"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw, ])
 end

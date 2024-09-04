@@ -185,7 +185,7 @@ function qrf_integrate(sol, RF_params;)
 
     # So we do a manual Riemann integration on the solution output
     Qcontrib = map(sol.t) do ti
-        lumped_cap_rf(sol(ti), RF_params, ti, energy_output=true)[2]
+        lumped_cap_rf_model(sol(ti), RF_params, ti)[2]
     end
     Qcontrib = hcat(Qcontrib...)
     Qsub = Qcontrib[1,:]
