@@ -1,11 +1,8 @@
-# export blankplot_hrC
 export qrf_integrate
 
-# function blankplot_hrC()
-#     plot([Inf]*u"hr", [Inf]*u"°C", lw=0, marker=:none, label="")
-#     # plot!(xlabel = "Time [hr]", ylabel="Temperature [°C]")
-# end
-
+# This is a plot recipe used to add markers only every so often along the series.
+# e.g. if you have 100 data points but only want 10 markers, this will help.
+# This is used inside many of the below plot recipes.
 @recipe function f(::Type{Val{:samplemarkers}}, x, y, z; step = 10, offset=1)
     n = length(y)
     sx, sy = x[offset:step:n], y[offset:step:n]
@@ -35,10 +32,13 @@ end
 
 """
     tplotexperimental(time, T1, [T2, ...])
+    tplotexperimental!(time, T1, [T2, ...])
 
 Plot recipe for one or more experimentally measured product temperatures, all at same times.
+This recipe adds one series for each passed temperature series, so pass labels as appropriate.
 """
 tplotexperimental
+@doc (@doc tplotexperimental) tplotexperimental!
 
 @userplot TPlotExperimental
 @recipe function f(tpe::TPlotExperimental)
@@ -73,10 +73,14 @@ end
 
 """
     tplotexpvw(time, temperature)
+    tplotexpvw!(time, temperature)
 
 Plot recipe for a set of experimentally measured vial wall temperatures.
+This recipe adds only one series to the plot.
 """
 tplotexpvw
+@doc (@doc tplotexpvw) tplotexpvw!
+
 @userplot TPlotExpVW
 @recipe function f(tpev::TPlotExpVW)
     time, T = tpev.args
@@ -97,6 +101,16 @@ tplotexpvw
         time, T
     end
 end
+
+"""
+    tplotmodelconv(sols)
+    tplotmodelconv!(sols)
+
+Plot recipe for one or multiple solutions to the Pikal model, e.g. the output of [gen_sol_conv_dim](@ref).
+This adds one series to the plot for each passed solution, so pass as many labels (e.g. ["Tf1" "Tf2"]) to this plot call as solutions to add labels to the legend.
+"""
+tplotmodelconv
+@doc (@doc tplotmodelconv) tplotmodelconv!
 
 
 @userplot TPlotModelConv
@@ -126,6 +140,17 @@ end
         end
     end
 end
+
+
+"""
+    tplotmodelrf(sol)
+    tplotmodelrf!(sol)
+
+Plot recipe for one solution to the lumped capacitance model, e.g. the output of [gen_sol_rf_dim](@ref).
+This adds two series to the plot, so pass two labels (e.g. ["Tf" "Tvw"]) to this plot call to add labels to the legend.
+"""
+tplotmodelrf
+@doc (@doc tplotmodelrf) tplotmodelrf!
 
 @userplot TPlotModelRF
 @recipe function f(tpmr::TPlotModelRF)
@@ -159,6 +184,16 @@ end
     end
 end
 
+"""
+    tendplot(t_end)
+    tendplot!(t_end)
+
+Plot recipe that adds a labeled vertical line to the plot at time `t_end`. 
+A default label and styling are applied, but these can be modified by keyword arguments as usual
+"""
+tendplot
+@doc (@doc tendplot) tendplot!
+
 @userplot tendPlot
 @recipe function f(tp::tendPlot)
     t_end = tp.args[1]
@@ -171,7 +206,14 @@ end
     end
 end
 
-function qrf_integrate(sol, RF_params;)
+"""
+    qrf_integrate(sol, RF_params)
+
+Compute the integral over time of each heat transfer mode in the lumped capacitance model.
+
+Returns as a Dict{String, Quantity{...}}, with string keys `Qsub, Qshf, Qvwf, QRFf, QRFvw`.
+"""
+function qrf_integrate(sol, RF_params)
 
     # # This attempt currently falls down because it tries to materialize a zero vector and can't put zeros into a Unitful array
     # integrand = (u,t,integ) -> lumped_cap_rf(u, RF_params, t, energy_output=true)[2]

@@ -39,6 +39,13 @@ function get_vial_thickness(vialsize::String)
     return thickness
 end
 
+"""
+    get_vial_mass(vialsize::String)
+
+Return vial mass for given ISO vial size.
+
+Uses a table provided by Schott, stored internally in a CSV.
+"""
 function get_vial_mass(vialsize::String)
     alldims = [row for row in VIAL_DIMS if row.Size == vialsize]
     if length(alldims) != 1
@@ -49,6 +56,11 @@ function get_vial_mass(vialsize::String)
     return thickness
 end
 
+"""
+    get_vial_shape(vialsize::String)
+
+Return a Dict{Symbol, Any} with a slew of vial dimensions, useful for drawing the shape of the vial with [make_outlines](@ref).
+"""
 function get_vial_shape(vialsize::String)
     alldims = [row for row in VIAL_DIMS if row.Size == vialsize]
     if length(alldims) != 1
@@ -73,8 +85,9 @@ end
 """
     make_outlines(dims, Vfill)
 
-Return `Plots.Shape`s for vial and fill volume, with Unitful dimensions, for given vial dimensions.
-Convenience function for making some figures.
+Return a sequence of points (ready to be made into `Plots.Shape`s for the vial and fill volume, with Unitful dimensions, for given vial dimensions.
+
+This is a convenience function for making figures illustrating fill depth.
 """
 function make_outlines(dims, Vfill)
     @unpack rad_o, rad_i, bot_thick, neck_inner, neck_outer, curve_height, barrel_height, full_height = dims

@@ -1,4 +1,4 @@
-export lumped_cap_rf
+export lumped_cap_rf, lumped_cap_rf_model
 
 # Constant properties
 const rho_ice = 0.918u"g/cm^3" 
@@ -31,8 +31,10 @@ const S_interp = linear_interpolation(Bi_samp, S_samp, extrapolation_bc=Line())
     lumped_cap_rf(u, params, tn)
 
 Compute the right-hand-side function for the ODEs making up the lumped-capacitance microwave-assisted model.
+
 Specifically, this is `[dmf/dt, dTf/dt, dTvw/dt]` given `u = [mf, Tf, Tvw]`.
-`u` and `du/dt` are without units, but assumed to have the units of [g, K, K] (which is internally added).
+`u` is taken without units but assumed to have the units of [g, K, K] (which is internally added).
+`tn` is assumed to be in hours (internally added), so `dudt` is returned with units [g/hr, K/hr, K/hr] to be consistent.
 
 The full set of necessary parameters is given in the form of a tuple-of-tuples:
 ```
@@ -45,7 +47,7 @@ params = (
     (alpha, K_vwf, B_f, B_vw),
 )
 ```
-These should all be Unitful quantities with appropriate dimensions, with some exceptions.
+These should all be Unitful quantities with appropriate dimensions, with some exceptions which are callables returning quantities.
 See [RpFormFit](@ref) and [RampedVariable](@ref) for convenience types that can help with these cases.
 - `Rp(x)` with `x` a length returns mass transfer resistance (as a Unitful quantity)
 - `K_shf_f(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
