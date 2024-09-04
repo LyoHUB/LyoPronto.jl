@@ -26,7 +26,7 @@ if CI
         # the auto-generated documentation will be hosted at:
         # https://PutYourGitHubNameHere.github.io/LyoPronto.jl/dev/
         # (assuming you have enabled `gh-pages` deployment)
-        repo = "github.com/LyoHUB/LyoPRONTO.jl.git",
+        repo = "github.com/LyoHUB/LyoPronto.jl.git",
         target = "build",
         push_preview = true,
         devbranch = "main",
