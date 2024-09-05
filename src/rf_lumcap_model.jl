@@ -34,7 +34,7 @@ Compute the right-hand-side function for the ODEs making up the lumped-capacitan
 
 Specifically, this is `[dmf/dt, dTf/dt, dTvw/dt]` given `u = [mf, Tf, Tvw]`.
 `u` is taken without units but assumed to have the units of `[g, K, K]` (which is internally added).
-`tn` is assumed to be in hours (internally added), so `dudt` is returned with units [g/hr, K/hr, K/hr] to be consistent.
+`tn` is assumed to be in hours (internally added), so `dudt` is returned with assumed units `[g/hr, K/hr, K/hr]` to be consistent.
 
 The full set of necessary parameters is given in the form of a tuple-of-tuples:
 ```
@@ -48,7 +48,7 @@ params = (
 )
 ```
 These should all be Unitful quantities with appropriate dimensions, with some exceptions which are callables returning quantities.
-See [`RpFormFit`](@ref) and [`RampedVariable](@ref) for convenience types that can help with these cases.
+See [`RpFormFit`](@ref) and [`RampedVariable`](@ref) for convenience types that can help with these cases.
 - `Rp(x)` with `x` a length returns mass transfer resistance (as a Unitful quantity)
 - `K_shf_f(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
 - `Tsh(t)`, `pch(t)`, `P_per_vial(t)` return shelf temperature, chamber pressure, and microwave power respectively at time `t`.

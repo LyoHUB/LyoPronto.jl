@@ -1,8 +1,7 @@
 # LyoPRONTO.jl
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://LyoHUB.github.io/LyoPronto.jl/dev)
 
-This package is a Julia reimplementation of some core functionality of LyoPRONTO, an open source Python package at https://github.com/LyoHUB/LyoPronto.
-This code is authored by Isaac S. Wheeler
+This package is a Julia reimplementation of some core functionality of [LyoPRONTO](https://github.com/LyoHUB/LyoPronto), an open source Python package.
 
 ## Installation
 
@@ -13,7 +12,7 @@ add https://github.com/LyoHUB/LyoPronto.jl.git
 
 ## Documentation
 
-The "badge" up above is a link to the documentation, such as it is.
+The "badge" up above is a link to the documentation.
 
 ## Versioning
 

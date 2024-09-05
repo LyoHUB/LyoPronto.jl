@@ -4,6 +4,7 @@
 
 _A Julia package providing common computations for pharmaceutical lyophilization._
 
+This provides some of the functionality of [LyoPRONTO](https://github.com/LyoHUB/LyoPronto), a Python package
 
 ## Overview
 

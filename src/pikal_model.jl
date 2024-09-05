@@ -12,7 +12,7 @@ const k_ice = 2.45u"W/m/K"
 Compute pressure (in Pascals) of sublimation at temperature `T` in Kelvin.
 
 This is essentially an Arrhenius fit, where we compute:
-psub = pref * exp(-ΔHsub*Mw / R T)
+`psub = pref * exp(-ΔHsub*Mw/R/T)`
 """
 calc_psub(T::F) where F<:Number = 359.7e10 * exp(-θsub/(T*u"K"))
 calc_psub(T::Q) where Q<:Quantity = 359.7e10*u"Pa" * exp(-θsub/uconvert(u"K",T))
@@ -89,10 +89,10 @@ params = (
     (pch, Tsh) ,
 )
 ```
-where some quantities with Unitful units and some are callables returning quantities
+where those listed following are callables returning `Quantity`s, and the rest are `Quantity`s.
 See [`RpFormFit`](@ref LyoPronto.RpFormFit) and [`RampedVariable`](@ref LyoPronto.RampedVariable) for convenience types that can help with the callables.
 - `Rp(x)` with `x` a length returns mass transfer resistance (as a Unitful quantity)
-- `K_shf_f(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
+- `Kshf(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
 - `Tsh(t)`, `pch(t)` return shelf temperature and chamber pressure respectively at time `t`.
 """
 lyo_1d_dae_f = ODEFunction(lyo_1d_dae!, mass_matrix=lyo_1d_mm)

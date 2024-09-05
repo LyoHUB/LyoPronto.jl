@@ -5,6 +5,8 @@ A convenience type for dealing with the common functional form given to Rp and K
 
 An object `Rp = RpFormFit(A, B, C)` can be called as `Rp(x)`, which simply computes `A + B*x/(1 + C*x)`.
 Likewise, `Kv = RpFormFit(Kc, Kp, Kd)` can be called as `Kv(p)` to get `Kc + Kp*p/(1 + Kd*p)`.
+
+Be careful to pass dimensionally consistent values.
 """
 struct RpFormFit
     R0
@@ -22,15 +24,20 @@ A convenience type for computing temperatures, pressures, etc. with multiple set
 
 Three main constructors are available:
 For a non-varying value, call with one argument:
-```RampedVariable(constant_setpt)```
+
+    RampedVariable(constant_setpt)
+
 For one ramp from initial value to set point with indefinite hold, call with two arguments:
-```RampedVariable(setpts, ramprate)```
+
+    RampedVariable(setpts, ramprate)
+    
 And for multiple setpoints, call with three arguments:
-```RampedVariable(setpts, ramprates, holds)```
+
+    RampedVariable(setpts, ramprates, holds)
 
 With three arguments, `setpts`, `ramprates`, and `holds` should all be vectors, with lengths N+1, N, N-1 respectively.
 
-The resulting RampedVariable `rv = RampedVariable(...)` can be called as `rv(x)` at any value of x, 
+The resulting RampedVariable `rv = RampedVariable(...)` can be called as `rv(x)` at any (dimensionally consistent) value of x, 
 and will return the value at that time point along the ramp process.
 """
 struct RampedVariable
