@@ -6,6 +6,7 @@ export qrf_integrate
 @recipe function f(::Type{Val{:samplemarkers}}, x, y, z; step = 10, offset=1)
     n = length(y)
     sx, sy = x[offset:step:n], y[offset:step:n]
+    linewidth --> 2.5
     # add an empty series with the correct type for legend markers
     @series begin
         seriestype := :path

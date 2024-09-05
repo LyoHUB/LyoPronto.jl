@@ -13,7 +13,8 @@ makedocs(;
     # By default all markdown files in `docs/src` are expanded and included.
     pages = [
         "Home" => "index.md",
-        "All docstrings" => "alldocstrings.md",
+        "Example" => "example.md",
+        "Reference" => "alldocstrings.md",
     ],
     # Don't worry about what `CI` does in this line.
     format = Documenter.HTML(prettyurls = CI),
