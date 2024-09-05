@@ -46,23 +46,18 @@ end
 
 function RampedVariable(setpts, ramprate)
 
-    if length(ramprates) == 0 || length(setpts) == 1
+    if length(ramprate) == 0 || length(setpts) == 1
         @error "If no ramp necessary, construct RampedVariable with only one argument." ramprate
     end
-    if length(ramprates) >= 2 || length(setpts) > 2
+    if length(ramprate) >= 2 || length(setpts) > 2
         @error "For multiple ramps, need at least one hold time. Construct RampedVariable with three arguments." ramprate
     end
     if length(setpts) != 2
         @error "Number of set points should be 1 more than ramps, since initial is included"
     end
-    timestops = fill(0.0*setpts[1]/ramprates[1], length(ramprates) + 1)
-    (ramp, rest) = Iterators.peel(ramprates)
-    timestops[2] = timestops[1] + (setpts[2]-setpts[1])/ramp
-    for (i, ramp) in enumerate(rest)
-        timestops[2i+1] = timestops[2i] + holds[i]
-        timestops[2i+2] = timestops[2i+1] + (setpts[i+2]-setpts[i+1])/ramp
-    end
-    RampedVariable(setpts, ramprates, holds, timestops)
+    timestops = fill(0.0*setpts[1]/ramprate[1], 2)
+    timestops[2] = timestops[1] + (setpts[2]-setpts[1])/ramprate
+    RampedVariable(setpts, [ramprate], [], timestops)
 end
 
 
