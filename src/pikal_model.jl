@@ -14,8 +14,8 @@ Compute pressure (in Pascals) of sublimation at temperature `T` in Kelvin.
 This is essentially an Arrhenius fit, where we compute:
 psub = pref * exp(-ΔHsub*Mw / R T)
 """
-calc_psub(T::F) where F<:Number = 359.7e10 * exp(θsub/(T*u"K"))
-calc_psub(T::Q) where Q<:Quantity = 359.7e10*u"Pa" * exp(θsub/uconvert(u"K",T))
+calc_psub(T::F) where F<:Number = 359.7e10 * exp(-θsub/(T*u"K"))
+calc_psub(T::Q) where Q<:Quantity = 359.7e10*u"Pa" * exp(-θsub/uconvert(u"K",T))
 
 @doc raw"""
     end_cond(u, t, integ)
