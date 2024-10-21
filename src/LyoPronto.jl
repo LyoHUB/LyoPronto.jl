@@ -19,7 +19,8 @@ include(raw"pikal_model.jl")
 include(raw"paramfits.jl")
 include(raw"recipes.jl")
 include(raw"get_vial_dims.jl")
-include(raw"dielectric.jl")
+include(raw"physical_properties.jl")
+using .Dielectric
 
 # include(raw"precompilation.jl"))
 

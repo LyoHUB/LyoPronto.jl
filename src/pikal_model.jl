@@ -1,22 +1,5 @@
 export lyo_1d!, lyo_1d_dae_f, subflux_Tsub, calc_psub
 
-const ΔHsub = 678u"cal/g"
-const Mw = 18.015u"g/mol"
-const θsub = ΔHsub*Mw/(8.3145u"J/mol/K")
-const k_ice = 2.45u"W/m/K"
-
-@doc raw"""
-    calc_psub(T::F) where F<:Number
-    calc_psub(T::Q) where Q<:Quantity
-
-Compute pressure (in Pascals) of sublimation at temperature `T` in Kelvin.
-
-This is essentially an Arrhenius fit, where we compute:
-`psub = pref * exp(-ΔHsub*Mw/R/T)`
-"""
-calc_psub(T::F) where F<:Number = 359.7e10 * exp(-θsub/(T*u"K"))
-calc_psub(T::Q) where Q<:Quantity = 359.7e10*u"Pa" * exp(-θsub/uconvert(u"K",T))
-
 @doc raw"""
     end_cond(u, t, integ)
 

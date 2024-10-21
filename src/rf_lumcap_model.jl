@@ -1,13 +1,5 @@
 export lumped_cap_rf, lumped_cap_rf_model
 
-# Constant properties
-const rho_ice = 0.918u"g/cm^3" 
-const rho_glass = 2.2u"g/cm^3"
-const ΔH_sub = 678u"cal / g"
-const e_0 = 8.854187e-12u"F/m" # permittivity of free space Coulomb^2/J/m
-const σ = 5.670367e-8u"W/m^2/K^4" # Stefan-Boltzmann Constant
-const k_sucrose = 0.139u"W/m/K"
-
 function shapefac(Bi)
     charfunc(x) = -x*besselj1(x) + Bi*besselj0(x)
     λm = zeros(200)
