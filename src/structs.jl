@@ -1,4 +1,4 @@
-export RpFormFit, RampedVariable
+export RpFormFit, RampedVariable, ConstPhysProp
 
 """
 A convenience type for dealing with the common functional form given to Rp and Kv.
@@ -67,7 +67,6 @@ function RampedVariable(setpts, ramprate)
     RampedVariable(setpts, [ramprate], [], timestops)
 end
 
-
 function RampedVariable(setpts, ramprates, holds)
 
     if (length(ramprates) != length(holds) + 1 ) || (length(ramprates)==0)
@@ -110,3 +109,33 @@ function Base.show(io::IO, rv::RampedVariable)
         return print(io, "RampedVariable($(rv.setpts), $(rv.ramprates), $(rv.holds)")
     end
 end
+
+struct PhysProp{V, Tdep, Pdep, Fdep}
+    valfunc::V
+end
+
+(pp::PhysProp{V, true , true , true } where V)(T, p, f) = pp.valfunc(T, p, f)
+(pp::PhysProp{V, false, true , true } where V)(T, p, f) = pp.valfunc(p, f)
+(pp::PhysProp{V, true , false, true } where V)(T, p, f) = pp.valfunc(T, f)
+(pp::PhysProp{V, true , true , false} where V)(T, p, f) = pp.valfunc(T, p)
+(pp::PhysProp{V, false, false, true } where V)(T, p, f) = pp.valfunc(f)
+(pp::PhysProp{V, true , false, false} where V)(T, p, f) = pp.valfunc(T)
+(pp::PhysProp{V, false, true , false} where V)(T, p, f) = pp.valfunc(p)
+(pp::PhysProp{V, false, false, false} where V)(T, p, f) = pp.valfunc
+
+PhysProp(x) = PhysProp{typeof(x), false, false, false}(x::T)
+function PhysProp(x, args...) 
+    func_T = (:T ∈ args)
+    func_p = (:p ∈ args)
+    func_f = (:f ∈ args)
+    PhysProp{typeof(x), func_T, func_p, func_f}(x)
+end
+
+struct ConstPhysProp 
+    val
+end
+(cpp::ConstPhysProp)(args...) = cpp.val
+
+# function Base.show(io::IO, pp::PhysProp) 
+#     return print(io, "PhysProp($(rv.setpts[1]))")
+# end
