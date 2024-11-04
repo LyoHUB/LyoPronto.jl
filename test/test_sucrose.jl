@@ -38,7 +38,14 @@ params_bunch = [
 tspan = (0.0, 100.0) # hours
 u0 = [ustrip(u"cm", hf0), 233]
 prob = ODEProblem(lyo_1d_dae_f, u0, tspan, tuple(params_bunch...))
-sol = solve(prob, Rodas4P(), callback=LyoPronto.end_drying_callback)
+sol = solve(prob, Rodas4P(autodiff=false), tstops=1/3, callback=LyoPronto.end_drying_callback)
 
-plot(sol, idxs=1)
-plot(sol, idxs=2)
+
+# Results from Python
+maxT = -32.1975
+drytime = 45.8u"hr"
+
+@test_broken sol.t[end]*u"hr" ≈ drytime rtol=0.01
+@test sol.t[end]*u"hr" ≈ drytime rtol=0.1
+@test sol[2,end]-273.15 ≈ maxT atol=0.1
+
