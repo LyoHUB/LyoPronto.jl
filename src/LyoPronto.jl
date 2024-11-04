@@ -3,7 +3,12 @@ module LyoPronto
 using Reexport
 @reexport using OrdinaryDiffEqRosenbrock
 @reexport using DiffEqCallbacks
-@reexport using Unitful
+# @reexport using Unitful
+@reexport using DynamicQuantities
+@register_unit Torr 101325//760*u"Pa"
+DynamicQuantities.Units.@add_prefixes Torr (m,)
+@register_unit cal 4.184*u"J"
+
 using RecipesBase
 using ColorTypes: RGB
 using CSV
