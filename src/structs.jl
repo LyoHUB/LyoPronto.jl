@@ -8,15 +8,18 @@ Likewise, `Kv = RpFormFit(Kc, Kp, Kd)` can be called as `Kv(p)` to get `Kc + Kp*
 
 Be careful to pass dimensionally consistent values.
 """
-struct RpFormFit{T}
-    R0::T
-    A1
-    A2
-    RpFormFit(R0, A1, A2) = RpFormFit{typeof(R0)}(R0, A1, A2)
+struct RpFormFit{T1, T2, T3}
+    R0::T1
+    A1::T2
+    A2::T3
 end
 
-function (ff::RpFormFit{T})(x) where T
-    return (ff.R0 + ff.A1*x/(1+ustrip(NoUnits, ff.A2*x)))::T
+function (ff::RpFormFit)(x)
+    return (ff.R0 + ff.A1*x/(1+ustrip(NoUnits, ff.A2*x)))
+end
+
+function Base.show(io::IO, rp::RpFormFit) 
+    return print(io, "RpFormFit($(rp.R0), $(rp.A1), $(rp.A2))")
 end
 
 """
@@ -41,15 +44,32 @@ With three arguments, `setpts`, `ramprates`, and `holds` should all be vectors, 
 The resulting RampedVariable `rv = RampedVariable(...)` can be called as `rv(x)` at any (dimensionally consistent) value of x, 
 and will return the value at that time point along the ramp process.
 """
-struct RampedVariable{T, vary}
-    setpts::Union{T, AbstractVector{T}}
-    ramprates::AbstractVector
-    holds::AbstractVector
-    timestops::AbstractVector
+struct RampedVariable{vary, T1, T2, T3, T4}
+    setpts::Union{T1, Vector{T1}}
+    ramprates::Union{Vector{T2}, T2}
+    holds::Union{Vector{T3}, T3}
+    timestops::Union{Vector{T4}, T4}
 end
 
-function RampedVariable(initial)
-    RampedVariable{typeof(initial), false}([initial], [], [], [0])
+# get_dimensions(::Type{Quantity{T,D,U}}) where {T, D, U} = D
+function (rv::RampedVariable{false, T1,T2,T3,T4})(t) where {T1,T2,T3,T4}
+    return rv.setpts::T1
+end
+function (rv::RampedVariable{true, T1,T2,T3,T4})(t) where {T1,T2,T3,T4}
+    im = findlast(rv.timestops .<= t)
+    if im == length(rv.timestops)
+        return rv.setpts[end]
+    elseif iseven(im)
+        return rv.setpts[im÷2+1]
+    else
+        ip = im+1
+        return ((rv.setpts[ip÷2+1] - rv.setpts[ip÷2])/(rv.timestops[ip] - rv.timestops[im])*(t - rv.timestops[im]) + rv.setpts[ip÷2])
+    end
+end
+
+
+function RampedVariable(hold)
+    RampedVariable{false, typeof(hold), Nothing, Nothing, Nothing}(hold, nothing, nothing, nothing)
 end
 
 function RampedVariable(setpts, ramprate)
@@ -65,7 +85,7 @@ function RampedVariable(setpts, ramprate)
     end
     timestops = fill(0.0*setpts[1]/ramprate[1], 2)
     timestops[2] = timestops[1] + (setpts[2]-setpts[1])/ramprate
-    RampedVariable{eltype(setpts), true}(setpts, [ramprate], [], timestops)
+    RampedVariable{true, eltype(setpts), typeof(ramprate), Nothing, eltype(timestops)}(setpts, [ramprate], nothing, timestops)
 end
 
 function RampedVariable(setpts, ramprates, holds)
@@ -79,34 +99,30 @@ function RampedVariable(setpts, ramprates, holds)
     timestops = fill(0.0*setpts[1]/ramprates[1], length(ramprates) + length(holds) + 1)
     (ramp, rest) = Iterators.peel(ramprates)
     timestops[2] = timestops[1] + (setpts[2]-setpts[1])/ramp
+    if timestops[2] < timestops[1]
+        @warn "Ramp rate given with probably the wrong sign, changing its sign"
+        timestops[2] = timestops[1] + (timestops[1]-timestops[2])
+    end
     for (i, ramp) in enumerate(rest)
         timestops[2i+1] = timestops[2i] + holds[i]
         timestops[2i+2] = timestops[2i+1] + (setpts[i+2]-setpts[i+1])/ramp
+        if timestops[2i+2] < timestops[2i+1]
+            @warn "Ramp rate given with probably the wrong sign, changing its sign"
+            timestops[2i+2] = timestops[2i+1] + (timestops[2i+1]-timestops[2i+2])
+        end
     end
-    RampedVariable{eltype(setpts), true}(setpts, ramprates, holds, timestops)
+    RampedVariable{true, eltype(setpts), eltype(ramprates), eltype(holds), eltype(timestops)}(setpts, ramprates, holds, timestops)
 end
 
-function (rv::RampedVariable{T, false})(t) where T
-    return rv.setpts[1]::T
+function Base.show(io::IO, rv::RampedVariable{false, T1,T2,T3,T4}) where {T1,T2,T3,T4}
+    return print(io, "RampedVariable($(rv.setpts))")
 end
-function (rv::RampedVariable{T, true})(t) where T
-    im = findlast(rv.timestops .<= t)
-    if im == length(rv.timestops)
-        return rv.setpts[end]
-    elseif iseven(im)
-        return rv.setpts[im÷2+1]
-    else
-        ip = im+1
-        return ((rv.setpts[ip÷2+1] - rv.setpts[ip÷2])/(rv.timestops[ip] - rv.timestops[im])*(t - rv.timestops[im]) + rv.setpts[ip÷2])::T
-    end
-end
-
     
-function Base.show(io::IO, rv::RampedVariable) 
-    if length(rv.timestops) == 1
-        return print(io, "RampedVariable($(rv.setpts[1]))")
+function Base.show(io::IO, rv::RampedVariable{true, T1,T2,T3,T4}) where {T1,T2,T3,T4}
+    if length(rv.setpts) == 2
+        return print(io, "RampedVariable($(rv.setpts), $(rv.ramprates[1]))")
     else 
-        return print(io, "RampedVariable($(rv.setpts), $(rv.ramprates), $(rv.holds)")
+        return print(io, "RampedVariable($(rv.setpts), $(rv.ramprates), $(rv.holds))")
     end
 end
 
