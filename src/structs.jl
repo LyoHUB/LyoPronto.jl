@@ -114,6 +114,10 @@ function RampedVariable(setpts, ramprates, holds)
     RampedVariable{true, eltype(setpts), eltype(ramprates), eltype(holds), eltype(timestops)}(setpts, ramprates, holds, timestops)
 end
 
+function Base.hash(rv::RampedVariable, h::UInt)
+    hash(rv.setpts, hash(rv.ramprates, hash(rv.holds, hash(rv.timestops, hash(:RampedVariable, h)))))
+end
+
 function Base.show(io::IO, rv::RampedVariable{false, T1,T2,T3,T4}) where {T1,T2,T3,T4}
     return print(io, "RampedVariable($(rv.setpts))")
 end
