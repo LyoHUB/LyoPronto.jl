@@ -27,6 +27,7 @@ calc_psub(T::Q) where Q<:Quantity = 359.7e10*u"Pa" * exp(-θsub/uconvert(u"K",T)
 
 """
 Single-purpose module for computing the dielectric loss coefficient of ice, as a function of temperature and frequency.
+This module exports a function `ϵpp_f(T, f)` for doing so.
 (Set as a separate module just to keep namespaces clean.)
 This code is a nearly-direct implementation of the correlation, Eqs. 3-6 presented in:
 Takeshi Matsuoka, Shuji Fujita, Shinji Mae; Effect of temperature on dielectric properties of ice in the range 5–39 GHz. J. Appl. Phys. 15 November 1996; 80 (10): 5884–5890. https://doi.org/10.1063/1.363582
@@ -42,11 +43,13 @@ const R = 8.3145u"J/mol/K"
 const E1 = 55.3u"kJ/mol"
 const E2 = 22.6u"kJ/mol"
 # const τ0 = T-> (T>223u"K" ? 1.08 : 4.9e7 ) * 5.3e-16u"s" # Fudge factors for high-temp portion of correlation
-# # The fudge factor is my own empirical addition because the described correlation is off from the given values
 # const arrhenius = T-> (T > 223u"K" ? exp(E1/R/T) : exp(E2/R/T) )
 # const fr = T->1/(2π*τ0(T)*arrhenius(T)) 
 # const debye_comp = T-> (β/(T-T0))
 # const A = T-> debye_comp(T) * fr(T)
+# function ϵpp_f(T, f)
+#     uconvert(NoUnits, A(T)/f) + B_interp(T)*ustrip(u"GHz", f)^C_interp(T)
+# end
 
 const Tref = [190, 200, 220, 240, 248, 253, 258, 263, 265]*u"K"
 const Aref = [0.005, 0.010, 0.031, 0.268, 0.635, 1.059, 1.728, 2.769, 3.326]*1e-4u"GHz"
@@ -55,10 +58,9 @@ const Cref = [1.175, 1.168, 1.129, 1.088, 1.073, 1.062, 1.056, 1.038, 1.024]
 const B_interp = linear_interpolation(Tref, Bref, extrapolation_bc=Line())
 const C_interp = linear_interpolation(Tref, Cref, extrapolation_bc=Line())
 
-# function ϵpp_f(T, f)
-#     uconvert(NoUnits, A(T)/f) + B_interp(T)*ustrip(u"GHz", f)^C_interp(T)
-# end
 function ϵpp_f(T, f)
+    # The fudge factors of 1.08 and 4.9e7 are my own empirical addition 
+    # because the described correlation is off from the values shown in figures
     arrh = 5.3e-16*u"s" * (T > 223u"K" ? 1.08*exp(E1/R/T) : 4.9e7*exp(E2/R/T))
     fr = 1/(2π*arrh)
     A = (β/(T-T0)) * fr
