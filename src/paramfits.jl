@@ -7,7 +7,7 @@ Solve the Pikal model for primary drying with given Kv & Rp, returning the solut
 
 - `otherparams` contains: `(hf0, c_solid, ρ_solution, Av, Ap, pch, Tsh)`
 - `u0` is given as floats (not Unitful quantities), with dimensions [cm, K].
-- KRp_prm has the form [Kv, R0, A1, A2]; this function assigns the units [W/m^2/K, cm^2*Torr*hr/g, cm*Torr*hr/g, 1/cm] to those numbers
+- KRp_prm has the form `[Kv, R0, A1, A2]`; this function assigns the units `[W/m^2/K, cm^2*Torr*hr/g, cm*Torr*hr/g, 1/cm]` to those numbers
 - `kwargs` is passed directly (as is) to the ODE `solve` call.
 
 This is used as a helper for [`obj_tT_conv`](@ref) to assemble a function which takes [Kv, R0, A1, A2] and returns sum squared error against experiment.
@@ -32,9 +32,9 @@ end
 Evaluate an objective function which compares model solution with `KRp_prm` to experimental data in `tTdat`.
 
 Arguments:
-- `gen_sol` is a function taking [Kv, R0, A1, A2] and returning a solution to Pikal model; see [`gen_sol_conv_dim`](@ref LyoPronto.gen_sol_conv_dim).
+- `gen_sol` is a function taking `[Kv, R0, A1, A2]` and returning a solution to Pikal model; see [`gen_sol_conv_dim`](@ref LyoPronto.gen_sol_conv_dim).
 - `tTdat` is experimental temperature series, of the form `(time, Tf)`.
-- `tweight` gives the weighting (in K^2/hr^2) of the end of drying in the objective, as compared to the temperature error.
+- `tweight` gives the weighting (in `K^2/hr^2`) of the end of drying in the objective, as compared to the temperature error.
 - `t_end` has a default value of `0.0u"hr"`, which (if left at default) is replaced with the last time point.
 - `verbose` defaults to `true`, in which case each call to this function prints info on the passed parameters, etc.
 """
@@ -67,7 +67,7 @@ end
 
 Solve the lumped-capacitance model for microwave-assisted primary drying with given fit parameters, returning the solution object and the set of parameters passed to `solve`.
 
-- `fitprm` has the form [α, Kvwf, Bf, Bvw]; this function assigns the units [cm^1.5, cal/s/K/cm^2, Ω/m^2, Ω/m^2] to those numbers.
+- `fitprm` has the form `[α, Kvwf, Bf, Bvw]`; this function assigns the units `[cm^1.5, cal/s/K/cm^2, Ω/m^2, Ω/m^2]` to those numbers.
 - `params_bunch` contains a full listing of parameters used for the model, according to [`lumped_cap_rf`](@ref LyoPronto.lumped_cap_rf), including dummy values for the fit parameters.
 - `u0` is given as floats (not Unitful quantities), with dimensions [g, K, K].
 - `kwargs` is passed directly (as is) to the ODE `solve` call.

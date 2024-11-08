@@ -35,8 +35,6 @@ Pages = ["model.jl"]
 ```
 
 ## Physical Properties
-
-## Model Equations
 ```@autodocs
 Modules = [LyoPronto, LyoPronto.Dielectric]
 Pages = ["physical_properties.jl"]

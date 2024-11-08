@@ -1,12 +1,12 @@
 # Example: Tuning Mass Transfer Resistance
 
-The source code for this example can be found in `scripts/tuning_sucrose_Rp.jl`. 
+The source code for this example can be found in `LyoPronto.jl/scripts/tuning_sucrose_Rp.jl`. 
 
 ## Setup
 
 My current recommended approach for making use of this package is to have installed `LyoPronto` as a dependency of your project, according to the [install instructions](@ref "Installation")
 
-For management of your project, [DrWatson.jl](https://juliadynamics.github.io/DrWatson.jl/stable/) is an effective tool which I like. I will demonstrate one use of that tool here.
+For management of your project, [DrWatson.jl](https://juliadynamics.github.io/DrWatson.jl/stable/) is an effective tool which I like. I will demonstrate some usage of that tool here.
 
 ## Packages Used
 
@@ -126,7 +126,7 @@ params_bunch = [
 
 ```
 
-## Run a check simulation
+## Run a sanity-check simulation
 
 ```julia
 # Time span: used to set initial time and to give an upper bound on time, in case parameters are bad
