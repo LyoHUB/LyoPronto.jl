@@ -1,4 +1,4 @@
-export RpFormFit, RampedVariable, ConstPhysProp
+export RpFormFit, RampedVariable, ConstPhysProp, PrimaryDryFit
 
 """
 A convenience type for dealing with the common functional form given to Rp and Kv.
@@ -159,3 +159,80 @@ end
 # function Base.show(io::IO, pp::PhysProp) 
 #     return print(io, "PhysProp($(rv.setpts[1]))")
 # end
+
+"""
+PrimaryDryFit: a type for storing experimental data and indicating how it should be fit.
+
+Provided constructors:
+
+    PrimaryDryFit(t_Tf, Tfs, Tf_iend, t_Tvw, Tvws, Tvw_iend, t_end)
+    PrimaryDryFit(t_Tf, Tf::V) where V<:AbstractVector
+    PrimaryDryFit(t_Tf, Tfs::T) where T<:Tuple
+    PrimaryDryFit(t_Tf, Tfs, t_end::T) where T<:Unitful.Time
+    PrimaryDryFit(t_Tf, Tfs, Tvw_end::T) where T<:Unitful.Temperature
+    PrimaryDryFit(t_Tf, Tfs, Tvw_end::T1, t_end::T2) where {T1<:Unitful.Temperature, T2<:Unitful.Time}
+    PrimaryDryFit(t_Tf, Tfs, t_Tvw, Tvws) 
+    PrimaryDryFit(t_Tf, Tfs, t_Tvw, Tvws, t_end)
+
+The use of this struct is determined in large part by the implementation of 
+[`LyoPronto.obj_expcomp`](@ref). If a given field is not available, set it
+to `missing` and things should basically work. At least `t_Tf` and `Tfs` are 
+expected to always be provided.
+
+With the exception of the two-argument `(t_Tf, Tf)` constructor, `Tfs` and `Tvws` should always be tuples of vectors (one vector per time series).
+
+`Tf_iend` and `Tvw_iend` default to `[length(Tf) for Tf in Tfs]` and `[length(Tvw) for Tvw in Tvws]`, 
+respectively, with one value for each temperature series; 
+they are used to dictate if a given temperature series should
+be truncated sooner than the full length in the fitting procedure.
+This implies that all the `Tf` temperature series are valid initially at the same
+time points, then stop having measured values after a different number of measurements.
+
+`t_end` indicates an end of drying, particularly if taken from other measurements
+(e.g. from Pirani-CM convergence). If set to `missing`, it is ignored in the
+objective function.
+
+Principal Cases:
+- Conventional: provide only `t_Tf, Tfs`
+- RF with measured vial wall: provide `t_Tf, Tfs, t_Tvw, Tvws`, 
+- RF, matching model Tvw to experimental Tf[end] without measured vial wall: provide `t_Tf, Tfs, Tvws`, set `t_Tvw` to `missing`
+"""
+struct PrimaryDryFit_7{T1, T2, T3, T4} 
+    t_Tf::Vector{T1}
+    Tfs::Tuple{Vector{T2}, Vararg{Vector{T2}}}
+    Tf_iend::Vector{T3}# = [length(Tf) for Tf in Tfs]
+    t_Tvw::Union{Missing, Vector{T1}}# = missing
+    Tvws::Union{Missing, T2, Tuple{Vector{T2}, Vararg{Vector{T2}}}}# = missing
+    Tvw_iend::Union{Missing, Vector{T3}}# = (ismissing(Tvws) ? missing : [length(Tvw) for Tvw in Tvws])
+    t_end::T4# = missing
+end
+
+# Primary constructor
+function PrimaryDryFit_7(t_Tf, Tfs, t_Tvw, Tvws, t_end) 
+    if ismissing(t_Tvw) && !ismissing(Tvws) && (length(Tvws) > 1)
+        throw("If no time passed for `t_Tvw`, `Tvws` should be a single value, treated as a vial endpoint temperature")
+    end
+    PrimaryDryFit_7(t_Tf, Tfs, [length(Tf) for Tf in Tfs], t_Tvw, Tvws, 
+    ((ismissing(Tvws) || ismissing(t_Tvw)) ? missing : [length(Tvw) for Tvw in Tvws]), t_end)
+end
+# Convenience constructors
+PrimaryDryFit_7(t_Tf, Tfs, t_Tvw, Tvws)  = PrimaryDryFit_7(t_Tf, Tfs, t_Tvw, Tvws, missing)
+PrimaryDryFit_7(t_Tf, Tfs, Tvw::Unitful.Temperature)  = PrimaryDryFit_7(t_Tf, Tfs, missing, Tvw, missing)
+PrimaryDryFit_7(t_Tf, Tfs, Tvw::Unitful.Temperature, t_end::Unitful.Time)  = PrimaryDryFit_7(t_Tf, Tfs, missing, Tvw, t_end)
+PrimaryDryFit_7(t_Tf, Tfs, t_end::Unitful.Time)  = PrimaryDryFit_7(t_Tf, Tfs, missing, missing, t_end)
+PrimaryDryFit_7(t_Tf, Tf::V) where V<:Vector = PrimaryDryFit_7(t_Tf, (Tf,), missing, missing, missing)
+PrimaryDryFit_7(t_Tf, Tfs::T) where T<:Tuple = PrimaryDryFit_7(t_Tf, Tfs, missing, missing, missing)
+
+# Temporary kludge to make Revise work better
+PrimaryDryFit = PrimaryDryFit_7
+
+function Base.:(==)(p1::PrimaryDryFit, p2::PrimaryDryFit)
+    cond1 = p1.t_Tf == p2.t_Tf
+    cond2 = p1.Tfs == p2.Tfs
+    cond3 = p1.Tf_iend == p2.Tf_iend
+    cond4 = ismissing(p1.t_Tvw) ? ismissing(p2.t_Tvw) : (p1.t_Tvw == p2.t_Tvw)
+    cond5 = ismissing(p1.Tvws) ? ismissing(p2.Tvws) : (p1.Tvws == p2.Tvws)
+    cond6 = ismissing(p1.Tvw_iend) ? ismissing(p2.Tvw_iend) : (p1.Tvw_iend == p2.Tvw_iend)
+    cond7 = ismissing(p1.t_end) ? ismissing(p2.t_end) : (p1.t_end == p2.t_end)
+    return all([cond1, cond2, cond3, cond4, cond5, cond6, cond7])
+end
