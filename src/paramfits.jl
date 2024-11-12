@@ -35,31 +35,22 @@ Arguments:
 - `gen_sol` is a function taking `[Kv, R0, A1, A2]` and returning a solution to Pikal model; see [`gen_sol_conv_dim`](@ref LyoPronto.gen_sol_conv_dim).
 - `tTdat` is experimental temperature series, of the form `(time, Tf)`.
 - `tweight` gives the weighting (in `K^2/hr^2`) of the end of drying in the objective, as compared to the temperature error.
-- `t_end` has a default value of `0.0u"hr"`, which (if left at default) is replaced with the last time point.
+- `t_end` defaults to `missing`, in which case it is excluded from the objective.
+    If another value is passed, then the model drying time is compared to that value and included in the objective.
 - `verbose` defaults to `true`, in which case each call to this function prints info on the passed parameters, etc.
 """
-function obj_tT_conv(KRp_prm, gen_sol, tTdat; t_end=0.0u"hr", tweight=1, verbose=true)
+function obj_tT_conv(KRp_prm, gen_sol, tTdat; t_end=missing, tweight=1, verbose=true)
     if any(KRp_prm .< 0)
         return NaN
     end
     tdat, Tdat = tTdat
-    if t_end == 0u"hr"
-        t_end = tdat[end]
-    end
     sol = gen_sol(KRp_prm)[1]
-    tmd = sol.t[end] *u"hr"
-    trim = tdat .< tmd
-    t_trim = tdat[trim]
     if sol.u[end][1] > 1e-5
         @info "loss call: failed integration" sol
         return NaN
     end
-
-    Tmd = sol(ustrip.(u"hr", t_trim), idxs=2).*u"K" 
-    Tobj = ustrip(u"K^2", sum(abs2.(Tdat[trim] .- Tmd))/length(t_trim))
-    tobj = (ustrip(u"hr", t_end[end] - tmd))^2
-    verbose && @info "loss call" KRp_prm t_end-tmd extrema(Tdat[trim] .- Tmd) tobj Tobj 
-    return Tobj + tweight*tobj 
+    pdfit = PrimaryDryFit(tdat, (Tdat,), t_end)
+    return obj_expcomp(sol, pdfit; tweight=tweight, verbose=true)
 end
 
 @doc raw"""
@@ -81,7 +72,6 @@ function gen_sol_rf_dim(fitprm, params_bunch, u0, tspan; kwargs...)
     newp = deepcopy(params_bunch)
     newp[end] = tuple((fitprm .* prm_un)...)
     newp = tuple(newp...)
-
     newprob = ODEProblem(lumped_cap_rf, u0, tspan, newp)
     sol = solve(newprob, Rodas3(autodiff=false); callback=end_drying_callback, kwargs...)
     return sol, newp
@@ -97,36 +87,18 @@ Evaluate an objective function which compares model solution with `fitprm` to ex
 - `tTTdat` is experimental temperature series, of the form `(time, Tf, Tvw)`, so with frozen and vial wall temperatures taken at the same time points. 
     See also [`obj_tT_rf`](@ref) and [`obj_ttTT_rf`](@ref).
 - `tweight` gives the weighting (in K^2/hr^2) of the end of drying in the objective, as compared to the temperature error.
-- `t_end` has a default value of `0.0u"hr"`, which (if left at default) is replaced with the last given time point.
+- `t_end` has a default value of `0.0u"hr"`, which (if left at default) is not included in the objective function.
+- `t_end` defaults to `missing`, in which case it is excluded from the objective.
+    If another value is passed, then the model drying time is compared to that value and included in the objective.
 """
-function obj_tTT_rf(fitprm, gen_sol, tTTdat; t_end=0.0u"hr", tweight=1, verbose=true)
-    # if fitprm[2] < 0
+function obj_tTT_rf(fitprm, gen_sol, tTTdat; t_end=missing, tweight=1, verbose=true)
     if any(fitprm .< 0)
         return NaN
     end
     tloc, Tfdat, Tvwdat = tTTdat
-    if t_end == 0u"hr"
-        t_end = tloc[end]
-    end
+    pdfit = PrimaryDryFit(tloc, (Tfdat,), tloc, (Tvwdat,), t_end)
     sol = gen_sol(fitprm)[1]
-    tmd = sol.t[end].*u"hr"
-    trim = tloc .< tmd
-    t_trim = tloc[trim]
-
-    Tfmd = sol(ustrip.(u"hr", t_trim), idxs=2).*u"K"# .- 273.15
-    # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
-    # This bit replaces any subzero values with the previous positive temperature, and notifies that it happened.
-    if any(Tfmd .< 0u"K")# Ugly fix for bad interpolated values
-        subzero = findall(Vector(Tfmd .< 0u"K"))
-        Tfmd[subzero] .= Tfmd[subzero[1] - 1] 
-        @info "bad interpolation" subzero Tfmd[subzero]
-    end
-    Tvwmd = sol(ustrip.(u"hr", t_trim), idxs=3).*u"K"# .- 273.15
-    Tfobj = sum(abs2.(Tfdat[trim] .- Tfmd))/length(t_trim)
-    Tvwobj = sum(abs2.(Tvwdat[trim] .- Tvwmd))/length(t_trim)
-    tobj = ((t_end - tmd))^2
-    verbose && @info "loss call" fitprm tmd t_end Tfobj Tvwobj 
-    return Tfobj/u"K^2" + Tvwobj/u"K^2" + tweight*tobj/u"hr^2"
+    return obj_expcomp(sol, pdfit; tweight=tweight, verbose=verbose)
 end
 
 
@@ -138,71 +110,75 @@ Evaluate an objective function which compares model solution with `fitprm` to ex
 - `gen_sol` is a function taking `[α, Kvwf, Bf, Bvw]` and returning a solution to lumped-capacitance microwave-assisted model; see [`gen_sol_rf_dim`](@ref).
 - `tTTdat` is experimental temperature series, of the form `(time, Tf)`, so with frozen temperatures only. 
     See also [`obj_tTT_rf`](@ref) and [`obj_ttTT_rf`](@ref).
-- `Tvw_end` defaults to `0.0u"K"`, in which case vial wall temperatures are excluded from the objective. 
+- `Tvw_end` defaults to `missing`, in which case vial wall temperatures are excluded from the objective. 
     If another value is passed, then the final model vial wall temperature is compared to that value and included in the objective.
 - `tweight` gives the weighting (in K^2/hr^2) of the end of drying in the objective, as compared to the temperature error.
-- `t_end` has a default value of `0.0u"hr"`, which (if left at default) is replaced with the last given time point.
+- `t_end` defaults to `missing`, in which case it is excluded from the objective.
+    If another value is passed, then the model drying time is compared to that value and included in the objective.
 """
-function obj_tT_rf(fitprm, gen_sol, tTdat; t_end=0.0u"hr", tweight=1, Tvw_end = 0.0u"K", verbose=true)
+function obj_tT_rf(fitprm, gen_sol, tTdat; t_end=missing, tweight=1, Tvw_end = missing, verbose=true)
     if any(fitprm .< 0)
         return NaN
     end
     tloc, Tfdat = tTdat
-    if t_end == 0u"hr"
-        t_end = tloc[end]
-    end
+    pdfit = PrimaryDryFit(tloc, (Tfdat,), missing, Tvw_end, t_end)
     sol = gen_sol(fitprm)[1]
-    tmd = sol.t[end].*u"hr"
-    trim = tloc .< tmd
-    t_trim = tloc[trim]
-
-    Tfmd = sol(ustrip.(u"hr", t_trim), idxs=2).*u"K"
-    # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
-    # This bit replaces any subzero values with the previous positive temperature, and notifies that it happened.
-    if any(Tfmd .< 0u"K")  
-        subzero = findall(Vector(Tfmd .< 0u"K"))
-        Tfmd[subzero] .= Tfmd[subzero[1] - 1] 
-        @info "bad interpolation replaced" subzero Tfmd[subzero]
-    end
-    Tfobj = sum(abs2.(Tfdat[trim] .- Tfmd))/length(t_trim)
-    if Tvw_end > 0u"K"
-        Tvw_obj = (sol[3, end]*u"K" - Tvw_end)^2
-    else
-        Tvw_obj = 0u"K^2"
-    end
-    tobj = ((t_end - tmd))^2
-    verbose && @info "loss call" fitprm tmd t_end Tfobj Tvw_obj
-    return Tfobj/u"K^2" + Tvw_obj/u"K^2" + tweight*tobj/u"hr^2"
+    return obj_expcomp(sol, pdfit; tweight=tweight, verbose=verbose)
 end
 
 @doc raw"""
-    obj_ttTT_rf(fitprm, gen_sol, tTTdat; t_end=0.0u"hr", tweight=1, verbose=true)
+    obj_ttTT_rf(fitprm, gen_sol, ttTTdat; t_end=missing, tweight=1, verbose=true)
 
 Evaluate an objective function which compares model solution with `fitprm` to experimental data in `tTdat`.
 
 - `gen_sol` is a function taking `[α, Kvwf, Bf, Bvw]` and returning a solution to lumped-capacitance microwave-assisted model; see [`gen_sol_rf_dim`](@ref).
-- `tTTdat` is experimental temperature series, of the form `(time_Tf, time_vw, Tf, Tvw)`, so with Tf and Tvw having separate time points. 
+- `ttTTdat` is experimental temperature series, of the form `(time_Tf, time_vw, Tf, Tvw)`, so with Tf and Tvw having separate time points. 
     This is useful if there is an early temperature rise in Tf, but Tvw continues to be reliable, so the model can fit to as much of Tvw as reasonable.
     See also [`obj_tTT_rf`](@ref) and [`obj_tT_rf`](@ref).
 - `tweight` gives the weighting (in K^2/hr^2) of the end of drying in the objective, as compared to the temperature error.
-- `t_end` has a default value of `0.0u"hr"`, which (if left at default) is replaced with the last given time point.
+- `t_end` defaults to `missing`, in which case it is excluded from the objective.
+    If another value is passed, then the model drying time is compared to that value and included in the objective.
 """
-function obj_ttTT_rf(fitprm, gen_sol, tTTdat; t_end=0.0u"hr", tweight=1, verbose=true)
+function obj_ttTT_rf(fitprm, gen_sol, ttTTdat; t_end=missing, tweight=1, verbose=true)
     if any(fitprm .< 0)
         return NaN
     end
-    tf, tvw, Tfdat, Tvwdat = tTTdat
-    if t_end == 0u"hr"
-        t_end = max(tf[end], tvw[end])
-    end
+    tf, tvw, Tfdat, Tvwdat = ttTTdat
+    pdfit = PrimaryDryingFit(tf, (Tfdat,), tvw, (Tvwdat), t_end)
     sol = gen_sol(fitprm)[1]
-    tmd = sol.t[end].*u"hr"
-    ftrim = tf .< tmd
-    vwtrim = tvw .< tmd
-    tf_trim = tf[ftrim]
-    tvw_trim = tvw[vwtrim]
+    return obj_expcomp(sol, pdfit; tweight=tweight, verbose=verbose)
+end
 
+@doc raw"""
+    obj_expcomp(sol, pdfit; tweight=1, verbose=true, rf = true)
+
+Experimental (in the software engineering sense)!
+Evaluate an objective function which compares model solution computed by `sol` to experimental data in `pdfit`.
+
+- `sol` is a solution to an appropriate model; see [`gen_sol_conv_dim`](@ref) and [`gen_sol_rf_dim`](@ref) for some helper functions for this.
+- `pdfit` is an instance of `PrimaryDryFit`, which contains some information about what to compare.
+- `tweight = 1` gives the weighting (in K^2/hr^2) of the total drying time in the objective, as compared to the temperature error.
+
+Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable returned by `gen_sol` is assumed to be temperature, as is true for [`gen_sol_rf_dim`](@ref).
+
+If there are multiple series of `Tf` in `pdfit`, squared error is computed for each separately then summed; likewise for `Tvw`.
+
+I've considered writing several methods and dispatching on `pdfit` somehow, which would be cool and might individually be easier to read. But control flow might be harder to document and explain, and this should work just fine.
+"""
+
+function obj_expcomp(sol, pdfit; tweight=1.0, verbose = true)
+    tmd = sol.t[end].*u"hr"
+    ftrim = pdfit.t_Tf .< tmd
+    tf_trim = pdfit.t_Tf[ftrim]
     Tfmd = sol(ustrip.(u"hr", tf_trim), idxs=2).*u"K"
+    # Compute temperature objective for all frozen temperatures
+    Tfobj = mapreduce(sum, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
+        if itf < length(pdfit.t_Tf)
+            return sum(abs2.(Tf .- Tfmd[itf]))/itf
+        else
+            return sum(abs2.(Tf[ftrim] .- Tfmd))/length(tf_trim)
+        end
+    end
     # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
     # This bit replaces any subzero values with the previous positive temperature, and notifies that it happened.
     if any(Tfmd .< 0u"K")
@@ -210,10 +186,29 @@ function obj_ttTT_rf(fitprm, gen_sol, tTTdat; t_end=0.0u"hr", tweight=1, verbose
         Tfmd[subzero] .= Tfmd[subzero[1] - 1] 
         @info "bad interpolation" subzero Tfmd[subzero]
     end
-    Tvwmd = sol(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
-    Tfobj = sum(abs2.(Tfdat[ftrim] .- Tfmd))/length(tf_trim)
-    Tvwobj = sum(abs2.(Tvwdat[vwtrim] .- Tvwmd))/length(tvw_trim)
-    tobj = ((t_end - tmd))^2
-    verbose && @info "loss call" fitprm tmd t_end Tfobj Tvwobj 
+    if ismissing(pdfit.Tvws) # No vial wall temperatures
+        Tvwobj = 0u"K^2"
+    elseif ismissing(pdfit.t_Tvw) # Provide only an endpoint temperature
+        Tvwend = pdfit.Tvws
+        Tvwobj = (sol[3, end]*u"K" - Tvwend)^2
+    else # Regular case of fitting to at least one full temperature series
+        vwtrim = tvw .< tmd
+        tvw_trim = tvw[vwtrim]
+        Tvwmd = sol(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
+        # Compute temperature objective for all vial wall temperatures
+        Tvwobj = mapreduce(sum, pdfit.Tvws, pdfit.Tvw_iend) do Tvw, itvw
+            if itvw < length(pdfit.t_Tvw)
+                return sum(abs2.(Tvw .- Tvwmd[itvw]))/itvw
+            else
+                return sum(abs2.(Tvw[vwtrim] .- Tvwmd))/length(tvw_trim)
+            end
+        end
+    end
+    if ismissing(pdfit.t_end)
+        tobj = 0u"hr^2"
+    else # Compare drying time
+        tobj = ((t_end - tmd))^2
+    end
+    verbose && @info "loss call" fitprm tmd tobj Tfobj Tvwobj 
     return Tfobj/u"K^2" + Tvwobj/u"K^2" + tweight*tobj/u"hr^2"
-end
+    end
