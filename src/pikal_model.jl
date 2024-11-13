@@ -1,4 +1,5 @@
 export lyo_1d!, lyo_1d_dae_f, subflux_Tsub, calc_psub
+export end_drying_callback
 
 @doc raw"""
     end_cond(u, t, integ)
