@@ -50,6 +50,7 @@ function obj_tT_conv(KRp_prm, gen_sol, tTdat; t_end=missing, tweight=1, verbose=
         return NaN
     end
     pdfit = PrimaryDryFit(tdat, (Tdat,), t_end)
+    verbose && @info "gen_sol" KRp_prm
     return obj_expcomp(sol, pdfit; tweight=tweight, verbose=true)
 end
 
@@ -98,6 +99,7 @@ function obj_tTT_rf(fitprm, gen_sol, tTTdat; t_end=missing, tweight=1, verbose=t
     tloc, Tfdat, Tvwdat = tTTdat
     pdfit = PrimaryDryFit(tloc, (Tfdat,), tloc, (Tvwdat,), t_end)
     sol = gen_sol(fitprm)[1]
+    verbose && @info "gen_sol" fitprm 
     return obj_expcomp(sol, pdfit; tweight=tweight, verbose=verbose)
 end
 
@@ -123,6 +125,7 @@ function obj_tT_rf(fitprm, gen_sol, tTdat; t_end=missing, tweight=1, Tvw_end = m
     tloc, Tfdat = tTdat
     pdfit = PrimaryDryFit(tloc, (Tfdat,), missing, Tvw_end, t_end)
     sol = gen_sol(fitprm)[1]
+    verbose && @info "gen_sol" fitprm 
     return obj_expcomp(sol, pdfit; tweight=tweight, verbose=verbose)
 end
 
@@ -146,6 +149,7 @@ function obj_ttTT_rf(fitprm, gen_sol, ttTTdat; t_end=missing, tweight=1, verbose
     tf, tvw, Tfdat, Tvwdat = ttTTdat
     pdfit = PrimaryDryingFit(tf, (Tfdat,), tvw, (Tvwdat), t_end)
     sol = gen_sol(fitprm)[1]
+    verbose && @info "gen_sol" fitprm 
     return obj_expcomp(sol, pdfit; tweight=tweight, verbose=verbose)
 end
 
@@ -167,17 +171,18 @@ I've considered writing several methods and dispatching on `pdfit` somehow, whic
 """
 
 function obj_expcomp(sol, pdfit; tweight=1.0, verbose = true)
+    if sol.retcode !== ReturnCode.Terminated
+        @info "ODE solve failed or incomplete, probably." sol.retcode sol[1, :]
+        return NaN
+    end
     tmd = sol.t[end].*u"hr"
     ftrim = pdfit.t_Tf .< tmd
     tf_trim = pdfit.t_Tf[ftrim]
     Tfmd = sol(ustrip.(u"hr", tf_trim), idxs=2).*u"K"
     # Compute temperature objective for all frozen temperatures
-    Tfobj = mapreduce(sum, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
-        if itf < length(pdfit.t_Tf)
-            return sum(abs2.(Tf .- Tfmd[itf]))/itf
-        else
-            return sum(abs2.(Tf[ftrim] .- Tfmd))/length(tf_trim)
-        end
+    Tfobj = mapreduce(+, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
+        trim = 1:min(itf, length(tf_trim))
+        return sum(abs2.(Tf[trim] .- Tfmd[trim]))/length(trim)
     end
     # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
     # This bit replaces any subzero values with the previous positive temperature, and notifies that it happened.
@@ -192,23 +197,20 @@ function obj_expcomp(sol, pdfit; tweight=1.0, verbose = true)
         Tvwend = pdfit.Tvws
         Tvwobj = (sol[3, end]*u"K" - Tvwend)^2
     else # Regular case of fitting to at least one full temperature series
-        vwtrim = tvw .< tmd
-        tvw_trim = tvw[vwtrim]
+        vwtrim = pdfit.t_Tvw .< tmd
+        tvw_trim = pdfit.t_Tvw[vwtrim]
         Tvwmd = sol(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
         # Compute temperature objective for all vial wall temperatures
-        Tvwobj = mapreduce(sum, pdfit.Tvws, pdfit.Tvw_iend) do Tvw, itvw
-            if itvw < length(pdfit.t_Tvw)
-                return sum(abs2.(Tvw .- Tvwmd[itvw]))/itvw
-            else
-                return sum(abs2.(Tvw[vwtrim] .- Tvwmd))/length(tvw_trim)
-            end
+        Tvwobj = mapreduce(+, pdfit.Tvws, pdfit.Tvw_iend) do Tvw, itvw
+            trim = 1:min(itvw, length(tvw_trim))
+            return sum(abs2.(Tvw[trim] .- Tvwmd[trim]))/length(trim)
         end
     end
     if ismissing(pdfit.t_end)
         tobj = 0u"hr^2"
     else # Compare drying time
-        tobj = ((t_end - tmd))^2
+        tobj = ((pdfit.t_end - tmd))^2
     end
-    verbose && @info "loss call" fitprm tmd tobj Tfobj Tvwobj 
+    verbose && @info "loss call" tmd tobj Tfobj Tvwobj 
     return Tfobj/u"K^2" + Tvwobj/u"K^2" + tweight*tobj/u"hr^2"
     end
