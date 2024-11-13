@@ -1,16 +1,34 @@
 
 
-# Constant properties
-const ΔHsub = 678u"cal/g"
+# --------- Constant properties
 const Mw = 18.015u"g/mol"
-const θsub = ΔHsub*Mw/(8.3145u"J/mol/K")
-const k_ice = 2.45u"W/m/K"
+# -------- Approximately constant properties
+const ΔHsub = 678u"cal/g"
+const θsub = ΔHsub*Mw/Unitful.R
+
+# Thermal conductivity of ice
+# From Slack, 1980
+# 200K : .032 W/cmK
+# 250K : .024 W/cmK
+# 273K : .0214 W/cmK
+const k_ice = 2.4* u"W/m/K"
+
 const rho_ice = 0.918u"g/cm^3" 
 const rho_glass = 2.2u"g/cm^3"
-const ΔH_sub = 678u"cal / g"
 const e_0 = 8.854187e-12u"F/m" # permittivity of free space Coulomb^2/J/m
 const σ = 5.670367e-8u"W/m^2/K^4" # Stefan-Boltzmann Constant
+
+# From McCarthy and Fabre, 1989 book chapter
+# Thermal conductivity of sucrose, Caster grade powder
+const ρ_sucrose = 892u"kg/m^3"
 const k_sucrose = 0.139u"W/m/K"
+
+# Water vapor viscosity in dilute limit ---------------
+# From Hellmann and Vogel, 2015
+# 250K: 8.054 μPa*s
+# 260K: 8.383 μPa*s
+# 270K: 8.714 μPa*s
+const μ = 8.1 * u"μPa*s"
 
 @doc raw"""
     calc_psub(T::F) where F<:Number
