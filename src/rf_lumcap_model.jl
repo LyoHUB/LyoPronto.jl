@@ -88,7 +88,7 @@ function lumped_cap_rf_model(u, params, tn)
     Bi = uconvert(NoUnits, K_vwf*rad/k_dry)
     Q_vwf = 2π*(K_vwf*rad*h_f + k_dry*(h_f0-h_f)*S_interp(Bi)) * (T_vw-T_f)
 
-    Q_sub = mflow*ΔH_sub
+    Q_sub = mflow*ΔHsub
     Q_shf = K_shf*A_v*(Tsh(t)-T_f)
     Q_shw = 0.9*σ*(Tsh(t)^4-T_vw^4)*A_rad # As if exchanging heat above vial
     Qppp_RF_f  = 2*pi*f_RF*e_0*epp_f(T_f, f_RF) *P_per_vial(t) * B_f # W / m^3
