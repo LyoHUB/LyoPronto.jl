@@ -73,19 +73,23 @@ tplotexperimental
 end
 
 @doc raw"""
-    tplotexpvw(time, temperature)
-    tplotexpvw!(time, temperature)
+    tplotexpvw(time, temperature; trim)
+    tplotexpvw!(time, temperature; trim)
 
 Plot recipe for a set of experimentally measured vial wall temperatures.
 This recipe adds only one series to the plot.
+`trim` is an integer, indicating how many points to skip at a time, so that 
+the dotted line looks dotted even with noisy data.
 """
 tplotexpvw
 @doc (@doc tplotexpvw) tplotexpvw!
 
 @userplot TPlotExpVW
-@recipe function f(tpev::TPlotExpVW)
+@recipe function f(tpev::TPlotExpVW; trim=1)
     time, T = tpev.args
-    step = size(time, 1) ÷ 10
+    time_trim = time[begin:trim:end]
+    T_trim = T[begin:trim:end]
+    step = size(time_trim, 1) ÷ (10)
     # color = palette(:Blues_5)[end]
     color = RGB{Float64}(0.031,0.318,0.612)
     
@@ -94,12 +98,11 @@ tplotexpvw
         step := step
         markershape --> :rect
         markersize --> 7
-        # label := labels[i]
         seriescolor --> color
         linestyle := :dash
         # x := time
         # y := T
-        time, T
+        time_trim, T_trim
     end
 end
 
@@ -253,6 +256,20 @@ function qrf_integrate(sol, RF_params)
                 "QRFvw"=>qinteg[5])
 end
 
+@recipe function f(rv::RampedVariable{true, T1,T2,T3,T4}; tmax = rv.timestops[end]*100) where {T1,T2,T3,T4}
+    t = vcat(rv.timestops, tmax)
+    v = rv.(t)
+    @series begin
+        seriestype := :path
+        return t, v
+    end
+end
+@recipe function f(rv::RampedVariable{false, T1,T2,T3,T4}) where {T1,T2,T3,T4}
+    @series begin
+        seriestype := :hline
+        return [rv(0)]
+    end
+end
 
 
 @userplot AreaStackPlot

@@ -24,7 +24,7 @@ end
 
 """
 A convenience type for computing temperatures, pressures, etc. with multiple setpoints in sequence,
- and linear interpolation according to a fixed ramp rate between set points
+and linear interpolation according to a fixed ramp rate between set points
 
 Three main constructors are available:
 For a non-varying value, call with one argument:
@@ -43,6 +43,8 @@ With three arguments, `setpts`, `ramprates`, and `holds` should all be vectors, 
 
 The resulting RampedVariable `rv = RampedVariable(...)` can be called as `rv(x)` at any (dimensionally consistent) value of x, 
 and will return the value at that time point along the ramp process.
+
+A plot recipe is also provided for this type, e.g. `plot(rv; tmax=10u"hr")` where `tmax` indicates where to stop drawing the last setpoint hold.
 """
 struct RampedVariable{vary, T1, T2, T3, T4}
     setpts::Union{T1, Vector{T1}}
