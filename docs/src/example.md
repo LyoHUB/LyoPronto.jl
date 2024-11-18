@@ -56,7 +56,7 @@ To check that everything looks right, plot the temperatures, taking advantage of
 (This requires `Plots.jl`.)
 
 ```julia
-tplotexperimental(tproc, T1, T2, T3, labels=[L"T_{p1}" L"T_{p2}" L"T_{p3}"])
+exptfplot(tproc, T1, T2, T3, labels=[L"T_{p1}" L"T_{p2}" L"T_{p3}"])
 plot!(tproc, Tsh_d, c=:black)
 ```
 
@@ -144,7 +144,7 @@ And then plot these results with a recipe, to make sure that the chosen $K_{sh-f
 
 ```julia
 plot(tproc, Tsh_d, c=:black, label=L"T_{sh}")
-tplotmodelconv!(sol, label=L"$T_p$, model")
+modconvtplot!(sol, label=L"$T_p$, model")
 ```
 
 ## Minimize least square difference to compare to experimental data
@@ -177,8 +177,8 @@ prof1 = gen_sol_conv(Krp_1)[1]
 
 Plot and compare experiment to model:
 ```julia
-tplotexperimental(tproc, T1, T2, T3)
-tplotmodelconv!(prof1)
+exptfplot(tproc, T1, T2, T3)
+modconvtplot!(prof1)
 tendplot!(t_end)
 ```
 

@@ -32,17 +32,17 @@ export qrf_integrate
 end
 
 @doc raw"""
-    tplotexperimental(time, T1, [T2, ...])
-    tplotexperimental!(time, T1, [T2, ...])
+    exptfplot(time, T1, [T2, ...])
+    exptfplot!(time, T1, [T2, ...])
 
 Plot recipe for one or more experimentally measured product temperatures, all at same times.
 This recipe adds one series for each passed temperature series, so pass labels as appropriate.
 """
-tplotexperimental
-@doc (@doc tplotexperimental) tplotexperimental!
+exptfplot
+@doc (@doc exptfplot) exptfplot!
 
-@userplot TPlotExperimental
-@recipe function f(tpe::TPlotExperimental)
+@userplot ExpTFPlot
+@recipe function f(tpe::ExpTFPlot)
     time, Ts... = tpe.args
     step = size(time, 1) ÷ 10
     n = size(Ts, 1)
@@ -72,19 +72,19 @@ tplotexperimental
 end
 
 @doc raw"""
-    tplotexpvw(time, temperature; trim)
-    tplotexpvw!(time, temperature; trim)
+    exptvwplot(time, temperature; trim)
+    exptvwplot!(time, temperature; trim)
 
 Plot recipe for a set of experimentally measured vial wall temperatures.
 This recipe adds only one series to the plot.
 `trim` is an integer, indicating how many points to skip at a time, so that 
 the dotted line looks dotted even with noisy data.
 """
-tplotexpvw
-@doc (@doc tplotexpvw) tplotexpvw!
+exptvwplot
+@doc (@doc exptvwplot) exptvwplot!
 
-@userplot TPlotExpVW
-@recipe function f(tpev::TPlotExpVW; trim=1)
+@userplot ExpTvwPlot
+@recipe function f(tpev::ExpTvwPlot; trim=1)
     time, T = tpev.args
     time_trim = time[begin:trim:end]
     T_trim = T[begin:trim:end]
@@ -106,18 +106,18 @@ tplotexpvw
 end
 
 @doc raw"""
-    tplotmodelconv(sols)
-    tplotmodelconv!(sols)
+    modconvtplot(sols)
+    modconvtplot!(sols)
 
 Plot recipe for one or multiple solutions to the Pikal model, e.g. the output of [`gen_sol_conv_dim`](@ref LyoPronto.gen_sol_conv_dim).
 This adds one series to the plot for each passed solution, so pass as many labels (e.g. `["Tf1" "Tf2"]`) to this plot call as solutions to add labels to the legend.
 """
-tplotmodelconv
-@doc (@doc tplotmodelconv) tplotmodelconv!
+modconvtplot
+@doc (@doc modconvtplot) modconvtplot!
 
 
-@userplot TPlotModelConv
-@recipe function f(tpmc::TPlotModelConv)
+@userplot ModConvTPlot
+@recipe function f(tpmc::ModConvTPlot)
     sols = tpmc.args
     # pal = palette(:Oranges_4).colors[end:-1:begin+1] # Requires Plots as dependency...
     pal = [
@@ -146,17 +146,17 @@ end
 
 
 @doc raw"""
-    tplotmodelrf(sol)
-    tplotmodelrf!(sol)
+    modrftplot(sol)
+    modrftplot!(sol)
 
 Plot recipe for one solution to the lumped capacitance model, e.g. the output of [`gen_sol_rf_dim`](@ref LyoPronto.gen_sol_rf_dim).
 This adds two series to the plot, so pass two labels (e.g. `["Tf" "Tvw"]`) to this plot call to add labels to the legend.
 """
-tplotmodelrf
-@doc (@doc tplotmodelrf) tplotmodelrf!
+modrftplot
+@doc (@doc modrftplot) modrftplot!
 
-@userplot TPlotModelRF
-@recipe function f(tpmr::TPlotModelRF)
+@userplot ModRFTPlot
+@recipe function f(tpmr::ModRFTPlot)
     sol = tpmr.args[1]
     t_nd = range(0, sol.t[end-2], length=31)
     time = t_nd*u"hr"
@@ -271,13 +271,13 @@ end
 end
 
 @recipe function f(pdf::PrimaryDryFit)
-    return TPlotExperimental((pdf.t_Tf, pdf.Tfs...))
+    return exptfplot((pdf.t_Tf, pdf.Tfs...))
 end
 @recipe function f(pdf::PrimaryDryFit, vw::Val{true})
     if ismissing(pdf.t_Tvw)
         return [pdf.t_Tf[end]], [pdf.t_Tvws]
     else
-        return TPlotExpVW((pdf.t_Tvw, pdf.Tvws[1]))
+        return exptvwplot((pdf.t_Tvw, pdf.Tvws[1]))
     end
 end
 
