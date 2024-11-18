@@ -1,4 +1,5 @@
 export gen_sol_conv_dim, obj_tT_conv
+export obj_expcomp, genobj_posprm
 
 @doc raw"""
     gen_sol_conv_dim(KRp_prm, otherparams, u0, tspan; kwargs...)
@@ -170,9 +171,9 @@ If there are multiple series of `Tf` in `pdfit`, squared error is computed for e
 I've considered writing several methods and dispatching on `pdfit` somehow, which would be cool and might individually be easier to read. But control flow might be harder to document and explain, and this should work just fine.
 """
 
-function obj_expcomp(sol, pdfit; tweight=1.0, verbose = true)
+function obj_expcomp(sol, pdfit; tweight=1.0, verbose = false)
     if sol.retcode !== ReturnCode.Terminated
-        @info "ODE solve failed or incomplete, probably." sol.retcode sol[1, :]
+        verbose && @info "ODE solve failed or incomplete, probably." sol.retcode sol[1, :]
         return NaN
     end
     tmd = sol.t[end].*u"hr"
@@ -189,13 +190,13 @@ function obj_expcomp(sol, pdfit; tweight=1.0, verbose = true)
     if any(Tfmd .< 0u"K")
         subzero = findall(Vector(Tfmd .< 0u"K"))
         Tfmd[subzero] .= Tfmd[subzero[1] - 1] 
-        @info "bad interpolation" subzero Tfmd[subzero]
+        verbose && @info "bad interpolation" subzero Tfmd[subzero]
     end
     if ismissing(pdfit.Tvws) # No vial wall temperatures
         Tvwobj = 0u"K^2"
     elseif ismissing(pdfit.t_Tvw) # Provide only an endpoint temperature
         Tvwend = pdfit.Tvws
-        Tvwobj = (sol[3, end]*u"K" - Tvwend)^2
+        Tvwobj = (sol[3, end]*u"K" - uconvert(u"K", Tvwend))^2
     else # Regular case of fitting to at least one full temperature series
         vwtrim = pdfit.t_Tvw .< tmd
         tvw_trim = pdfit.t_Tvw[vwtrim]
@@ -213,4 +214,8 @@ function obj_expcomp(sol, pdfit; tweight=1.0, verbose = true)
     end
     verbose && @info "loss call" tmd tobj Tfobj Tvwobj 
     return Tfobj/u"K^2" + Tvwobj/u"K^2" + tweight*tobj/u"hr^2"
-    end
+end
+
+function genobj_posprm(gen_sol, obj, fitdat; kwargs...)
+    return (x->(any(x .< 0) && return NaN; obj(gen_sol(x)[1], fitdat; kwargs...)))
+end
