@@ -60,13 +60,12 @@ tplotexperimental
             # markershape --> :auto
             markersize --> 7
             # label := labels[i]
+            minlen = min(length(time), length(T))
             seriescolor --> pal[i]
-            # x := time
-            # y := T
             if T == :dummy
                 return [Inf], [Inf]
             else
-                return time, T
+                return time[1:minlen], T[1:minlen]
             end
         end
     end
@@ -231,7 +230,7 @@ function qrf_integrate(sol, RF_params)
 
     # So we do a manual Riemann integration on the solution output
     Qcontrib = map(sol.t) do ti
-        lumped_cap_rf_model(sol(ti), RF_params, ti)[2]
+        lumped_cap_rf_LC1(sol(ti), RF_params, ti)[2]
     end
     Qcontrib = hcat(Qcontrib...)
     Qsub = Qcontrib[1,:]
@@ -271,6 +270,16 @@ end
     end
 end
 
+@recipe function f(pdf::PrimaryDryFit)
+    return TPlotExperimental((pdf.t_Tf, pdf.Tfs...))
+end
+@recipe function f(pdf::PrimaryDryFit, vw::Val{true})
+    if ismissing(pdf.t_Tvw)
+        return [pdf.t_Tf[end]], [pdf.t_Tvws]
+    else
+        return TPlotExpVW((pdf.t_Tvw, pdf.Tvws[1]))
+    end
+end
 
 @userplot AreaStackPlot
 @recipe function f(asp::AreaStackPlot)
