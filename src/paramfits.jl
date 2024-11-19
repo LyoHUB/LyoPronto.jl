@@ -70,7 +70,7 @@ To that end, use this to make an anonymous function of the form `gen_sol = x->ge
 That function is what you will pass to `obj_tT_rf` (or similar).
 """
 function gen_sol_rf_dim(fitprm, params_bunch, u0, tspan; kwargs...)
-    prm_un = [u"cm^1.5", u"cal/s/K/cm^2", u"Ω/m^2", u"Ω/m^2"]
+    prm_un = [u"cal/s/K/cm^2", u"Ω/m^2", u"Ω/m^2", u"cm^1.5"]
     newp = deepcopy(params_bunch)
     newp[end] = tuple((fitprm .* prm_un)...)
     newp = tuple(newp...)
@@ -78,6 +78,17 @@ function gen_sol_rf_dim(fitprm, params_bunch, u0, tspan; kwargs...)
     sol = solve(newprob, Rodas3(autodiff=false); callback=end_drying_callback, kwargs...)
     return sol, newp
 end
+function gen_sol_rf_dim(fitprm, po::ParamObjRF, u0, tspan; kwargs...)
+    prm_un = [u"cal/s/K/cm^2", u"Ω/m^2", u"Ω/m^2", u"cm^1.5"]
+    newp = @set po.alpha = fitprm[4]*prm_un[4]
+    @reset newp.K_vwf = fitprm[1]*prm_un[1]
+    @reset newp.B_f = fitprm[2]*prm_un[2]
+    @reset newp.B_vw = fitprm[3]*prm_un[3]
+    newprob = ODEProblem(lumped_cap_rf, u0, tspan, newp)
+    sol = solve(newprob, Rodas3(autodiff=false); callback=end_drying_callback, kwargs...)
+    return sol, newp
+end
+
 
 
 @doc raw"""

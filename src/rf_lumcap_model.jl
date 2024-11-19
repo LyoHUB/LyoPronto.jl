@@ -113,3 +113,76 @@ function lumped_cap_rf_LC1(u, params, tn)
     # Strip units from derivatives; return all heat transfer terms
     return ustrip.([u"g/hr", u"K/hr", u"K/hr"], [dm_f, dT_f, dT_vw]), uconvert.(u"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw, ])
 end
+
+# ```
+# params = (   
+#     (Rp, h_f0, c_solid, ρ_solution),
+#     (K_shf_f, A_v, A_p),
+#     (pch, Tsh, P_per_vial),
+#     (m_f0, cp_f, m_v, cp_v, A_rad),
+#     (f_RF, epp_f, epp_vw),
+#     (K_vwf, B_f, B_vw, alpha),
+# )
+# ```
+
+struct ParamObjRF{T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, 
+                T11, T12, T13, T14, T15, T16, T17, T18, T19,
+                T20, T21, T22} 
+    Rp::T1
+    h_f0::T2
+    c_solid::T3
+    ρ_solution::T4
+    K_shf_f::T5
+    A_v::T6
+    A_p::T7
+    pch::T8
+    Tsh::T9
+    P_per_vial::T10
+    m_f0::T11
+    cp_f::T12
+    m_v::T13
+    cp_v::T14
+    A_rad::T15
+    f_RF::T16
+    epp_f::T17
+    epp_vw::T18
+    K_vwf::T19
+    B_f::T20
+    B_vw::T21
+    alpha::T22
+end
+
+function ParamObjRF(tuptup) 
+    if (length(tuptup[4]) == 4 && length(tuptup[6]) == 3)
+        return ParamObjRF(tuptup[1]..., tuptup[2]...,
+                    tuptup[3]..., tuptup[4]..., missing,
+                    tuptup[5]..., tuptup[6]..., missing,)
+    elseif length(tuptup[6]) == 3
+        return ParamObjRF(tuptup[1]..., tuptup[2]...,
+                    tuptup[3]..., tuptup[4]...,
+                    tuptup[5]..., tuptup[6]..., missing,)
+    else
+        return ParamObjRF(tuptup[1]..., tuptup[2]...,
+                    tuptup[3]..., tuptup[4]...,
+                    tuptup[5]..., tuptup[6]...,)
+    end
+end
+Base.size(po::ParamObjRF) = (6,)
+
+function Base.getindex(po::ParamObjRF, i)
+    if i == 1
+        return (po.Rp, po.h_f0, po.c_solid, po.ρ_solution)
+    elseif i == 2
+        return (po.K_shf_f, po.A_v, po.A_p)
+    elseif i==3 
+        return (po.pch, po.Tsh, po.P_per_vial)
+    elseif i == 4
+        return (po.m_f0, po.cp_f, po.m_v, po.cp_v, po.A_rad)
+    elseif i == 5
+        return (po.f_RF, po.epp_f, po.epp_vw)
+    elseif i == 6
+        return (po.K_vwf, po.B_f, po.B_vw, po.alpha)
+    else
+        error(BoundsError, "Attempt to access LyoPronto.ParamsObjRF at index $i. Only indices 1 to 6 allowed")
+    end
+end

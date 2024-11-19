@@ -13,6 +13,7 @@ using UnPack
 using SpecialFunctions: besselj0, besselj1
 using Roots
 using Interpolations
+using Accessors
 
 include(raw"structs.jl")
 include(raw"rf_lumcap_model.jl")
