@@ -41,8 +41,8 @@ This recipe adds one series for each passed temperature series, so pass labels a
 exptfplot
 @doc (@doc exptfplot) exptfplot!
 
-@userplot ExpTFPlot
-@recipe function f(tpe::ExpTFPlot)
+@userplot ExpTfPlot
+@recipe function f(tpe::ExpTfPlot)
     time, Ts... = tpe.args
     step = size(time, 1) ÷ 10
     n = size(Ts, 1)
@@ -271,13 +271,14 @@ end
 end
 
 @recipe function f(pdf::PrimaryDryFit)
-    return exptfplot((pdf.t_Tf, pdf.Tfs...))
+    @info "check" (pdf.t_Tf, pdf.Tfs...)
+    return ExpTfPlot((pdf.t_Tf, pdf.Tfs...))
 end
 @recipe function f(pdf::PrimaryDryFit, vw::Val{true})
     if ismissing(pdf.t_Tvw)
         return [pdf.t_Tf[end]], [pdf.t_Tvws]
     else
-        return exptvwplot((pdf.t_Tvw, pdf.Tvws[1]))
+        return ExpTvwPlot((pdf.t_Tvw, pdf.Tvws[1]))
     end
 end
 
