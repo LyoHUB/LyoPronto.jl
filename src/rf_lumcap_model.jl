@@ -1,4 +1,5 @@
 export lumped_cap_rf, lumped_cap_rf_LC1
+export ParamObjRF
 
 function shapefac(Bi)
     charfunc(x) = -x*besselj1(x) + Bi*besselj0(x)

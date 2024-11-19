@@ -26,6 +26,17 @@ function gen_sol_conv_dim(KRp_prm, otherparams, u0, tspan; kwargs...)
     sol = solve(newprob, Rodas4P(); callback=end_drying_callback, kwargs...)
     return sol, new_params
 end
+function gen_sol_conv_dim(KRp_prm, po::ParamObjPikal, u0, tspan; kwargs...)
+    Rp_un = [u"cm^2*Torr*hr/g", u"cm*Torr*hr/g", u"1/cm"]
+    Kshf_g = p->KRp_prm[1]*u"W/m^2/K"
+    Rp_g = RpFormFit((KRp_prm[2:4].*Rp_un)...)
+    new_params = @set po.Rp = Rp_g
+    @reset new_params.Kshf = Kshf_g
+    newprob = ODEProblem(LyoPronto.lyo_1d_dae_f, u0, tspan, new_params)
+    sol = solve(newprob, Rodas4P(); callback=end_drying_callback, kwargs...)
+    return sol, new_params
+end
+
 
 @doc raw"""
     obj_tT_conv(KRp_prm, gen_sol, tTdat; t_end=0.0u"hr", tweight=1, verbose = true)

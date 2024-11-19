@@ -1,5 +1,6 @@
 export lyo_1d!, lyo_1d_dae_f, subflux_Tsub, calc_psub
 export end_drying_callback
+export ParamObjPikal
 
 @doc raw"""
     end_cond(u, t, integ)
@@ -81,7 +82,47 @@ See [`RpFormFit`](@ref LyoPronto.RpFormFit) and [`RampedVariable`](@ref LyoPront
 """
 lyo_1d_dae_f = ODEFunction(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
 
+
+# ```
+# params = (
+#     (Rp, hf0, c_solid, ρ_solution),
+#     (Kshf, Av, Ap),
+#     (pch, Tsh) ,
+# )
+# ```
+struct ParamObjPikal{T1, T2, T3, T4, T5, T6, T7, T8, T9}
+    Rp::T1
+    hf0::T2
+    c_solid::T3
+    ρ_solution::T4
+    Kshf::T5
+    Av::T6
+    Ap::T7 
+    pch::T8
+    Tsh::T9
+end
+
+
+function ParamObjPikal(tuptup) 
+    return ParamObjPikal(tuptup[1]..., tuptup[2]..., tuptup[3]...)
+end
+
+function Base.getindex(p::ParamObjPikal, i::Int)
+    if i == 1
+        return (p.Rp, p.hf0, p.c_solid, p.ρ_solution)
+    elseif i == 2
+        return (p.Kshf, p.Av, p.Ap)
+    elseif i == 3
+        return (p.pch, p.Tsh)
+    else
+        error(BoundsError, "Attempt to access LyoPronto.ParamsObjPikal at index $i. Only indices 1 to 3 allowed")
+    end
+end
+Base.size(p::ParamObjPikal) = (3,)
+Base.length(p::ParamObjPikal) = 3
+
 # -------------------------------------------
+# Alternative approach, a la original LyoPRONTO
 # Embed the nonlinear solve inside the function call for a plain ODE formulation.
 
 function compute_T_pseudosteady(Pchl, Rpl, Kvl, Tshl, Ap, Av, hd)

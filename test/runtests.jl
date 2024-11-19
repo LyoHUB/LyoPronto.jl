@@ -65,6 +65,10 @@ end
     include("test_sucrose.jl")
 end
 
+@testset "gen_sol_conv_dim" begin
+    include("test_gensolconv.jl")
+end
+
 ti = time() - ti
 println("\nTest took total time of:")
 println(round(ti/60, digits = 3), " minutes")
