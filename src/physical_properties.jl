@@ -51,7 +51,7 @@ This code is a nearly-direct implementation of the correlation, Eqs. 3-6 present
 Takeshi Matsuoka, Shuji Fujita, Shinji Mae; Effect of temperature on dielectric properties of ice in the range 5–39 GHz. J. Appl. Phys. 15 November 1996; 80 (10): 5884–5890. https://doi.org/10.1063/1.363582
 """
 module Dielectric
-using Interpolations
+using DataInterpolations
 using Unitful
 export ϵpp_f
 
@@ -73,8 +73,8 @@ const Tref = [190, 200, 220, 240, 248, 253, 258, 263, 265]*u"K"
 const Aref = [0.005, 0.010, 0.031, 0.268, 0.635, 1.059, 1.728, 2.769, 3.326]*1e-4u"GHz"
 const Bref = [1.537, 1.747, 2.469, 3.495, 4.006, 4.380, 4.696, 5.277, 5.646]*1e-5
 const Cref = [1.175, 1.168, 1.129, 1.088, 1.073, 1.062, 1.056, 1.038, 1.024]
-const B_interp = linear_interpolation(Tref, Bref, extrapolation_bc=Line())
-const C_interp = linear_interpolation(Tref, Cref, extrapolation_bc=Line())
+const B_interp = LinearInterpolation(Tref, Bref, extrapolate=true)
+const C_interp = LinearInterpolation(Tref, Cref, extrapolate=true)
 
 function ϵpp_f(T, f)
     # The fudge factors of 1.08 and 4.9e7 are my own empirical addition 

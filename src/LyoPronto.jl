@@ -12,7 +12,7 @@ using UnPack
 # using PrecompileTools
 using SpecialFunctions: besselj0, besselj1
 using Roots
-using Interpolations
+using DataInterpolations
 using Accessors
 
 include(raw"structs.jl")

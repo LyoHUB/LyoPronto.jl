@@ -1,8 +1,3 @@
-using CSV
-using SavitzkyGolay
-using Optim
-using LaTeXStrings
-using Interpolations: linear_interpolation
 
 # Read in process data -------------- 
 

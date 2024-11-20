@@ -17,7 +17,7 @@ end
 
 const Bi_samp = 10.0 .^range(-2, 5, length=71)
 const S_samp = shapefac.(Bi_samp)
-const S_interp = linear_interpolation(Bi_samp, S_samp, extrapolation_bc=Line())
+const S_interp = LinearInterpolation(S_samp, Bi_samp, extrapolate=true)
 
 
 @doc raw"""
