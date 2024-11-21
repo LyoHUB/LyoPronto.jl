@@ -120,6 +120,12 @@ function Base.getindex(p::ParamObjPikal, i::Int)
 end
 Base.size(p::ParamObjPikal) = (3,)
 Base.length(p::ParamObjPikal) = 3
+function Base.show(io::IO, po::ParamObjPikal)
+    str = "ParamObjPikal( ($(po.Rp), $(po.hf0), $(po.c_solid), $(po.ρ_solution)),
+           ($(po.Kshf), $(po.Av), $(po.Ap)),
+           ($(po.pch), $(po.Tsh)) )"
+    return print(io, str)
+end
 
 # -------------------------------------------
 # Alternative approach, a la original LyoPRONTO

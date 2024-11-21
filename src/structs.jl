@@ -177,7 +177,7 @@ Provided constructors:
     PrimaryDryFit(t_Tf, Tfs, t_Tvw, Tvws, t_end)
 
 The use of this struct is determined in large part by the implementation of 
-[`LyoPronto.obj_expcomp`](@ref). If a given field is not available, set it
+[`LyoPronto.obj_expT`](@ref). If a given field is not available, set it
 to `missing` and things should basically work. At least `t_Tf` and `Tfs` are 
 expected to always be provided.
 
@@ -199,7 +199,7 @@ Principal Cases:
 - RF with measured vial wall: provide `t_Tf, Tfs, t_Tvw, Tvws`, 
 - RF, matching model Tvw to experimental Tf[end] without measured vial wall: provide `t_Tf, Tfs, Tvws`, set `t_Tvw` to `missing`
 """
-struct PrimaryDryFit_7{T1, T2, T3, T4} 
+struct PrimaryDryFit{T1, T2, T3, T4} 
     t_Tf::Vector{T1}
     Tfs::Tuple{Vector{T2}, Vararg{Vector{T2}}}
     Tf_iend::Vector{T3}# = [length(Tf) for Tf in Tfs]
@@ -210,23 +210,20 @@ struct PrimaryDryFit_7{T1, T2, T3, T4}
 end
 
 # Primary constructor
-function PrimaryDryFit_7(t_Tf, Tfs, t_Tvw, Tvws, t_end) 
+function PrimaryDryFit(t_Tf, Tfs, t_Tvw, Tvws, t_end) 
     if ismissing(t_Tvw) && !ismissing(Tvws) && (length(Tvws) > 1)
         throw("If no time passed for `t_Tvw`, `Tvws` should be a single value, treated as a vial endpoint temperature")
     end
-    PrimaryDryFit_7(t_Tf, Tfs, [length(Tf) for Tf in Tfs], t_Tvw, Tvws, 
+    PrimaryDryFit(t_Tf, Tfs, [length(Tf) for Tf in Tfs], t_Tvw, Tvws, 
     ((ismissing(Tvws) || ismissing(t_Tvw)) ? missing : [length(Tvw) for Tvw in Tvws]), t_end)
 end
 # Convenience constructors
-PrimaryDryFit_7(t_Tf, Tfs, t_Tvw, Tvws)  = PrimaryDryFit_7(t_Tf, Tfs, t_Tvw, Tvws, missing)
-PrimaryDryFit_7(t_Tf, Tfs, Tvw::Unitful.Temperature)  = PrimaryDryFit_7(t_Tf, Tfs, missing, Tvw, missing)
-PrimaryDryFit_7(t_Tf, Tfs, Tvw::Unitful.Temperature, t_end::Unitful.Time)  = PrimaryDryFit_7(t_Tf, Tfs, missing, Tvw, t_end)
-PrimaryDryFit_7(t_Tf, Tfs, t_end::Unitful.Time)  = PrimaryDryFit_7(t_Tf, Tfs, missing, missing, t_end)
-PrimaryDryFit_7(t_Tf, Tf::V) where V<:Vector = PrimaryDryFit_7(t_Tf, (Tf,), missing, missing, missing)
-PrimaryDryFit_7(t_Tf, Tfs::T) where T<:Tuple = PrimaryDryFit_7(t_Tf, Tfs, missing, missing, missing)
-
-# Temporary kludge to make Revise work better
-PrimaryDryFit = PrimaryDryFit_7
+PrimaryDryFit(t_Tf, Tfs, t_Tvw, Tvws)  = PrimaryDryFit(t_Tf, Tfs, t_Tvw, Tvws, missing)
+PrimaryDryFit(t_Tf, Tfs, Tvw::Unitful.Temperature)  = PrimaryDryFit(t_Tf, Tfs, missing, Tvw, missing)
+PrimaryDryFit(t_Tf, Tfs, Tvw::Unitful.Temperature, t_end::Unitful.Time)  = PrimaryDryFit(t_Tf, Tfs, missing, Tvw, t_end)
+PrimaryDryFit(t_Tf, Tfs, t_end::Unitful.Time)  = PrimaryDryFit(t_Tf, Tfs, missing, missing, t_end)
+PrimaryDryFit(t_Tf, Tf::V) where V<:Vector = PrimaryDryFit(t_Tf, (Tf,), missing, missing, missing)
+PrimaryDryFit(t_Tf, Tfs::T) where T<:Tuple = PrimaryDryFit(t_Tf, Tfs, missing, missing, missing)
 
 function Base.:(==)(p1::PrimaryDryFit, p2::PrimaryDryFit)
     cond1 = p1.t_Tf == p2.t_Tf

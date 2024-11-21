@@ -1,5 +1,5 @@
 export gen_sol_conv_dim, obj_tT_conv
-export obj_expcomp, genobj_posprm
+export obj_expT, genobj_posprm
 
 @doc raw"""
     gen_sol_conv_dim(KRp_prm, otherparams, u0, tspan; kwargs...)
@@ -63,7 +63,7 @@ function obj_tT_conv(KRp_prm, gen_sol, tTdat; t_end=missing, tweight=1, verbose=
     end
     pdfit = PrimaryDryFit(tdat, (Tdat,), t_end)
     verbose && @info "gen_sol" KRp_prm
-    return obj_expcomp(sol, pdfit; tweight=tweight, verbose=true)
+    return obj_expT(sol, pdfit; tweight=tweight, verbose=true)
 end
 
 @doc raw"""
@@ -123,7 +123,7 @@ function obj_tTT_rf(fitprm, gen_sol, tTTdat; t_end=missing, tweight=1, verbose=t
     pdfit = PrimaryDryFit(tloc, (Tfdat,), tloc, (Tvwdat,), t_end)
     sol = gen_sol(fitprm)[1]
     verbose && @info "gen_sol" fitprm 
-    return obj_expcomp(sol, pdfit; tweight=tweight, verbose=verbose)
+    return obj_expT(sol, pdfit; tweight=tweight, verbose=verbose)
 end
 
 
@@ -149,7 +149,7 @@ function obj_tT_rf(fitprm, gen_sol, tTdat; t_end=missing, tweight=1, Tvw_end = m
     pdfit = PrimaryDryFit(tloc, (Tfdat,), missing, Tvw_end, t_end)
     sol = gen_sol(fitprm)[1]
     verbose && @info "gen_sol" fitprm 
-    return obj_expcomp(sol, pdfit; tweight=tweight, verbose=verbose)
+    return obj_expT(sol, pdfit; tweight=tweight, verbose=verbose)
 end
 
 @doc raw"""
@@ -173,11 +173,11 @@ function obj_ttTT_rf(fitprm, gen_sol, ttTTdat; t_end=missing, tweight=1, verbose
     pdfit = PrimaryDryingFit(tf, (Tfdat,), tvw, (Tvwdat), t_end)
     sol = gen_sol(fitprm)[1]
     verbose && @info "gen_sol" fitprm 
-    return obj_expcomp(sol, pdfit; tweight=tweight, verbose=verbose)
+    return obj_expT(sol, pdfit; tweight=tweight, verbose=verbose)
 end
 
 @doc raw"""
-    obj_expcomp(sol, pdfit; tweight=1, verbose=true, rf = true)
+    obj_expT(sol, pdfit; tweight=1, verbose=true, rf = true)
 
 Experimental (in the software engineering sense)!
 Evaluate an objective function which compares model solution computed by `sol` to experimental data in `pdfit`.
@@ -193,7 +193,7 @@ If there are multiple series of `Tf` in `pdfit`, squared error is computed for e
 I've considered writing several methods and dispatching on `pdfit` somehow, which would be cool and might individually be easier to read. But control flow might be harder to document and explain, and this should work just fine.
 """
 
-function obj_expcomp(sol, pdfit; tweight=1.0, verbose = false)
+function obj_expT(sol, pdfit; tweight=1.0, verbose = false)
     if sol.retcode !== ReturnCode.Terminated
         verbose && @info "ODE solve failed or incomplete, probably." sol.retcode sol[1, :]
         return NaN
