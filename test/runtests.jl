@@ -34,12 +34,39 @@ end
     @test P_per_vial(79u"minute") == 20u"W"
     @test P_per_vial(81u"minute") == 10u"W"
     @test P_per_vial(Inf*u"minute") == 10u"W"
-
 end
 
 
-@testset "Simulation test: sucrose conventional" begin
+@testset "PrimaryDryFit: try all constructors" begin
+    t1 = collect(range(0.0u"hr", 10.0u"hr", length=3))
+    T1a = collect(range(220.0u"K", 230.0u"K", length = length(t1)))
+    T1b = collect(range(220.0u"K", 230.0u"K", length = length(t1)-1))
+    t2 = collect(range(0.0u"hr", 15.0u"hr", length=4))
+    T2 = collect(range(220.0u"K", 230.0u"K", length = length(t2)))
+    t_end = 12u"hr"
+    T1_iend = [length(T1a), length(T1b)]
+    T2_iend = [length(T2)]
+    master1 = PrimaryDryFit(t1, (T1a, T1b), T1_iend, t2, (T2,), T2_iend, t_end)
+    @test PrimaryDryFit(t1, (T1a, T1b), t2, (T2,), t_end) == master1
+    master2 = PrimaryDryFit(t1, (T1a, T1b), T1_iend, t2, (T2,), T2_iend, missing)
+    @test PrimaryDryFit(t1, (T1a, T1b), t2, (T2,)) == master2
+    master3 = PrimaryDryFit(t1, (T1a, T1b), T1_iend, missing, T2[end], missing, missing)
+    @test PrimaryDryFit(t1, (T1a, T1b), T2[end]) == master3
+    master4 = PrimaryDryFit(t1, (T1a, T1b), T1_iend, missing, T2[end], missing, t_end)
+    @test PrimaryDryFit(t1, (T1a, T1b), T2[end], t_end) == master4
+    master5 = PrimaryDryFit(t1, (T1a, T1b), T1_iend, missing, missing, missing, t_end)
+    @test PrimaryDryFit(t1, (T1a, T1b), t_end) == master5
+    master6 = PrimaryDryFit(t1, (T1a,), [length(T1a)], missing, missing, missing, missing)
+    @test PrimaryDryFit(t1, (T1a,)) == master6
+    @test PrimaryDryFit(t1, T1a) == master6
+end
+
+@testset "Simulation test against Python results: sucrose conventional" begin
     include("test_sucrose.jl")
+end
+
+@testset "gen_sol_conv_dim" begin
+    include("test_gensolconv.jl")
 end
 
 ti = time() - ti

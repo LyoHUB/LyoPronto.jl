@@ -32,17 +32,17 @@ export qrf_integrate
 end
 
 @doc raw"""
-    tplotexperimental(time, T1, [T2, ...])
-    tplotexperimental!(time, T1, [T2, ...])
+    exptfplot(time, T1, [T2, ...])
+    exptfplot!(time, T1, [T2, ...])
 
 Plot recipe for one or more experimentally measured product temperatures, all at same times.
 This recipe adds one series for each passed temperature series, so pass labels as appropriate.
 """
-tplotexperimental
-@doc (@doc tplotexperimental) tplotexperimental!
+exptfplot
+@doc (@doc exptfplot) exptfplot!
 
-@userplot TPlotExperimental
-@recipe function f(tpe::TPlotExperimental)
+@userplot ExpTfPlot
+@recipe function f(tpe::ExpTfPlot)
     time, Ts... = tpe.args
     step = size(time, 1) ÷ 10
     n = size(Ts, 1)
@@ -60,32 +60,35 @@ tplotexperimental
             # markershape --> :auto
             markersize --> 7
             # label := labels[i]
+            minlen = min(length(time), length(T))
             seriescolor --> pal[i]
-            # x := time
-            # y := T
             if T == :dummy
                 return [Inf], [Inf]
             else
-                return time, T
+                return time[1:minlen], T[1:minlen]
             end
         end
     end
 end
 
 @doc raw"""
-    tplotexpvw(time, temperature)
-    tplotexpvw!(time, temperature)
+    exptvwplot(time, temperature; trim)
+    exptvwplot!(time, temperature; trim)
 
 Plot recipe for a set of experimentally measured vial wall temperatures.
 This recipe adds only one series to the plot.
+`trim` is an integer, indicating how many points to skip at a time, so that 
+the dotted line looks dotted even with noisy data.
 """
-tplotexpvw
-@doc (@doc tplotexpvw) tplotexpvw!
+exptvwplot
+@doc (@doc exptvwplot) exptvwplot!
 
-@userplot TPlotExpVW
-@recipe function f(tpev::TPlotExpVW)
+@userplot ExpTvwPlot
+@recipe function f(tpev::ExpTvwPlot; trim=1)
     time, T = tpev.args
-    step = size(time, 1) ÷ 10
+    time_trim = time[begin:trim:end]
+    T_trim = T[begin:trim:end]
+    step = size(time_trim, 1) ÷ (10)
     # color = palette(:Blues_5)[end]
     color = RGB{Float64}(0.031,0.318,0.612)
     
@@ -94,28 +97,27 @@ tplotexpvw
         step := step
         markershape --> :rect
         markersize --> 7
-        # label := labels[i]
         seriescolor --> color
         linestyle := :dash
         # x := time
         # y := T
-        time, T
+        time_trim, T_trim
     end
 end
 
 @doc raw"""
-    tplotmodelconv(sols)
-    tplotmodelconv!(sols)
+    modconvtplot(sols)
+    modconvtplot!(sols)
 
 Plot recipe for one or multiple solutions to the Pikal model, e.g. the output of [`gen_sol_conv_dim`](@ref LyoPronto.gen_sol_conv_dim).
 This adds one series to the plot for each passed solution, so pass as many labels (e.g. `["Tf1" "Tf2"]`) to this plot call as solutions to add labels to the legend.
 """
-tplotmodelconv
-@doc (@doc tplotmodelconv) tplotmodelconv!
+modconvtplot
+@doc (@doc modconvtplot) modconvtplot!
 
 
-@userplot TPlotModelConv
-@recipe function f(tpmc::TPlotModelConv)
+@userplot ModConvTPlot
+@recipe function f(tpmc::ModConvTPlot)
     sols = tpmc.args
     # pal = palette(:Oranges_4).colors[end:-1:begin+1] # Requires Plots as dependency...
     pal = [
@@ -144,17 +146,17 @@ end
 
 
 @doc raw"""
-    tplotmodelrf(sol)
-    tplotmodelrf!(sol)
+    modrftplot(sol)
+    modrftplot!(sol)
 
 Plot recipe for one solution to the lumped capacitance model, e.g. the output of [`gen_sol_rf_dim`](@ref LyoPronto.gen_sol_rf_dim).
 This adds two series to the plot, so pass two labels (e.g. `["Tf" "Tvw"]`) to this plot call to add labels to the legend.
 """
-tplotmodelrf
-@doc (@doc tplotmodelrf) tplotmodelrf!
+modrftplot
+@doc (@doc modrftplot) modrftplot!
 
-@userplot TPlotModelRF
-@recipe function f(tpmr::TPlotModelRF)
+@userplot ModRFTPlot
+@recipe function f(tpmr::ModRFTPlot)
     sol = tpmr.args[1]
     t_nd = range(0, sol.t[end-2], length=31)
     time = t_nd*u"hr"
@@ -228,7 +230,7 @@ function qrf_integrate(sol, RF_params)
 
     # So we do a manual Riemann integration on the solution output
     Qcontrib = map(sol.t) do ti
-        lumped_cap_rf_model(sol(ti), RF_params, ti)[2]
+        lumped_cap_rf_LC1(sol(ti), RF_params, ti)[2]
     end
     Qcontrib = hcat(Qcontrib...)
     Qsub = Qcontrib[1,:]
@@ -253,7 +255,32 @@ function qrf_integrate(sol, RF_params)
                 "QRFvw"=>qinteg[5])
 end
 
+@recipe function f(rv::RampedVariable{true, T1,T2,T3,T4}; tmax = rv.timestops[end]*100) where {T1,T2,T3,T4}
+    t = vcat(rv.timestops, tmax)
+    v = rv.(t)
+    @series begin
+        seriestype := :path
+        return t, v
+    end
+end
+@recipe function f(rv::RampedVariable{false, T1,T2,T3,T4}) where {T1,T2,T3,T4}
+    @series begin
+        seriestype := :hline
+        return [rv(0)]
+    end
+end
 
+@recipe function f(pdf::PrimaryDryFit)
+    @info "check" (pdf.t_Tf, pdf.Tfs...)
+    return ExpTfPlot((pdf.t_Tf, pdf.Tfs...))
+end
+@recipe function f(pdf::PrimaryDryFit, vw::Val{true})
+    if ismissing(pdf.t_Tvw)
+        return [pdf.t_Tf[end]], [pdf.t_Tvws]
+    else
+        return ExpTvwPlot((pdf.t_Tvw, pdf.Tvws[1]))
+    end
+end
 
 @userplot AreaStackPlot
 @recipe function f(asp::AreaStackPlot)

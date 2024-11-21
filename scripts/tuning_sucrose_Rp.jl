@@ -1,8 +1,3 @@
-using CSV
-using SavitzkyGolay
-using Optim
-using LaTeXStrings
-using Interpolations: linear_interpolation
 
 # Read in process data -------------- 
 
@@ -17,7 +12,7 @@ using Interpolations: linear_interpolation
 # T2 = procdat["TP2"][is_PD]u"°C"
 # T3 = procdat["TP4"][is_PD]u"°C"
 
-# tplotexperimental(tproc, T1, T2, T3, labels=[L"T_{p1}" L"T_{p2}" L"T_{p3}"])
+# exptfplot(tproc, T1, T2, T3, labels=[L"T_{p1}" L"T_{p2}" L"T_{p3}"])
 # plot!(tproc, Tsh_d, c=:black)
 
 # T1trm = T1[tproc .< 7.5u"hr"]
@@ -80,7 +75,7 @@ prob = ODEProblem(lyo_1d_dae_f, u0, tspan, tuple(params_bunch...))
 sol = solve(prob, Rodas4P(), callback=LyoPronto.end_drying_callback)
 
 plot(tproc, Tsh_d, c=:black, label=L"T_{sh}")
-tplotmodelconv!(sol, label=L"$T_p$, model")
+modconvtplot!(sol, label=L"$T_p$, model")
 
 
 # ------------------ Match temperatures to get Rp, based on center vial
@@ -122,8 +117,8 @@ profb3 = gen_sol_conv([13, Rp_3...])[1]
 
 begin
 
-tplotexperimental(tproc, T1, T2, T3)
-tplotmodelconv!(prof1, prof2, prof3)
-tplotmodelconv!(profb1, profb2, profb3, c=palette(:tab20c)[9:11])
+exptfplot(tproc, T1, T2, T3)
+modconvtplot!(prof1, prof2, prof3)
+modconvtplot!(profb1, profb2, profb3, c=palette(:tab20c)[9:11])
 plot!(ylim=(-42, -25), legend=:bottom, legend_columns=3)
 end
