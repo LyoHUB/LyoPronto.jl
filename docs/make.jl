@@ -13,7 +13,7 @@ makedocs(;
     # By default all markdown files in `docs/src` are expanded and included.
     pages = [
         "Home" => "index.md",
-        "Example" => "example.md",
+        "Example, conventional lyo" => "example_conv.md",
         "Reference" => "alldocstrings.md",
     ],
     # Don't worry about what `CI` does in this line.

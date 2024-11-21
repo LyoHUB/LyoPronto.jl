@@ -192,7 +192,6 @@ If there are multiple series of `Tf` in `pdfit`, squared error is computed for e
 
 I've considered writing several methods and dispatching on `pdfit` somehow, which would be cool and might individually be easier to read. But control flow might be harder to document and explain, and this should work just fine.
 """
-
 function obj_expT(sol, pdfit; tweight=1.0, verbose = false)
     if sol.retcode !== ReturnCode.Terminated
         verbose && @info "ODE solve failed or incomplete, probably." sol.retcode sol[1, :]
