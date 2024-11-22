@@ -53,13 +53,14 @@ exptfplot
            RGB{Float64}(0.741,0.843,0.906)]
     
     for (i, T) in enumerate(Ts)
+        lab = "\$T_{f$i}\$" # Default label
         @series begin
             seriestype := :samplemarkers
             step := step
             offset := step÷n *(i-1) + 1
             # markershape --> :auto
             markersize --> 7
-            # label := labels[i]
+            label --> lab
             minlen = min(length(time), length(T))
             seriescolor --> pal[i]
             if T == :dummy
@@ -84,7 +85,7 @@ exptvwplot
 @doc (@doc exptvwplot) exptvwplot!
 
 @userplot ExpTvwPlot
-@recipe function f(tpev::ExpTvwPlot; trim=1)
+@recipe function f(tpev::ExpTvwPlot; trim=10)
     time, T = tpev.args
     time_trim = time[begin:trim:end]
     T_trim = T[begin:trim:end]
@@ -202,10 +203,98 @@ tendplot
     t_end = tp.args[1]
     @series begin
         seriestype := :vline
-        label --> "\$t_\\text{end}\$"
-        color --> :gray
-        ls --> :dot
+        label --> "\$t_{end}\$"
+        seriescolor --> :gray
+        linestyle --> :dot
+        linewidth --> 3
         return [ustrip(u"hr", t_end)]
+    end
+end
+
+@recipe function f(rv::RampedVariable{true, T1,T2,T3,T4}; tmax = rv.timestops[end]*100) where {T1,T2,T3,T4}
+    t = vcat(rv.timestops, tmax)
+    v = rv.(t)
+    @series begin
+        seriestype := :path
+        return t, v
+    end
+end
+@recipe function f(rv::RampedVariable{false, T1,T2,T3,T4}) where {T1,T2,T3,T4}
+    @series begin
+        seriestype := :hline
+        return [rv(0)]
+    end
+end
+
+@recipe function f(pdf::PrimaryDryFit)
+    @series begin
+        return ExpTfPlot((pdf.t_Tf, pdf.Tfs...))
+    end
+    if !ismissing(pdf.t_Tvw)
+        color = RGB{Float64}(0.031,0.318,0.612)
+        @series begin
+            label --> "\$T_{vw}\$"
+            seriescolor --> color
+            return ExpTvwPlot((pdf.t_Tvw, pdf.Tvws...))
+        end
+    elseif !ismissing(pdf.Tvws)
+        @series begin
+            return [pdf.t_Tf[end]], [pdf.t_Tvws]
+        end
+    end
+    if !ismissing(pdf.t_end)
+        @series begin
+            return tendPlot(pdf.t_end)
+        end
+    end
+end
+# @recipe function f(pdf::PrimaryDryFit, vw::Val{true})
+#     if ismissing(pdf.t_Tvw)
+#         return [pdf.t_Tf[end]], [pdf.t_Tvws]
+#     else
+#         return ExpTvwPlot((pdf.t_Tvw, pdf.Tvws[1]))
+#     end
+# end
+
+@userplot AreaStackPlot
+@recipe function f(asp::AreaStackPlot)
+    x, ys... = asp.args
+    yprev = zeros(eltype(ys[1]), size(ys[1], 1))
+    ymat = hcat(yprev, ys...)
+    ys_cum = cumsum(ymat, dims=2)
+    pal = [:yellow, :orange, :red]
+    for i in axes(ys_cum, 2)[begin:end-1]
+        @series begin
+            fillrange := ys_cum[:,i]
+            fillcolor --> pal[i]
+            linewidth --> 0
+            marker --> :none
+            return x,  ys_cum[:,i+1]
+        end
+        nothing
+    end
+end
+
+
+@userplot BarStackPlot
+@recipe function f(bsp::BarStackPlot)
+    x, ys... = bsp.args
+    yprev = zeros(eltype(ys[1]), size(ys[1], 1))
+    ymat = hcat(yprev, ys...)
+    ys_cum = cumsum(ymat, dims=2)
+    ys_cum = ys_cum ./ ys_cum[:,end]
+    pal = [:yellow, :orange, :red]
+    for i in axes(ys_cum, 2)[begin:end-1]
+        @series begin
+            seriestype := :bar
+            fillrange := ys_cum[:,i]
+            fillcolor --> pal[i]
+            linewidth --> 1
+            linecolor --> :black
+            marker --> :none
+            return x,  ys_cum[:,i+1]
+        end
+        nothing
     end
 end
 
@@ -253,93 +342,4 @@ function qrf_integrate(sol, RF_params)
                 "Qvwf"=>qinteg[3],
                 "QRFf"=>qinteg[4],
                 "QRFvw"=>qinteg[5])
-end
-
-@recipe function f(rv::RampedVariable{true, T1,T2,T3,T4}; tmax = rv.timestops[end]*100) where {T1,T2,T3,T4}
-    t = vcat(rv.timestops, tmax)
-    v = rv.(t)
-    @series begin
-        seriestype := :path
-        return t, v
-    end
-end
-@recipe function f(rv::RampedVariable{false, T1,T2,T3,T4}) where {T1,T2,T3,T4}
-    @series begin
-        seriestype := :hline
-        return [rv(0)]
-    end
-end
-
-@recipe function f(pdf::PrimaryDryFit)
-    @info "check" (pdf.t_Tf, pdf.Tfs...)
-    return ExpTfPlot((pdf.t_Tf, pdf.Tfs...))
-end
-@recipe function f(pdf::PrimaryDryFit, vw::Val{true})
-    if ismissing(pdf.t_Tvw)
-        return [pdf.t_Tf[end]], [pdf.t_Tvws]
-    else
-        return ExpTvwPlot((pdf.t_Tvw, pdf.Tvws[1]))
-    end
-end
-
-@userplot AreaStackPlot
-@recipe function f(asp::AreaStackPlot)
-    x, ys... = asp.args
-    yprev = zeros(eltype(ys[1]), size(ys[1], 1))
-    ymat = hcat(yprev, ys...)
-    ys_cum = cumsum(ymat, dims=2)
-    pal = [:yellow, :orange, :red]
-    for i in axes(ys_cum, 2)[begin:end-1]
-        @series begin
-            fillrange := ys_cum[:,i]
-            fillcolor --> pal[i]
-            linewidth --> 0
-            marker --> :none
-            return x,  ys_cum[:,i+1]
-        end
-        nothing
-    end
-end
-
-
-# function qplotrf(sol, RF_params; kw...)
-#     Qcontrib = map(sol.t) do ti
-#         lumped_cap_rf(sol(ti), RF_params, ti, energy_output=true)[2]
-#     end
-#     Qcontrib = hcat(Qcontrib...)
-#     Qsub = Qcontrib[1,:]
-#     Qshf = Qcontrib[2,:]
-#     Qvwf = Qcontrib[3,:]
-#     QRFf = Qcontrib[4,:]
-#     QRFvw = Qcontrib[5,:]
-#     # names = ["sub", "sh-f", "vw-f", "RF-f", "RF-vw", "sh-vw"]
-#     names = ["RF-f", "vw-f", "sh-f"]
-#     labs = ["\$Q_\\text{$nm}\$" for nm in names]
-#     pl = plot(u"hr", u"W", kw...)
-#     areastackplot!(sol.t, QRFf, Qvwf, Qshf, labels=permutedims(labs))
-#     plot!(sol.t, Qshf.+Qvwf.+QRFf, c=:black, label="Total")
-#     plot!(xlabel="Time [hr]", ylabel="Heating [W]")
-#     return pl
-# end
-
-@userplot BarStackPlot
-@recipe function f(bsp::BarStackPlot)
-    x, ys... = bsp.args
-    yprev = zeros(eltype(ys[1]), size(ys[1], 1))
-    ymat = hcat(yprev, ys...)
-    ys_cum = cumsum(ymat, dims=2)
-    ys_cum = ys_cum ./ ys_cum[:,end]
-    pal = [:yellow, :orange, :red]
-    for i in axes(ys_cum, 2)[begin:end-1]
-        @series begin
-            seriestype := :bar
-            fillrange := ys_cum[:,i]
-            fillcolor --> pal[i]
-            linewidth --> 1
-            linecolor --> :black
-            marker --> :none
-            return x,  ys_cum[:,i+1]
-        end
-        nothing
-    end
 end
