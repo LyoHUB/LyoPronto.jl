@@ -73,8 +73,8 @@ const Tref = [190, 200, 220, 240, 248, 253, 258, 263, 265]*u"K"
 const Aref = [0.005, 0.010, 0.031, 0.268, 0.635, 1.059, 1.728, 2.769, 3.326]*1e-4u"GHz"
 const Bref = [1.537, 1.747, 2.469, 3.495, 4.006, 4.380, 4.696, 5.277, 5.646]*1e-5
 const Cref = [1.175, 1.168, 1.129, 1.088, 1.073, 1.062, 1.056, 1.038, 1.024]
-const B_interp = LinearInterpolation(Tref, Bref, extrapolate=true)
-const C_interp = LinearInterpolation(Tref, Cref, extrapolate=true)
+const B_interp = LinearInterpolation(Bref, Tref, extrapolate=true)
+const C_interp = LinearInterpolation(Cref, Tref, extrapolate=true)
 
 function ϵpp_f(T, f)
     # The fudge factors of 1.08 and 4.9e7 are my own empirical addition 
