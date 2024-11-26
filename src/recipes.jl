@@ -92,6 +92,7 @@ exptvwplot
     step = size(time_trim, 1) ÷ (10)
     # color = palette(:Blues_5)[end]
     color = RGB{Float64}(0.031,0.318,0.612)
+    label = "\$T_{vw}\$" # Default label
     
     @series begin
         seriestype := :samplemarkers
@@ -100,8 +101,7 @@ exptvwplot
         markersize --> 7
         seriescolor --> color
         linestyle := :dash
-        # x := time
-        # y := T
+        label --> label
         time_trim, T_trim
     end
 end
@@ -118,7 +118,7 @@ modconvtplot
 
 
 @userplot ModConvTPlot
-@recipe function f(tpmc::ModConvTPlot)
+@recipe function f(tpmc::ModConvTPlot; labsuffix = ", model")
     sols = tpmc.args
     # pal = palette(:Oranges_4).colors[end:-1:begin+1] # Requires Plots as dependency...
     pal = [
@@ -128,16 +128,17 @@ modconvtplot
     ]
     
     for (i, sol) in enumerate(sols)
+        t_nd = range(0, sol.t[end-2], length=101)
+        time = t_nd*u"hr"
+        T = sol.(t_nd, idxs=2)*u"K"
         @series begin
-            t_nd = range(0, sol.t[end-2], length=101)
-            time = t_nd*u"hr"
-            T = sol.(t_nd, idxs=2)*u"K"
             seriestype := :samplemarkers
             step := 20
             # offset := step÷n *(i-1) + 1
             markershape --> :auto
             markersize --> 7
             seriescolor --> pal[i]
+            label --> "\$T_{f$i}\$"*labsuffix # Default label
             # x := time
             # y := T
             time, T
@@ -157,7 +158,7 @@ modrftplot
 @doc (@doc modrftplot) modrftplot!
 
 @userplot ModRFTPlot
-@recipe function f(tpmr::ModRFTPlot)
+@recipe function f(tpmr::ModRFTPlot; labsuffix = ", model")
     sol = tpmr.args[1]
     t_nd = range(0, sol.t[end-2], length=31)
     time = t_nd*u"hr"
@@ -172,6 +173,7 @@ modrftplot
         markershape --> :dtriangle
         markersize --> 7
         seriescolor --> color
+        label --> "\$T_{f}\$"*labsuffix # Default label
         time, T
     end
     @series begin
@@ -183,6 +185,7 @@ modrftplot
         markershape --> :utriangle
         markersize --> 7
         seriescolor --> color
+        label --> "\$T_{vw}\$"*labsuffix # Default label
         linestyle := :dash
         time, T
     end
@@ -231,14 +234,12 @@ end
         return ExpTfPlot((pdf.t_Tf, pdf.Tfs...))
     end
     if !ismissing(pdf.t_Tvw)
-        color = RGB{Float64}(0.031,0.318,0.612)
         @series begin
-            label --> "\$T_{vw}\$"
-            seriescolor --> color
             return ExpTvwPlot((pdf.t_Tvw, pdf.Tvws...))
         end
     elseif !ismissing(pdf.Tvws)
         @series begin
+            seriestype := :scatter
             return [pdf.t_Tf[end]], [pdf.t_Tvws]
         end
     end
