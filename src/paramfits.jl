@@ -91,10 +91,11 @@ function gen_sol_rf_dim(fitprm, params_bunch, u0, tspan; kwargs...)
 end
 function gen_sol_rf_dim(fitprm, po::ParamObjRF, u0, tspan; kwargs...)
     prm_un = [u"cal/s/K/cm^2", u"Ω/m^2", u"Ω/m^2", u"cm^1.5"]
-    newp = @set po.alpha = fitprm[4]*prm_un[4]
+    newp = deepcopy(po)
     @reset newp.K_vwf = fitprm[1]*prm_un[1]
     @reset newp.B_f = fitprm[2]*prm_un[2]
     @reset newp.B_vw = fitprm[3]*prm_un[3]
+    @reset newp.alpha = fitprm[4]*prm_un[4]
     newprob = ODEProblem(lumped_cap_rf, u0, tspan, newp)
     sol = solve(newprob, Rodas3(autodiff=false); callback=end_drying_callback, kwargs...)
     return sol, newp
