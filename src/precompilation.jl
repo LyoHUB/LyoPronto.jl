@@ -36,14 +36,16 @@
         (Kshf, Av, Ap),
         (pch, Tsh)
     ]
+    po = ParamObjPikal(params_bunch)
 
     # -------------------
 
     tspan = (0.0, 100.0) # hours
 
-    u0 = [ustrip(u"cm", hf0), ustrip(u"K", Tsh(0u"minute"))]
-    prob = ODEProblem(lyo_1d_dae_f, u0, tspan, tuple(params_bunch...))
-    sol = solve(prob, Rosenbrock23(), callback=LyoPronto.end_drying_callback)
+    # u0 = [ustrip(u"cm", hf0), ustrip(u"K", Tsh(0u"minute"))]
+    # prob = ODEProblem(lyo_1d_dae_f, u0, tspan, tuple(params_bunch...))
+    prob = ODEProblem(po)
+    sol = solve(prob, Rosenbrock23())
 
 
 
