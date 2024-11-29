@@ -25,6 +25,6 @@ include("get_vial_dims.jl")
 include("physical_properties.jl")
 using .Dielectric
 
-# include(raw"precompilation.jl"))
+include("precompilation.jl")
 
 end
