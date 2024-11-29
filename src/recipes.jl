@@ -107,11 +107,11 @@ exptvwplot
 end
 
 @doc raw"""
-    modconvtplot(sols)
-    modconvtplot!(sols)
+    modconvtplot(sols; labsuffix = ", model")
+    modconvtplot!(sols; labsuffix = ", model")
 
 Plot recipe for one or multiple solutions to the Pikal model, e.g. the output of [`gen_sol_conv_dim`](@ref LyoPronto.gen_sol_conv_dim).
-This adds one series to the plot for each passed solution, so pass as many labels (e.g. `["Tf1" "Tf2"]`) to this plot call as solutions to add labels to the legend.
+This adds a series to the plot for each passed solution, with labels defaulting to `"T_{fi}"*labsuffix`.
 """
 modconvtplot
 @doc (@doc modconvtplot) modconvtplot!
@@ -126,6 +126,12 @@ modconvtplot
     RGB{Float64}(0.992,0.553,0.235)
     RGB{Float64}(0.992,0.745,0.522)
     ]
+    if length(sols) == 1
+        labels = ["\$T_{f}\$"*labsuffix]
+    else
+        labels = ["\$T_{f$i}\$"*labsuffix for i in 1:length(sols)]
+    end
+
     
     for (i, sol) in enumerate(sols)
         t_nd = range(0, sol.t[end-2], length=101)
@@ -134,25 +140,23 @@ modconvtplot
         @series begin
             seriestype := :samplemarkers
             step := 20
-            # offset := step÷n *(i-1) + 1
             markershape --> :auto
             markersize --> 7
             seriescolor --> pal[i]
-            label --> "\$T_{f$i}\$"*labsuffix # Default label
-            # x := time
-            # y := T
-            time, T
+            label --> labels[i]
+            return time, T
+            end
         end
     end
-end
 
 
-@doc raw"""
-    modrftplot(sol)
-    modrftplot!(sol)
+    @doc raw"""
+    modrftplot(sol, labsuffix=", model")
+    modrftplot!(sol, labsuffix=", model")
 
-Plot recipe for one solution to the lumped capacitance model, e.g. the output of [`gen_sol_rf_dim`](@ref LyoPronto.gen_sol_rf_dim).
-This adds two series to the plot, so pass two labels (e.g. `["Tf" "Tvw"]`) to this plot call to add labels to the legend.
+Plot recipe for one solution to the lumped capacitance model.
+This adds two series to the plot, with labels defaulting to `["T_f" "T_{vw}"] .* labsuffix`.
+Since this is a recipe, any Plots.jl keyword arguments can be passed to modify the plot.
 """
 modrftplot
 @doc (@doc modrftplot) modrftplot!
@@ -249,13 +253,6 @@ end
         end
     end
 end
-# @recipe function f(pdf::PrimaryDryFit, vw::Val{true})
-#     if ismissing(pdf.t_Tvw)
-#         return [pdf.t_Tf[end]], [pdf.t_Tvws]
-#     else
-#         return ExpTvwPlot((pdf.t_Tvw, pdf.Tvws[1]))
-#     end
-# end
 
 @userplot AreaStackPlot
 @recipe function f(asp::AreaStackPlot)
@@ -275,7 +272,6 @@ end
         nothing
     end
 end
-
 
 @userplot BarStackPlot
 @recipe function f(bsp::BarStackPlot)
