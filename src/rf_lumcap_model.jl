@@ -200,3 +200,8 @@ function Base.getindex(po::ParamObjRF, i)
         error(BoundsError, "Attempt to access LyoPronto.ParamsObjRF at index $i. Only indices 1 to 6 allowed")
     end
 end
+
+function ODEProblem(po::ParamObjRF; tspan=(0.0, 200.0))
+    return ODEProblem(lumped_cap_rf, ustrip.([u"g", u"K", u"K"], [po.m_f0, po.Tsh(0u"s"), po.Tsh(0u"s")]),
+     tspan, po; callback=end_drying_callback)
+end

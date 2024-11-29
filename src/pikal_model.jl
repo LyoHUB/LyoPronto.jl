@@ -127,6 +127,11 @@ function Base.show(io::IO, po::ParamObjPikal)
     return print(io, str)
 end
 
+function ODEProblem(po::ParamObjPikal)
+    return ODEProblem(lyo_1d_dae_f, ustrip.([u"cm", u"K"],[po.hf0, po.Tsh(0u"s")]),
+     (0.0, 200.0), po; callback=end_drying_callback)
+end
+
 # -------------------------------------------
 # Alternative approach, a la original LyoPRONTO
 # Embed the nonlinear solve inside the function call for a plain ODE formulation.

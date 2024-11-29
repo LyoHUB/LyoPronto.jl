@@ -2,6 +2,7 @@ module LyoPronto
 
 using Reexport
 @reexport using OrdinaryDiffEqRosenbrock
+import OrdinaryDiffEqRosenbrock: ODEProblem
 @reexport using OrdinaryDiffEqNonlinearSolve
 @reexport using DiffEqCallbacks
 @reexport using Unitful
