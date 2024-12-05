@@ -3,10 +3,11 @@
 
     # Conventional parameters
     # Geometry
-    rad = 1.1u"cm"
+    vialsize = "6R"
+    rad_i, rad_o = get_vial_radii(vialsize)
+    Ap = π*rad_i^2  # cross-sectional area inside the vial
+    Av = π*rad_o^2 # vial bottom area
     Vfill = 3u"mL" # ml
-    Ap = π*rad^2  # cross-sectional area inside the vial
-    Av = π*(rad+1u"mm")^2 # vial bottom area
     hf0 = Vfill / Ap
     # Formulation
     c_solid = 0.05u"g/mL" # g solute / mL solution
@@ -58,8 +59,8 @@
     P_per_vial = RampedVariable(10u"W"/17 * 0.54) # actual power / vial
 
     params_bunch_rf = Vector{Any}([
-        (Rp, h_f0, c_solid, ρ_solution),
-        (K_shf_f, A_v, A_p),
+        (Rp, hf0, c_solid, ρ_solution),
+        (Kshf, Av, Ap),
         (pch_rv, Tsh_rv, P_per_vial),
         (m_f0, cp_f, m_v, cp_v),
         (f_RF, epp_f, epp_w),
