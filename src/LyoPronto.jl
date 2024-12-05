@@ -10,7 +10,7 @@ using RecipesBase
 using ColorTypes: RGB
 using CSV
 using UnPack
-# using PrecompileTools
+using PrecompileTools
 using SpecialFunctions: besselj0, besselj1
 using DataInterpolations: LinearInterpolation
 using Roots
@@ -23,8 +23,11 @@ include("paramfits.jl")
 include("recipes.jl")
 include("get_vial_dims.jl")
 include("physical_properties.jl")
-using .Dielectric
+# using .Dielectric
 
 include("precompilation.jl")
+
+# If on 1.11 or later, mark stuff as public that isn't exported
+VERSION >= v"1.11" && include("public.jl")
 
 end
