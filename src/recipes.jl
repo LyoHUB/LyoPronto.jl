@@ -32,17 +32,17 @@ export qrf_integrate
 end
 
 @doc raw"""
-    exptfplot(time, T1, [T2, ...])
-    exptfplot!(time, T1, [T2, ...])
+    exptfplot(time, T1, [T2, ...]; labsuffix=", exp.")
+    exptfplot!(time, T1, [T2, ...]; labsuffix=", exp.")
 
 Plot recipe for one or more experimentally measured product temperatures, all at same times.
-This recipe adds one series for each passed temperature series, so pass labels as appropriate.
+This recipe adds one series for each passed temperature series, with labels defaulting to `"T_{fi}"*labsuffix`.
 """
 exptfplot
 @doc (@doc exptfplot) exptfplot!
 
 @userplot ExpTfPlot
-@recipe function f(tpe::ExpTfPlot)
+@recipe function f(tpe::ExpTfPlot, labsuffix = ", exp.")
     time, Ts... = tpe.args
     step = size(time, 1) ÷ 10
     n = size(Ts, 1)
@@ -52,16 +52,20 @@ exptfplot
            RGB{Float64}(0.42,0.682,0.839), 
            RGB{Float64}(0.741,0.843,0.906)]
     
+    if length(Ts) == 1
+        labels = ["\$T_{f}\$"*labsuffix]
+    else
+        labels = ["\$T_{f$i}\$"*labsuffix for i in 1:n]
+    end
     for (i, T) in enumerate(Ts)
-        lab = "\$T_{f$i}\$" # Default label
+        minlen = min(length(time), length(T))
         @series begin
             seriestype := :samplemarkers
             step := step
             offset := step÷n *(i-1) + 1
             # markershape --> :auto
             markersize --> 7
-            label --> lab
-            minlen = min(length(time), length(T))
+            label --> labels[i]
             seriescolor --> pal[i]
             if T == :dummy
                 return [Inf], [Inf]
@@ -73,11 +77,11 @@ exptfplot
 end
 
 @doc raw"""
-    exptvwplot(time, temperature; trim)
-    exptvwplot!(time, temperature; trim)
+    exptvwplot(time, T1, [T2, ...]; trim)
+    exptvwplot!(time, T1, [T2, ...]; trim)
 
 Plot recipe for a set of experimentally measured vial wall temperatures.
-This recipe adds only one series to the plot.
+This recipe adds one series for each passed temperature series, with labels defaulting to `"T_{vwi}"*labsuffix`.
 `trim` is an integer, indicating how many points to skip at a time, so that 
 the dotted line looks dotted even with noisy data.
 """
@@ -85,25 +89,38 @@ exptvwplot
 @doc (@doc exptvwplot) exptvwplot!
 
 @userplot ExpTvwPlot
-@recipe function f(tpev::ExpTvwPlot; trim=10)
-    time, T = tpev.args
+@recipe function f(tpev::ExpTvwPlot; trim=10, labsuffix=", exp.")
+    time, Ts... = tpev.args
     time_trim = time[begin:trim:end]
-    T_trim = T[begin:trim:end]
     step = size(time_trim, 1) ÷ (10)
+    n = size(Ts, 1)
     # color = palette(:Blues_5)[end]
-    color = RGB{Float64}(0.031,0.318,0.612)
-    label = "\$T_{vw}\$" # Default label
+    pal = [RGB{Float64}(0.031,0.318,0.612), 
+           RGB{Float64}(0.192,0.51,0.741), 
+           RGB{Float64}(0.42,0.682,0.839), 
+           RGB{Float64}(0.741,0.843,0.906)]
     
-    @series begin
-        seriestype := :samplemarkers
-        step := step
-        markershape --> :rect
-        markersize --> 7
-        seriescolor --> color
-        linestyle := :dash
-        label --> label
-        time_trim, T_trim
+    if length(Ts) == 1
+        labels = ["\$T_{vw}\$"*labsuffix]
+    else
+        labels = ["\$T_{vw$i}\$"*labsuffix for i in 1:n]
     end
+    for (i, T) in enumerate(Ts)
+        T_trim = T[begin:trim:end]
+        minlen = min(length(time_trim), length(T_trim))
+        @info "labels" labels labels[i]
+        @series begin
+            seriestype := :samplemarkers
+            step := step
+            offset := step÷n *(i-1) + 1
+            linestyle --> :dash
+            markersize --> 7
+            label --> labels[i]
+            seriescolor --> pal[i]
+            return time_trim[1:minlen], T_trim[1:minlen]
+        end
+    end
+    
 end
 
 @doc raw"""
@@ -162,35 +179,40 @@ modrftplot
 @doc (@doc modrftplot) modrftplot!
 
 @userplot ModRFTPlot
-@recipe function f(tpmr::ModRFTPlot; labsuffix = ", model")
+@recipe function f(tpmr::ModRFTPlot; labsuffix = ", model", evensample=true)
     sol = tpmr.args[1]
-    t_nd = range(0, sol.t[end-2], length=31)
+    if evensample
+        t_nd = range(0, sol.t[end-2], length=31)
+        step = 6
+    else
+        t_nd = sol.t[1:end-2]
+        step = length(sol.t) ÷ 5
+    end
     time = t_nd*u"hr"
     # color = palette(:Oranges_3)[end]
     color = RGB{Float64}(0.902,0.333,0.051)
     # Frozen temperature: tends to have a crazy time point at end
     @series begin
-        # time = sol.t[1:end-2]*u"hr"
         seriestype := :samplemarkers
-        step := 6
+        step := step
         T = sol.(t_nd, idxs=2)*u"K"
         markershape --> :dtriangle
         markersize --> 7
         seriescolor --> color
         label --> "\$T_{f}\$"*labsuffix # Default label
+        @info "Tf" time T
         time, T
     end
     @series begin
-        # time = sol.t*u"hr"
-        # T = sol[3,:]*u"K"
         seriestype := :samplemarkers
-        step := 6
+        step := step
         T = sol.(t_nd, idxs=3)*u"K"
         markershape --> :utriangle
         markersize --> 7
         seriescolor --> color
         label --> "\$T_{vw}\$"*labsuffix # Default label
         linestyle := :dash
+        @info "Tvw" time T
         time, T
     end
 end
