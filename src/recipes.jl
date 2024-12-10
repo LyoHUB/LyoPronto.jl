@@ -108,7 +108,6 @@ exptvwplot
     for (i, T) in enumerate(Ts)
         T_trim = T[begin:trim:end]
         minlen = min(length(time_trim), length(T_trim))
-        @info "labels" labels labels[i]
         @series begin
             seriestype := :samplemarkers
             step := step
@@ -200,7 +199,6 @@ modrftplot
         markersize --> 7
         seriescolor --> color
         label --> "\$T_{f}\$"*labsuffix # Default label
-        @info "Tf" time T
         time, T
     end
     @series begin
@@ -212,7 +210,6 @@ modrftplot
         seriescolor --> color
         label --> "\$T_{vw}\$"*labsuffix # Default label
         linestyle := :dash
-        @info "Tvw" time T
         time, T
     end
 end
@@ -334,7 +331,6 @@ function qrf_integrate(sol, RF_params)
     # cbs = CallbackSet(integ_callback, end_drying_callback)
     # prob = ODEProblem(lumped_cap_rf, sol.u0, (0, 1e10), RF_params; callback=cbs)
     # sol = solve(prob, Rodas3(autodiff=false))
-    # @info "check" sol integ_values
 
     # So we do a manual Riemann integration on the solution output
     Qcontrib = map(sol.t) do ti
