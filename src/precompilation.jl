@@ -43,13 +43,13 @@
     # ------------------- 
     # RF-specific parameters
     # Heat transfer
-    cp_f = 2.050u"J/g/K"
-    cp_v = 0.840u"J/g/K"
+    cp_f = cp_ice
+    cp_v = cp_gl
     m_v = get_vial_mass(vialsize)
     m_f0 = Vfill * ρ_solution
     f_RF = 8u"GHz"
-    epp_f = LyoPronto.ϵpp_f
-    epp_w = 2.4e-2
+    # epp_f = LyoPronto.ϵpp_f
+    epp_w = epp_gl
     P_per_vial = RampedVariable(10u"W"/17 * 0.54)
     B_f = 2.0e7u"Ω/m^2"
     B_vw = 0.9e7u"Ω/m^2"
