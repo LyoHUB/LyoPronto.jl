@@ -137,6 +137,9 @@ const B_interp = LinearInterpolation(Bref, Tref, extrapolate=true)
 const C_interp = LinearInterpolation(Cref, Tref, extrapolate=true)
 
 function ϵpp_f(T, f)
+    if f == 0u"Hz"
+        return 0.0
+    end
     # The fudge factors of 1.08 and 4.9e7 are my own empirical addition 
     # because the described correlation is off from the values shown in figures
     arrh = 5.3e-16*u"s" * (T > 223u"K" ? 1.08*exp(E1/R/T) : 4.9e7*exp(E2/R/T))
