@@ -42,7 +42,7 @@ exptfplot
 @doc (@doc exptfplot) exptfplot!
 
 @userplot ExpTfPlot
-@recipe function f(tpe::ExpTfPlot, labsuffix = ", exp.")
+@recipe function f(tpe::ExpTfPlot; labsuffix = ", exp.")
     time, Ts... = tpe.args
     step = size(time, 1) ÷ 10
     n = size(Ts, 1)
