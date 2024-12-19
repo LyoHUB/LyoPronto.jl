@@ -58,7 +58,6 @@ exptfplot
         labels = ["\$T_{f$i}\$"*labsuffix for i in 1:n]
     end
     for (i, T) in enumerate(Ts)
-        minlen = min(length(time), length(T))
         @series begin
             seriestype := :samplemarkers
             step := step
@@ -70,6 +69,7 @@ exptfplot
             if T == :dummy
                 return [Inf], [Inf]
             else
+                minlen = min(length(time), length(T))
                 return time[1:minlen], T[1:minlen]
             end
         end
