@@ -201,9 +201,12 @@ function Base.getindex(po::ParamObjRF, i)
     end
 end
 
-function ODEProblem(po::ParamObjRF; u0 = nothing, tspan=(0.0, 200.0))
+function ODEProblem(po::ParamObjRF; u0 = nothing, tspan=nothing)
     if isnothing(u0)
         u0 = ustrip.([u"g", u"K", u"K"], [po.m_f0, po.Tsh(0u"s"), po.Tsh(0u"s")])
+    end
+    if isnothing(tspan)
+        tspan = (0.0, 200.0)
     end
     return ODEProblem(lumped_cap_rf, u0, tspan, po; 
         callback=end_drying_callback)

@@ -131,7 +131,9 @@ function ODEProblem(po::ParamObjPikal; u0=nothing, tspan=(0.0, 200.0))
     if isnothing(u0)
         u0 = ustrip.([u"cm", u"K"],[po.hf0, po.Tsh(0u"s")])
     end
-    isnothing(tspan) && tspan = (0.0, 200.0)
+    if isnothing(tspan) 
+        tspan = (0.0, 200.0)
+    end
     return ODEProblem(lyo_1d_dae_f, u0, tspan, po; 
         callback=end_drying_callback)
 end
