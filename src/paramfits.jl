@@ -18,22 +18,22 @@ That function is what you will pass to `obj_tT_conv`.
 function gen_sol_conv_dim(KRp_prm, otherparams, u0, tspan; kwargs...)
     hf0, c_solid, ρ_solution, Av, Ap, pch, Tsh = otherparams
     Rp_un = [u"cm^2*Torr*hr/g", u"cm*Torr*hr/g", u"1/cm"]
-    Kshf_g = p->KRp_prm[1]*u"W/m^2/K"
+    Kshf_g = ConstPhysProp(KRp_prm[1]*u"W/m^2/K")
     Rp_g = RpFormFit((KRp_prm[2:4].*Rp_un)...)
     new_params = ((Rp_g, hf0, c_solid, ρ_solution), (Kshf_g, Av, Ap),
                     (pch, Tsh))
-    newprob = ODEProblem(LyoPronto.lyo_1d_dae_f, u0, tspan, new_params)
-    sol = solve(newprob, Rodas4P(); callback=end_drying_callback, kwargs...)
+    newprob = ODEProblem(new_params; u0=u0, tspan=tspan)
+    sol = solve(newprob, Rodas4P(); kwargs...)
     return sol, new_params
 end
-function gen_sol_conv_dim(KRp_prm, po::ParamObjPikal, u0, tspan; kwargs...)
+function gen_sol_conv_dim(KRp_prm, po::ParamObjPikal; kwargs...)
     Rp_un = [u"cm^2*Torr*hr/g", u"cm*Torr*hr/g", u"1/cm"]
-    Kshf_g = p->KRp_prm[1]*u"W/m^2/K"
+    Kshf_g = ConstPhysProp(KRp_prm[1]*u"W/m^2/K")
     Rp_g = RpFormFit((KRp_prm[2:4].*Rp_un)...)
     new_params = @set po.Rp = Rp_g
     @reset new_params.Kshf = Kshf_g
-    newprob = ODEProblem(LyoPronto.lyo_1d_dae_f, u0, tspan, new_params)
-    sol = solve(newprob, Rodas4P(); callback=end_drying_callback, kwargs...)
+    newprob = ODEProblem(new_params)
+    sol = solve(newprob, Rodas4P(); kwargs...)
     return sol, new_params
 end
 
@@ -86,18 +86,18 @@ function gen_sol_rf_dim(fitprm, params_bunch, u0, tspan; kwargs...)
     newp[end] = tuple((fitprm .* prm_un)...)
     newp = tuple(newp...)
     newprob = ODEProblem(lumped_cap_rf, u0, tspan, newp)
-    sol = solve(newprob, Rodas3(autodiff=false); callback=end_drying_callback, kwargs...)
+    sol = solve(newprob, Rodas3(); callback=end_drying_callback, kwargs...)
     return sol, newp
 end
-function gen_sol_rf_dim(fitprm, po::ParamObjRF, u0, tspan; kwargs...)
+function gen_sol_rf_dim(fitprm, po::ParamObjRF; kwargs...)
     prm_un = [u"cal/s/K/cm^2", u"Ω/m^2", u"Ω/m^2", u"cm^1.5"]
     newp = deepcopy(po)
     @reset newp.K_vwf = fitprm[1]*prm_un[1]
     @reset newp.B_f = fitprm[2]*prm_un[2]
     @reset newp.B_vw = fitprm[3]*prm_un[3]
     @reset newp.alpha = fitprm[4]*prm_un[4]
-    newprob = ODEProblem(lumped_cap_rf, u0, tspan, newp)
-    sol = solve(newprob, Rodas3(autodiff=false); callback=end_drying_callback, kwargs...)
+    newprob = ODEProblem(newp)
+    sol = solve(newprob, Rodas3(); kwargs...)
     return sol, newp
 end
 
@@ -180,7 +180,6 @@ end
 @doc raw"""
     obj_expT(sol, pdfit; tweight=1, verbose=true, rf = true)
 
-Experimental (in the software engineering sense)!
 Evaluate an objective function which compares model solution computed by `sol` to experimental data in `pdfit`.
 
 - `sol` is a solution to an appropriate model; see [`gen_sol_conv_dim`](@ref) and [`gen_sol_rf_dim`](@ref) for some helper functions for this.
