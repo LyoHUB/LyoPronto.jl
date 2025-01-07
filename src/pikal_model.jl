@@ -134,8 +134,17 @@ function ODEProblem(po::ParamObjPikal; u0=nothing, tspan=(0.0, 200.0))
     if isnothing(tspan) 
         tspan = (0.0, 200.0)
     end
+    tstops = [0.0]
+    for control in [po.Tsh, po.pch]
+        if control isa RampedVariable && !isnothing(control.timestops)
+            tstops = vcat(tstops, ustrip.(u"hr", control.timestops))
+        elseif control isa LinearInterpolation
+            tstops = vcat(tstops, ustrip.(u"hr", control.t))
+        end
+    end
+    sort!(tstops); unique!(tstops)
     return ODEProblem(lyo_1d_dae_f, u0, tspan, po; 
-        callback=end_drying_callback)
+        tstops = tstops, callback=end_drying_callback)
 end
 
 # -------------------------------------------
