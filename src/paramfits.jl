@@ -1,5 +1,5 @@
 export gen_sol_conv_dim, obj_tT_conv
-export obj_expT, genobj_posprm
+export obj_expT, genobj_posprm, err_expT 
 
 @doc raw"""
     gen_sol_conv_dim(KRp_prm, otherparams, u0, tspan; kwargs...)
@@ -186,7 +186,7 @@ Evaluate an objective function which compares model solution computed by `sol` t
 - `pdfit` is an instance of `PrimaryDryFit`, which contains some information about what to compare.
 - `tweight = 1` gives the weighting (in K^2/hr^2) of the total drying time in the objective, as compared to the temperature error.
 
-Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable returned by `gen_sol` is assumed to be temperature, as is true for [`gen_sol_rf_dim`](@ref).
+Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable in `sol` is assumed to be temperature, as is true for [`gen_sol_rf_dim`](@ref).
 
 If there are multiple series of `Tf` in `pdfit`, squared error is computed for each separately then summed; likewise for `Tvw`.
 
@@ -204,6 +204,7 @@ function obj_expT(sol, pdfit; tweight=1.0, verbose = false)
     # Compute temperature objective for all frozen temperatures
     Tfobj = mapreduce(+, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
         trim = 1:min(itf, length(tf_trim))
+        # verbose && @info "Tf errors" Tf[trim] .- Tfmd[trim]
         return sum(abs2.(Tf[trim] .- Tfmd[trim]))/length(trim)
     end
     # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
@@ -235,6 +236,75 @@ function obj_expT(sol, pdfit; tweight=1.0, verbose = false)
     end
     verbose && @info "loss call" tmd tobj Tfobj Tvwobj 
     return Tfobj/u"K^2" + Tvwobj/u"K^2" + tweight*tobj/u"hr^2"
+end
+
+@doc raw"""
+    err_expT(sol, pdfit; tweight=1, verbose=true, rf = true)
+
+Evaluate the error between model solution `sol` to experimental data in `pdfit`.
+
+In contrast to `obj_expT()`, this function returns an array of all the errors, which would be squared and summed to produce an objective function.
+
+- `sol` is a solution to an appropriate model; see [`gen_sol_conv_dim`](@ref) and [`gen_sol_rf_dim`](@ref) for some helper functions for this.
+- `pdfit` is an instance of `PrimaryDryFit`, which contains some information about what to compare.
+- `tweight = 1` gives the weighting (in K^2/hr^2) of the total drying time in the objective, as compared to the temperature error.
+Each time series, plus the end time, is given equal weight by dividing by its length; error is given in K (but `ustrip`ped).
+
+Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable in `sol` is assumed to be temperature, as is true for [`gen_sol_rf_dim`](@ref).
+
+If there are multiple series of `Tf` in `pdfit`, squared error is computed for each separately then summed; likewise for `Tvw`.
+"""
+function err_expT(sol, pdfit; tweight=1.0, verbose = false)
+    if sol.retcode !== ReturnCode.Terminated
+        verbose && @info "ODE solve failed or incomplete, probably." sol.retcode sol[1, :]
+        return NaN
+    end
+    tmd = sol.t[end].*u"hr"
+    ftrim = pdfit.t_Tf .< tmd
+    tf_trim = pdfit.t_Tf[ftrim]
+    Tfmd = sol(ustrip.(u"hr", tf_trim), idxs=2).*u"K"
+    # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
+    # This bit replaces any subzero values with the previous positive temperature, and notifies that it happened.
+    if any(Tfmd .< 0u"K")
+        subzero = findall(Vector(Tfmd .< 0u"K"))
+        Tfmd[subzero] .= Tfmd[subzero[1] - 1] 
+        verbose && @info "bad interpolation" subzero Tfmd[subzero]
+    end
+    # Initialize error array with frozen temperatures
+    # Compute temperature errors for all frozen temperatures
+    errs = mapreduce(vcat, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
+        trim = 1:min(itf, length(tf_trim))
+        errs = ustrip.(u"K", Tf[trim] .- Tfmd[trim]) ./ sqrt(itf) # Weight errors by number of data points here
+        extra = fill(0.0, itf - length(errs))
+        vcat(errs, extra)
+    end
+
+    # Concatenate end time to array, if present
+    if !ismissing(pdfit.t_end)
+        t_err = (pdfit.t_end - tmd)
+        push!(errs, ustrip(u"hr", t_err))
+    end
+    # If present, vcat vial wall temperatures
+    if !ismissing(pdfit.Tvws) # At least one vial wall temperature
+        if ismissing(pdfit.t_Tvw) # Only an endpoint temperature provided
+            Tvwend = pdfit.Tvws
+            Tvw_err = sol[3, end]*u"K" - uconvert(u"K", Tvwend)
+            push!(errs, ustrip(u"K", Tvw))
+        else # Regular case of fitting to at least one full temperature series
+            vwtrim = pdfit.t_Tvw .< tmd
+            tvw_trim = pdfit.t_Tvw[vwtrim]
+            Tvwmd = sol(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
+            # Compute temperature objective for all vial wall temperatures
+            Tvwobj = mapreduce(+, pdfit.Tvws, pdfit.Tvw_iend) do Tvw, itvw
+                trim = 1:min(itvw, length(tvw_trim))
+                Tvw_err = Tvw[trim] .- Tvwmd[trim]
+                push!(errs, ustrip(u"K", Tvw_err / sqrt(itvw)))
+                push!(errs, fill(0.0, itvw - length(Tvw_err)))
+            end
+        end
+    end
+    verbose && @info "loss call" tmd size(errs) sum(abs2.(errs))
+    return errs
 end
 
 function genobj_posprm(gen_sol, obj, fitdat; kwargs...)
