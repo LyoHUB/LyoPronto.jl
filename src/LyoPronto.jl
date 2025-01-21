@@ -12,7 +12,7 @@ using CSV
 using UnPack
 using PrecompileTools
 using SpecialFunctions: besselj0, besselj1
-using DataInterpolations: LinearInterpolation, ExtrapolationType
+using DataInterpolations
 using Roots
 using Accessors
 
