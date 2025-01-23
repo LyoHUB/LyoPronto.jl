@@ -51,6 +51,7 @@ exptfplot
            RGB{Float64}(0.192,0.51,0.741), 
            RGB{Float64}(0.42,0.682,0.839), 
            RGB{Float64}(0.741,0.843,0.906)]
+    markers = (:circle, :square, :diamond, :hexagon)
     
     if length(Ts) == 1
         labels = ["\$T_{f}\$"*labsuffix]
@@ -62,8 +63,7 @@ exptfplot
             seriestype := :samplemarkers
             step := step
             offset := step÷n *(i-1) + 1
-            # markershape --> :auto
-            markersize --> 7
+            markershape --> markers[i]
             label --> labels[i]
             seriescolor --> pal[i]
             if T == :dummy
@@ -99,6 +99,7 @@ exptvwplot
            RGB{Float64}(0.192,0.51,0.741), 
            RGB{Float64}(0.42,0.682,0.839), 
            RGB{Float64}(0.741,0.843,0.906)]
+    markers = (:pentagon, :ltriangle, :rtriangle, :heptagon)
     
     if length(Ts) == 1
         labels = ["\$T_{vw}\$"*labsuffix]
@@ -113,7 +114,7 @@ exptvwplot
             step := step
             offset := step÷n *(i-1) + 1
             linestyle --> :dash
-            markersize --> 7
+            markershape --> markers[i]
             label --> labels[i]
             seriescolor --> pal[i]
             return time_trim[1:minlen], T_trim[1:minlen]
@@ -142,6 +143,7 @@ modconvtplot
     RGB{Float64}(0.992,0.553,0.235)
     RGB{Float64}(0.992,0.745,0.522)
     ]
+    markers = (:utriangle, :dtriangle, :cross)
     if length(sols) == 1
         labels = ["\$T_{f}\$"*labsuffix]
     else
@@ -157,7 +159,6 @@ modconvtplot
             seriestype := :samplemarkers
             step := 20
             markershape --> :auto
-            markersize --> 7
             seriescolor --> pal[i]
             label --> labels[i]
             return time, T
@@ -196,7 +197,6 @@ modrftplot
         step := step
         T = sol.(t_nd, idxs=2)*u"K"
         markershape --> :dtriangle
-        markersize --> 7
         seriescolor --> color
         label --> "\$T_{f}\$"*labsuffix # Default label
         time, T
@@ -206,7 +206,6 @@ modrftplot
         step := step
         T = sol.(t_nd, idxs=3)*u"K"
         markershape --> :utriangle
-        markersize --> 7
         seriescolor --> color
         label --> "\$T_{vw}\$"*labsuffix # Default label
         linestyle := :dash
