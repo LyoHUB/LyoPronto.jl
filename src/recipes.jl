@@ -297,7 +297,7 @@ end
     yprev = zeros(eltype(ys[1]), size(ys[1], 1))
     ymat = hcat(yprev, ys...)
     ys_cum = cumsum(ymat, dims=2)
-    ys_cum = ys_cum ./ ys_cum[:,end]
+    ys_cum = ys_cum ./ maximum(ys_cum, dims=2)
     pal = [:yellow, :orange, :red]
     for i in axes(ys_cum, 2)[begin:end-1]
         @series begin
