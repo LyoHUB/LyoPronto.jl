@@ -13,7 +13,7 @@ A callback for use in simulating either the Pikal or RF model.
 
 Terminates the time integration when [`end_cond`](@ref) evaluates to `true`.
 """
-const end_drying_callback = ContinuousCallback(end_cond, terminate!)
+const end_drying_callback = ContinuousCallback(end_cond, terminate!, save_positions=(true, false))
 
 # -------------------------------------------
 # Incorporate the nonlinear algebraic part in a DAE formulation.
