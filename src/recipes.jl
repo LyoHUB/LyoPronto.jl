@@ -253,16 +253,18 @@ end
 
 @recipe function f(pdf::PrimaryDryFit)
     @series begin
-        return ExpTfPlot((pdf.t_Tf, pdf.Tfs...))
+        return ExpTfPlot((pdf.t, pdf.Tfs...))
     end
-    if !ismissing(pdf.t_Tvw)
-        @series begin
-            return ExpTvwPlot((pdf.t_Tvw, pdf.Tvws...))
-        end
-    elseif !ismissing(pdf.Tvws)
-        @series begin
-            seriestype := :scatter
-            return [pdf.t_Tf[end]], [pdf.t_Tvws]
+    if !ismissing(pdf.Tvws)
+        if pdf.Tvws isa Number
+            @series begin
+                seriestype := :scatter
+                return [pdf.t[end]], [pdf.Tvws]
+            end
+        else 
+            @series begin
+                return ExpTvwPlot((pdf.t,pdf.Tvws...))
+            end
         end
     end
     if !ismissing(pdf.t_end)

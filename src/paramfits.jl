@@ -199,8 +199,8 @@ function obj_expT(sol::ODESolution, pdfit; tweight=1.0, verbose = false)
         return NaN
     end
     tmd = sol.t[end].*u"hr"
-    ftrim = pdfit.t_Tf .< tmd
-    tf_trim = pdfit.t_Tf[ftrim]
+    ftrim = pdfit.t .< tmd
+    tf_trim = pdfit.t[ftrim]
     Tfmd = sol(ustrip.(u"hr", tf_trim), idxs=2).*u"K"
     # Compute temperature objective for all frozen temperatures
     Tfobj = mapreduce(+, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
@@ -217,12 +217,12 @@ function obj_expT(sol::ODESolution, pdfit; tweight=1.0, verbose = false)
     end
     if ismissing(pdfit.Tvws) # No vial wall temperatures
         Tvwobj = 0u"K^2"
-    elseif ismissing(pdfit.t_Tvw) # Provide only an endpoint temperature
+    elseif ismissing(pdfit.Tvw_iend) # Provide only an endpoint temperature
         Tvwend = pdfit.Tvws
         Tvwobj = (sol[3, end]*u"K" - uconvert(u"K", Tvwend))^2
     else # Regular case of fitting to at least one full temperature series
-        vwtrim = pdfit.t_Tvw .< tmd
-        tvw_trim = pdfit.t_Tvw[vwtrim]
+        vwtrim = pdfit.t .< tmd
+        tvw_trim = pdfit.t[vwtrim]
         Tvwmd = sol(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
         # Compute temperature objective for all vial wall temperatures
         Tvwobj = mapreduce(+, pdfit.Tvws, pdfit.Tvw_iend) do Tvw, itvw
@@ -261,8 +261,8 @@ function err_expT(sol, pdfit; tweight=1.0, verbose = false)
         return NaN
     end
     tmd = sol.t[end].*u"hr"
-    ftrim = pdfit.t_Tf .< tmd
-    tf_trim = pdfit.t_Tf[ftrim]
+    ftrim = pdfit.t .< tmd
+    tf_trim = pdfit.t[ftrim]
     Tfmd = sol(ustrip.(u"hr", tf_trim), idxs=2).*u"K"
     # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
     # This bit replaces any subzero values with the previous positive temperature, and notifies that it happened.
@@ -287,13 +287,13 @@ function err_expT(sol, pdfit; tweight=1.0, verbose = false)
     end
     # If present, vcat vial wall temperatures
     if !ismissing(pdfit.Tvws) # At least one vial wall temperature
-        if ismissing(pdfit.t_Tvw) # Only an endpoint temperature provided
+        if ismissing(pdfit.Tvw_iend) # Only an endpoint temperature provided
             Tvwend = pdfit.Tvws
             Tvw_err = sol[3, end]*u"K" - uconvert(u"K", Tvwend)
             push!(errs, ustrip(u"K", Tvw))
         else # Regular case of fitting to at least one full temperature series
-            vwtrim = pdfit.t_Tvw .< tmd
-            tvw_trim = pdfit.t_Tvw[vwtrim]
+            vwtrim = pdfit.t .< tmd
+            tvw_trim = pdfit.t[vwtrim]
             Tvwmd = sol(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
             # Compute temperature objective for all vial wall temperatures
             Tvwobj = mapreduce(+, pdfit.Tvws, pdfit.Tvw_iend) do Tvw, itvw
@@ -330,8 +330,8 @@ function fitvals(sol, pdfit; tweight=1.0, verbose = false)
         return NaN
     end
     tmd = sol.t[end].*u"hr"
-    ftrim = pdfit.t_Tf .< tmd
-    tf_trim = pdfit.t_Tf[ftrim]
+    ftrim = pdfit.t .< tmd
+    tf_trim = pdfit.t[ftrim]
     Tfmd = sol(ustrip.(u"hr", tf_trim), idxs=2).*u"K"
     # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
     # This bit replaces any subzero values with the previous positive temperature, and notifies that it happened.
@@ -356,13 +356,13 @@ function fitvals(sol, pdfit; tweight=1.0, verbose = false)
     end
     # If present, vcat vial wall temperatures
     if !ismissing(pdfit.Tvws) # At least one vial wall temperature
-        if ismissing(pdfit.t_Tvw) # Only an endpoint temperature provided
+        if ismissing(pdfit.Tvw_iend) # Only an endpoint temperature provided
             Tvwend = pdfit.Tvws
             Tvw_err = sol[3, end]*u"K" - uconvert(u"K", Tvwend)
             push!(errs, ustrip(u"K", Tvw))
         else # Regular case of fitting to at least one full temperature series
-            vwtrim = pdfit.t_Tvw .< tmd
-            tvw_trim = pdfit.t_Tvw[vwtrim]
+            vwtrim = pdfit.t .< tmd
+            tvw_trim = pdfit.t[vwtrim]
             Tvwmd = sol(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
             # Compute temperature objective for all vial wall temperatures
             Tvwobj = mapreduce(+, pdfit.Tvws, pdfit.Tvw_iend) do Tvw, itvw
