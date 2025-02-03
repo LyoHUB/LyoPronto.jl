@@ -178,7 +178,7 @@ function obj_ttTT_rf(fitprm, gen_sol, ttTTdat; t_end=missing, tweight=1, verbose
 end
 
 @doc raw"""
-    obj_expT(sol, pdfit; tweight=1, verbose=true, rf = true)
+    obj_expT(sol, pdfit; tweight=1, verbose=false)
 
 Evaluate an objective function which compares model solution computed by `sol` to experimental data in `pdfit`.
 
@@ -194,26 +194,37 @@ I've considered writing several methods and dispatching on `pdfit` somehow, whic
 """
 function obj_expT(sol::ODESolution, pdfit; tweight=1.0, verbose = false)
     if sol.retcode !== ReturnCode.Terminated
-        hf_end = sol[1, end]*u"cm"
-        verbose && @warn "ODE solve did not reach end of drying. Either parameters are bad, or tspan is not large enough." sol.retcode sol.prob.p.hf0 hf_end
+        # hf_end = sol[1, end]*u"cm"
+        verbose && @warn "ODE solve did not reach end of drying. Either parameters are bad, or tspan is not large enough." sol.retcode sol.prob.p.hf0 sol[end]
         return NaN
     end
     tmd = sol.t[end].*u"hr"
-    ftrim = pdfit.t .< tmd
-    tf_trim = pdfit.t[ftrim]
-    Tfmd = sol(ustrip.(u"hr", tf_trim), idxs=2).*u"K"
+    nt = length(sol.t) - 1
+    preinterp = all(sol.t[begin:nt÷2]*u"hr" .== pdfit.t[begin:nt÷2]) # If ODE solution has been interpolated already to time points...
     # Compute temperature objective for all frozen temperatures
-    Tfobj = mapreduce(+, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
-        trim = 1:min(itf, length(tf_trim))
-        # verbose && @info "Tf errors" Tf[trim] .- Tfmd[trim]
-        return sum(abs2.(Tf[trim] .- Tfmd[trim]))/length(trim)
-    end
-    # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
-    # This bit replaces any subzero values with the previous positive temperature, and notifies that it happened.
-    if any(Tfmd .< 0u"K")
-        subzero = findall(Vector(Tfmd .< 0u"K"))
-        Tfmd[subzero] .= Tfmd[subzero[1] - 1] 
-        verbose && @info "bad interpolation" subzero Tfmd[subzero]
+    if preinterp
+        Tfmd = sol[2, begin:end-1].*u"K" # Leave off last time point because is end time
+        Tfobj = mapreduce(+, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
+            trim = 1:min(itf, nt)
+            # verbose && @info "Tf errors" Tf[trim] .- Tfmd[trim]
+            return sum(abs2.(Tf[trim] .- Tfmd[trim]))/length(trim)
+        end
+    else
+        ftrim = pdfit.t .< tmd
+        tf_trim = pdfit.t[ftrim]
+        Tfmd = sol(ustrip.(u"hr", tf_trim), idxs=2).*u"K"
+        # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
+        # This bit replaces any subzero values with the previous positive temperature, and notifies that it happened.
+        if any(Tfmd .< 0u"K")
+            subzero = findall(Vector(Tfmd .< 0u"K"))
+            Tfmd[subzero] .= Tfmd[subzero[1] - 1] 
+            verbose && @info "bad interpolation" subzero Tfmd[subzero]
+        end
+        Tfobj = mapreduce(+, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
+            trim = 1:min(itf, length(tf_trim))
+            # verbose && @info "Tf errors" Tf[trim] .- Tfmd[trim]
+            return sum(abs2.(Tf[trim] .- Tfmd[trim]))/length(trim)
+        end
     end
     if ismissing(pdfit.Tvws) # No vial wall temperatures
         Tvwobj = 0u"K^2"
@@ -221,13 +232,22 @@ function obj_expT(sol::ODESolution, pdfit; tweight=1.0, verbose = false)
         Tvwend = pdfit.Tvws
         Tvwobj = (sol[3, end]*u"K" - uconvert(u"K", Tvwend))^2
     else # Regular case of fitting to at least one full temperature series
-        vwtrim = pdfit.t .< tmd
-        tvw_trim = pdfit.t[vwtrim]
-        Tvwmd = sol(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
-        # Compute temperature objective for all vial wall temperatures
-        Tvwobj = mapreduce(+, pdfit.Tvws, pdfit.Tvw_iend) do Tvw, itvw
-            trim = 1:min(itvw, length(tvw_trim))
-            return sum(abs2.(Tvw[trim] .- Tvwmd[trim]))/length(trim)
+        if preinterp
+            Tvwmd = sol[3, begin:end-1].*u"K" # Leave off last time point because is end time
+            Tvwobj = mapreduce(+, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
+                trim = 1:min(itf, nt)
+                # verbose && @info "Tf errors" Tf[trim] .- Tfmd[trim]
+                return sum(abs2.(Tvw[trim] .- Tvwmd[trim]))/length(trim)
+            end
+        else
+            vwtrim = pdfit.t .< tmd
+            tvw_trim = pdfit.t[vwtrim]
+            Tvwmd = sol(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
+            # Compute temperature objective for all vial wall temperatures
+            Tvwobj = mapreduce(+, pdfit.Tvws, pdfit.Tvw_iend) do Tvw, itvw
+                trim = 1:min(itvw, length(tvw_trim))
+                return sum(abs2.(Tvw[trim] .- Tvwmd[trim]))/length(trim)
+            end
         end
     end
     if ismissing(pdfit.t_end)
