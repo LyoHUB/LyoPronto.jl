@@ -168,8 +168,8 @@ function PhysProp(x, args...)
     PhysProp{typeof(x), func_T, func_p, func_f}(x)
 end
 
-struct ConstPhysProp 
-    val
+struct ConstPhysProp{T}
+    val::T
 end
 (cpp::ConstPhysProp)(args...) = cpp.val
 
