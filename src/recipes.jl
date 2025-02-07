@@ -54,9 +54,9 @@ exptfplot
     markers = (:circle, :square, :diamond, :hexagon)
     
     if length(Ts) == 1
-        labels = ["\$T_{f}\$"*labsuffix]
+        labels = ["\$T_\\mathrm{f}\$"*labsuffix]
     else
-        labels = ["\$T_{f$i}\$"*labsuffix for i in 1:n]
+        labels = ["\$T_\\mathrm{f$i}\$"*labsuffix for i in 1:n]
     end
     for (i, T) in enumerate(Ts)
         @series begin
@@ -102,9 +102,9 @@ exptvwplot
     markers = (:pentagon, :ltriangle, :rtriangle, :heptagon)
     
     if length(Ts) == 1
-        labels = ["\$T_{vw}\$"*labsuffix]
+        labels = ["\$T_\\mathrm{vw}\$"*labsuffix]
     else
-        labels = ["\$T_{vw$i}\$"*labsuffix for i in 1:n]
+        labels = ["\$T_\\mathrm{vw$i}\$"*labsuffix for i in 1:n]
     end
     for (i, T) in enumerate(Ts)
         T_trim = T[begin:trim:end]
@@ -145,9 +145,9 @@ modconvtplot
     ]
     markers = (:utriangle, :dtriangle, :cross)
     if length(sols) == 1
-        labels = ["\$T_{f}\$"*labsuffix]
+        labels = ["\$T_\\mathrm{f}\$"*labsuffix]
     else
-        labels = ["\$T_{f$i}\$"*labsuffix for i in 1:length(sols)]
+        labels = ["\$T_\\mathrm{f$i}\$"*labsuffix for i in 1:length(sols)]
     end
 
     
@@ -198,7 +198,7 @@ modrftplot
         T = sol.(t_nd, idxs=2)*u"K"
         markershape --> :dtriangle
         seriescolor --> color
-        label --> "\$T_{f}\$"*labsuffix # Default label
+        label --> "\$T_mathrm{f}\$"*labsuffix # Default label
         time, T
     end
     @series begin
@@ -207,7 +207,7 @@ modrftplot
         T = sol.(t_nd, idxs=3)*u"K"
         markershape --> :utriangle
         seriescolor --> color
-        label --> "\$T_{vw}\$"*labsuffix # Default label
+        label --> "\$T_\\mathrm{vw}\$"*labsuffix # Default label
         linestyle := :dash
         time, T
     end
@@ -228,7 +228,7 @@ tendplot
     t_end = tp.args[1]
     @series begin
         seriestype := :vline
-        label --> "\$t_{end}\$"
+        label --> "\$t_\\mathrm{end}\$"
         seriescolor --> :gray
         linestyle --> :dot
         linewidth --> 3
