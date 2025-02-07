@@ -218,7 +218,7 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
     end
     Tfobj = 0.0u"K^2"
     for (j, iend) in enumerate(pdfit.Tf_iend)
-        trim = min(iend, nt)
+        trim = min(iend, length(Tfmd))
         Tfobj += sum(abs2, (pdfit.Tfs[j][begin:trim] .- Tfmd[begin:trim]))/trim
     end
     # Tfobj = mapreduce(+, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
@@ -244,7 +244,7 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
         # Compute temperature objective for all vial wall temperatures
         Tvwobj = 0.0u"K^2"
         for (j, iend) in enumerate(pdfit.Tvw_iend)
-            trim = min(iend, nt)
+            trim = min(iend, length(Tvwmd))
             Tvwobj += sum(abs2, (pdfit.Tvws[j][begin:trim] .- Tvwmd[begin:trim]))/trim
         end
         # Tvwobj = mapreduce(+, pdfit.Tfs, pdfit.Tvw_iend) do Tf, itf
