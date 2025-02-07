@@ -51,8 +51,8 @@ See [`RpFormFit`](@ref) and [`RampedVariable`](@ref) for convenience types that 
 
 For implementation details, see [`lumped_cap_rf_LC1`](@ref).
 """
-function lumped_cap_rf(u, params, tn)
-    lumped_cap_rf_LC1(u, params, tn)[1]
+function lumped_cap_rf!(du, u, params, tn)
+    du .= lumped_cap_rf_LC1(u, params, tn)[1]
 end
 
 
@@ -108,11 +108,11 @@ function lumped_cap_rf_LC1(u, params, tn)
     end
     # Evaluate derivatives
     # Desublimation is not allowed here: if we clamp mflow itself, then the DAE is unstable
-    dm_f = min(0u"kg/s", -mflow/porosity)
+    dm_f = min(0.0u"kg/s", -mflow/porosity)
     dT_f =  (Q_shf+Q_vwf+Q_RF_f -Q_sub) / (m_f*cp_f) - T_f*dm_f/m_f
     dT_vw = (Q_shw-Q_vwf+Q_RF_vw) / (m_v*cp_v)
     # Strip units from derivatives; return all heat transfer terms
-    return ustrip.([u"g/hr", u"K/hr", u"K/hr"], [dm_f, dT_f, dT_vw]), uconvert.(u"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw, ])
+    return ustrip.((u"g/hr", u"K/hr", u"K/hr"), [dm_f, dT_f, dT_vw]), uconvert.(u"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw, ])
 end
 
 # ```
@@ -217,6 +217,6 @@ function ODEProblem(po::ParamObjRF; u0 = nothing, tspan=nothing)
         end
     end
     sort!(tstops); unique!(tstops)
-    return ODEProblem(lumped_cap_rf, u0, tspan, po; 
+    return ODEProblem{true}(lumped_cap_rf!, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback)
 end

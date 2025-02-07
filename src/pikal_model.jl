@@ -143,7 +143,7 @@ function ODEProblem(po::ParamObjPikal; u0=nothing, tspan=(0.0, 200.0))
         end
     end
     sort!(tstops); unique!(tstops)
-    return ODEProblem(lyo_1d_dae_f, u0, tspan, po; 
+    return ODEProblem{true}(lyo_1d_dae_f, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback)
 end
 
