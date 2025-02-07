@@ -59,8 +59,11 @@ function (rv::RampedVariable{false, T1,T2,T3,T4})(t) where {T1,T2,T3,T4}
 end
 function (rv::RampedVariable{true, T1,T2,T3,T4})(t) where {T1,T2,T3,T4}
     im = findlast(rv.timestops .<= t)
+    # isnothing(im) && (im = 1)
     if im == length(rv.timestops)
         return rv.setpts[end]
+    elseif isnothing(im) # Negative time
+        return rv.setpts[1]
     elseif iseven(im)
         return rv.setpts[im÷2+1]
     else
@@ -212,13 +215,16 @@ Principal Cases:
 - RF with measured vial wall: provide `t, Tfs, Tvws`, 
 - RF, matching model Tvw to experimental Tf[end] without measured vial wall: provide `t, Tfs, Tvw`
 """
-struct PrimaryDryFit{Tt, TT, Ti, Ttv<:AbstractVector{Tt}, TTv<:AbstractVector{TT}} 
+struct PrimaryDryFit{Tt, TT, Ti, Ttv<:AbstractVector{Tt}, TTv<:AbstractVector{TT}, 
+        TTvw<:Union{Missing, TT, Tuple{TTv, Vararg{TTv}}},
+        TTvwi<:Union{Missing, Vector{Ti}},
+        Tte<:Union{Missing, Tt}}
     t::Ttv
     Tfs::Tuple{TTv, Vararg{TTv}}
     Tf_iend::Vector{Ti}# = [length(Tf) for Tf in Tfs]
-    Tvws::Union{Missing, TT, Tuple{TTv, Vararg{TTv}}}# = missing
-    Tvw_iend::Union{Missing, Vector{Ti}}# = (ismissing(Tvws) ? missing : [length(Tvw) for Tvw in Tvws])
-    t_end::Union{Missing, Tt}# = missing
+    Tvws::TTvw# = missing
+    Tvw_iend::TTvwi# = (ismissing(Tvws) ? missing : [length(Tvw) for Tvw in Tvws])
+    t_end::Tte# = missing
 end
 
 # Primary constructor

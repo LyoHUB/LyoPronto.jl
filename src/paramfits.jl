@@ -192,7 +192,7 @@ If there are multiple series of `Tf` in `pdfit`, squared error is computed for e
 
 I've considered writing several methods and dispatching on `pdfit` somehow, which would be cool and might individually be easier to read. But control flow might be harder to document and explain, and this should work just fine.
 """
-function obj_expT(sol::ODESolution, pdfit; tweight=1.0, verbose = false)
+function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5, TTvw, TTvwi, Tte}, ; tweight=1.0, verbose = false) where {TT1, TT2, TT3, TT4, TT5, TTvw, TTvwi, Tte}
     if sol.retcode !== ReturnCode.Terminated
         # hf_end = sol[1, end]*u"cm"
         verbose && @warn "ODE solve did not reach end of drying. Either parameters are bad, or tspan is not large enough." sol.retcode sol.prob.p.hf0 sol[end]
@@ -200,15 +200,10 @@ function obj_expT(sol::ODESolution, pdfit; tweight=1.0, verbose = false)
     end
     tmd = sol.t[end].*u"hr"
     nt = length(sol.t) - 1
-    preinterp = all(sol.t[begin:nt÷2]*u"hr" .== pdfit.t[begin:nt÷2]) # If ODE solution has been interpolated already to time points...
+    preinterp = all(sol.t[begin:nt÷2]*u"hr" .≈ pdfit.t[begin:nt÷2]) # If ODE solution has been interpolated already to time points...
     # Compute temperature objective for all frozen temperatures
     if preinterp
         Tfmd = sol[2, begin:end-1].*u"K" # Leave off last time point because is end time
-        Tfobj = mapreduce(+, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
-            trim = 1:min(itf, nt)
-            # verbose && @info "Tf errors" Tf[trim] .- Tfmd[trim]
-            return sum(abs2.(Tf[trim] .- Tfmd[trim]))/length(trim)
-        end
     else
         ftrim = pdfit.t .< tmd
         tf_trim = pdfit.t[ftrim]
@@ -220,43 +215,52 @@ function obj_expT(sol::ODESolution, pdfit; tweight=1.0, verbose = false)
             Tfmd[subzero] .= Tfmd[subzero[1] - 1] 
             verbose && @info "bad interpolation" subzero Tfmd[subzero]
         end
-        Tfobj = mapreduce(+, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
-            trim = 1:min(itf, length(tf_trim))
-            # verbose && @info "Tf errors" Tf[trim] .- Tfmd[trim]
-            return sum(abs2.(Tf[trim] .- Tfmd[trim]))/length(trim)
-        end
     end
-    if ismissing(pdfit.Tvws) # No vial wall temperatures
+    Tfobj = 0.0u"K^2"
+    for (j, iend) in enumerate(pdfit.Tf_iend)
+        trim = min(iend, nt)
+        Tfobj += sum(abs2, (pdfit.Tfs[j][begin:trim] .- Tfmd[begin:trim]))/trim
+    end
+    # Tfobj = mapreduce(+, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
+    #     trim = 1:min(itf, nt)
+    #     # verbose && @info "Tf errors" Tf[trim] .- Tfmd[trim]
+    #     return sum(abs2.(Tf[trim] .- Tfmd[trim]))/length(trim)
+    # end
+    if TTvw == Missing # No vial wall temperatures, encoded in type
+    # if ismissing(pdfit.Tvws) # No vial wall temperatures
         Tvwobj = 0u"K^2"
-    elseif ismissing(pdfit.Tvw_iend) # Provide only an endpoint temperature
+    elseif TTvwi == Missing # Check type parameters
+    # elseif ismissing(pdfit.Tvw_iend) # Provide only an endpoint temperature
         Tvwend = pdfit.Tvws
         Tvwobj = (sol[3, end]*u"K" - uconvert(u"K", Tvwend))^2
     else # Regular case of fitting to at least one full temperature series
         if preinterp
             Tvwmd = sol[3, begin:end-1].*u"K" # Leave off last time point because is end time
-            Tvwobj = mapreduce(+, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
-                trim = 1:min(itf, nt)
-                # verbose && @info "Tf errors" Tf[trim] .- Tfmd[trim]
-                return sum(abs2.(Tvw[trim] .- Tvwmd[trim]))/length(trim)
-            end
         else
             vwtrim = pdfit.t .< tmd
             tvw_trim = pdfit.t[vwtrim]
             Tvwmd = sol(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
-            # Compute temperature objective for all vial wall temperatures
-            Tvwobj = mapreduce(+, pdfit.Tvws, pdfit.Tvw_iend) do Tvw, itvw
-                trim = 1:min(itvw, length(tvw_trim))
-                return sum(abs2.(Tvw[trim] .- Tvwmd[trim]))/length(trim)
-            end
         end
+        # Compute temperature objective for all vial wall temperatures
+        Tvwobj = 0.0u"K^2"
+        for (j, iend) in enumerate(pdfit.Tvw_iend)
+            trim = min(iend, nt)
+            Tvwobj += sum(abs2, (pdfit.Tvws[j][begin:trim] .- Tvwmd[begin:trim]))/trim
+        end
+        # Tvwobj = mapreduce(+, pdfit.Tfs, pdfit.Tvw_iend) do Tf, itf
+        #     trim = min(itf, nt)
+        #     # verbose && @info "Tf errors" Tf[trim] .- Tfmd[trim]
+        #     return sum(abs2.(Tvw[trim] .- Tvwmd[trim]))/length(trim)
+        # end
     end
-    if ismissing(pdfit.t_end)
-        tobj = 0u"hr^2"
+    if Tte == Missing
+    # if ismissing(pdfit.t_end) # No drying time provided
+        tobj = 0.0u"hr^2"
     else # Compare drying time
         tobj = ((pdfit.t_end - tmd))^2
     end
     verbose && @info "loss call" tmd tobj Tfobj Tvwobj 
-    return Tfobj/u"K^2" + Tvwobj/u"K^2" + tweight*tobj/u"hr^2"
+    return ustrip(u"K^2", Tfobj + Tvwobj) + tweight*ustrip(u"hr^2", tobj)
 end
 
 @doc raw"""
