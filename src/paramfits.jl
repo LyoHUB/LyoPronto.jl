@@ -1,5 +1,6 @@
-export gen_sol_conv_dim, obj_tT_conv
-export obj_expT, genobj_posprm, err_expT 
+export gen_sol_KRp, gen_sol_Rp, gen_sol_rf
+export obj_KRp, obj_Rp, obj_KBB
+export obj_expT, err_expT 
 
 @doc raw"""
     obj_expT(sol, pdfit; tweight=1, verbose=false)
