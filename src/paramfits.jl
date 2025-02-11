@@ -221,16 +221,9 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
         trim = min(iend, length(Tfmd))
         Tfobj += sum(abs2, (pdfit.Tfs[j][begin:trim] .- Tfmd[begin:trim]))/trim
     end
-    # Tfobj = mapreduce(+, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
-    #     trim = 1:min(itf, nt)
-    #     # verbose && @info "Tf errors" Tf[trim] .- Tfmd[trim]
-    #     return sum(abs2.(Tf[trim] .- Tfmd[trim]))/length(trim)
-    # end
     if TTvw == Missing # No vial wall temperatures, encoded in type
-    # if ismissing(pdfit.Tvws) # No vial wall temperatures
         Tvwobj = 0u"K^2"
-    elseif TTvwi == Missing # Check type parameters
-    # elseif ismissing(pdfit.Tvw_iend) # Provide only an endpoint temperature
+    elseif TTvwi == Missing # Endpoint only temperature, encoded in type
         Tvwend = pdfit.Tvws
         Tvwobj = (sol[3, end]*u"K" - uconvert(u"K", Tvwend))^2
     else # Regular case of fitting to at least one full temperature series
@@ -247,14 +240,8 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
             trim = min(iend, length(Tvwmd))
             Tvwobj += sum(abs2, (pdfit.Tvws[j][begin:trim] .- Tvwmd[begin:trim]))/trim
         end
-        # Tvwobj = mapreduce(+, pdfit.Tfs, pdfit.Tvw_iend) do Tf, itf
-        #     trim = min(itf, nt)
-        #     # verbose && @info "Tf errors" Tf[trim] .- Tfmd[trim]
-        #     return sum(abs2.(Tvw[trim] .- Tvwmd[trim]))/length(trim)
-        # end
     end
-    if Tte == Missing
-    # if ismissing(pdfit.t_end) # No drying time provided
+    if Tte == Missing # No drying time provided: encoded in type
         tobj = 0.0u"hr^2"
     else # Compare drying time
         tobj = ((pdfit.t_end - tmd))^2
