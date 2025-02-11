@@ -147,7 +147,7 @@ function get_tstops(po::ParamObjPikal)
     _get_tstops((po.Tsh, po.pch))
 end
 
-function ODEProblem(po::ParamObjPikal; u0=calc_u0(po), tspan=(0.0, 200.0))
+function ODEProblem(po::ParamObjPikal; u0=calc_u0(po), tspan=(0.0, 1000.0))
     tstops = get_tstops(po)
     return ODEProblem{true}(lyo_1d_dae_f, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback)
