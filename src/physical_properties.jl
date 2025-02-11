@@ -91,7 +91,7 @@ const μ_vap = 8.1 * u"μPa*s"
 # Definitely varying properties
 
 @doc raw"""
-    calc_psub(T::F) where F<:Number
+    calc_psub(T) 
     calc_psub(T::Q) where Q<:Quantity
 
 Compute pressure (in Pascals) of sublimation at temperature `T` in Kelvin.
@@ -99,7 +99,7 @@ Compute pressure (in Pascals) of sublimation at temperature `T` in Kelvin.
 This is essentially an Arrhenius fit, where we compute:
 `psub = pref * exp(-ΔHsub*Mw/R/T)`
 """
-calc_psub(T::F) where F<:Number = 359.7e10 * exp(-θsub/(T*u"K"))
+calc_psub(T) = 359.7e10 * exp(-θsub/(T*u"K")) # Dimensionless: Pa
 calc_psub(T::Q) where Q<:Quantity = 359.7e10*u"Pa" * exp(-θsub/uconvert(u"K",T))
 
 
