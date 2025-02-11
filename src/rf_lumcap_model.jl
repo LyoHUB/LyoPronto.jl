@@ -201,22 +201,17 @@ function Base.getindex(po::ParamObjRF, i)
     end
 end
 
-function ODEProblem(po::ParamObjRF; u0 = nothing, tspan=nothing)
-    if isnothing(u0)
-        u0 = ustrip.([u"g", u"K", u"K"], [po.m_f0, po.Tsh(0u"s"), po.Tsh(0u"s")])
-    end
-    if isnothing(tspan)
-        tspan = (0.0, 200.0)
-    end
-    tstops = [0.0]
-    for control in [po.Tsh, po.pch, po.P_per_vial]
-        if control isa RampedVariable && !isnothing(control.timestops)
-            tstops = vcat(tstops, ustrip.(u"hr", control.timestops))
-        elseif control isa LinearInterpolation
-            tstops = vcat(tstops, ustrip.(u"hr", control.t))
-        end
-    end
-    sort!(tstops); unique!(tstops)
+function calc_u0(po::ParamObjRF)
+    Tsh0_nd = ustrip(u"K", float(po.Tsh(0u"s")))
+    # return ustrip.((u"g", u"K", u"K"), (po.m_f0, Tsh0, Tsh0))
+    return [ustrip(u"g", po.m_f0), Tsh0_nd, Tsh0_nd]
+end
+function get_tstops(po::ParamObjRF)
+    _get_tstops((po.Tsh, po.pch, po.P_per_vial))
+end
+
+function ODEProblem(po::ParamObjRF; u0 = calc_u0(po), tspan=(0.0, 400.0))
+    tstops = get_tstops(po)
     return ODEProblem{true}(lumped_cap_rf!, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback)
 end

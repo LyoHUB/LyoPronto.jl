@@ -1,6 +1,7 @@
 export lyo_1d!, lyo_1d_dae_f, subflux_Tsub, calc_psub
 export end_drying_callback
 export ParamObjPikal
+export calc_u0
 
 @doc raw"""
     end_cond(u, t, integ)
@@ -127,22 +128,27 @@ function Base.show(io::IO, po::ParamObjPikal)
     return print(io, str)
 end
 
-function ODEProblem(po::ParamObjPikal; u0=nothing, tspan=(0.0, 200.0))
-    if isnothing(u0)
-        u0 = ustrip.([u"cm", u"K"],[po.hf0, po.Tsh(0u"s")])
-    end
-    if isnothing(tspan) 
-        tspan = (0.0, 200.0)
-    end
-    tstops = [0.0]
-    for control in [po.Tsh, po.pch]
-        if control isa RampedVariable && !isnothing(control.timestops)
-            tstops = vcat(tstops, ustrip.(u"hr", control.timestops))
-        elseif control isa LinearInterpolation
-            tstops = vcat(tstops, ustrip.(u"hr", control.t))
-        end
-    end
+function calc_u0(po::ParamObjPikal)
+    # return ustrip(u"cm", u"K"),[po.hf0, po.Tsh(0u"s")])
+    return [ustrip(u"cm", po.hf0), ustrip(u"K", float(po.Tsh(0u"s")))]
+end
+extract_ts(rv::RampedVariable{true, T1, T2, T3, T4}) where {T1, T2, T3, T4} = ustrip.(u"hr", float.(rv.timestops))
+extract_ts(rv::RampedVariable{false, T1, T2, T3, T4}) where {T1, T2, T3, T4} = [0.0]
+extract_ts(interp::DataInterpolations.AbstractInterpolation) = ustrip.(u"hr", float.(interp.t))
+extract_ts(a::Any) = [0.0]
+function _get_tstops(controls::Tuple)
+    # tstops = [0.0]
+    tstops = mapreduce(extract_ts, vcat, controls)
+    # tstops = vcat(tstops, newstops)
     sort!(tstops); unique!(tstops)
+    return tstops
+end
+function get_tstops(po::ParamObjPikal)
+    _get_tstops((po.Tsh, po.pch))
+end
+
+function ODEProblem(po::ParamObjPikal; u0=calc_u0(po), tspan=(0.0, 200.0))
+    tstops = get_tstops(po)
     return ODEProblem{true}(lyo_1d_dae_f, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback)
 end
