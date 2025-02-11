@@ -47,10 +47,10 @@ and will return the value at that time point along the ramp process.
 A plot recipe is also provided for this type, e.g. `plot(rv; tmax=10u"hr")` where `tmax` indicates where to stop drawing the last setpoint hold.
 """
 struct RampedVariable{vary, T1, T2, T3, T4}
-    setpts::Union{T1, Vector{T1}}
-    ramprates::Union{Vector{T2}, T2}
-    holds::Union{Vector{T3}, T3}
-    timestops::Union{Vector{T4}, T4}
+    setpts::T1
+    ramprates::T2
+    holds::T3
+    timestops::T4
 end
 
 # get_dimensions(::Type{Quantity{T,D,U}}) where {T, D, U} = D
@@ -90,7 +90,7 @@ function RampedVariable(setpts, ramprate)
     end
     timestops = fill(0.0*setpts[1]/ramprate[1], 2)
     timestops[2] = timestops[1] + (setpts[2]-setpts[1])/ramprate
-    RampedVariable{true, eltype(setpts), typeof(ramprate), Nothing, eltype(timestops)}(setpts, [ramprate], nothing, timestops)
+    RampedVariable{true, typeof(setpts), Vector{typeof(ramprate)}, Nothing, typeof(timestops)}(setpts, [ramprate], nothing, timestops)
 end
 
 function RampedVariable(setpts, ramprates, holds)
@@ -116,11 +116,11 @@ function RampedVariable(setpts, ramprates, holds)
             timestops[2i+2] = timestops[2i+1] + (timestops[2i+1]-timestops[2i+2])
         end
     end
-    RampedVariable{true, eltype(setpts), eltype(ramprates), eltype(holds), eltype(timestops)}(setpts, ramprates, holds, timestops)
+    RampedVariable{true, typeof(setpts), typeof(ramprates), typeof(holds), typeof(timestops)}(setpts, ramprates, holds, timestops)
 end
 RampedVariable(setpts, ramprates::Nothing, holds::Nothing, timestops::Nothing) = RampedVariable{false, typeof(setpts), Nothing, Nothing, Nothing}(setpts, ramprates, holds, timestops)
-RampedVariable(setpts, ramprates, holds::Nothing, timestops) = RampedVariable{true, eltype(setpts), eltype(ramprates), Nothing, eltype(timestops)}(setpts, ramprates, holds, timestops)
-RampedVariable(setpts, ramprates, holds, timestops) = RampedVariable{true, eltype(setpts), eltype(ramprates), eltype(holds), eltype(timestops)}(setpts, ramprates, holds, timestops)
+RampedVariable(setpts, ramprates, holds::Nothing, timestops) = RampedVariable{true, typeof(setpts), typeof(ramprates), Nothing, typeof(timestops)}(setpts, ramprates, holds, timestops)
+RampedVariable(setpts, ramprates, holds, timestops) = RampedVariable{true, typeof(setpts), typeof(ramprates), typeof(holds), typeof(timestops)}(setpts, ramprates, holds, timestops)
 function Base.:(+)(rv::RampedVariable{b, T1,T2,T3,T4}, x) where {b, T1,T2,T3,T4}
     return @set rv.setpts .+= x
 end
