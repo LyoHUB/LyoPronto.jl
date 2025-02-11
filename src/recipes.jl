@@ -6,7 +6,6 @@ export qrf_integrate
 @recipe function f(::Type{Val{:samplemarkers}}, x, y, z; step = 10, offset=1)
     n = length(y)
     sx, sy = x[offset:step:n], y[offset:step:n]
-    linewidth --> 2.5
     # add an empty series with the correct type for legend markers
     @series begin
         seriestype := :path
@@ -198,7 +197,7 @@ modrftplot
         T = sol.(t_nd, idxs=2)*u"K"
         markershape --> :dtriangle
         seriescolor --> color
-        label --> "\$T_mathrm{f}\$"*labsuffix # Default label
+        label --> "\$T_\\mathrm{f}\$"*labsuffix # Default label
         time, T
     end
     @series begin
@@ -259,7 +258,8 @@ end
         if pdf.Tvws isa Number
             @series begin
                 seriestype := :scatter
-                return [pdf.t[end]], [pdf.Tvws]
+                label --> "\$T_\\mathrm{vw}\$"
+                return [pdf.t[maximum(pdf.Tf_iend)]], [pdf.Tvws]
             end
         else 
             @series begin
@@ -285,7 +285,7 @@ end
         @series begin
             fillrange := ys_cum[:,i]
             fillcolor --> pal[i]
-            linewidth --> 0
+            linealpha --> 0
             marker --> :none
             return x,  ys_cum[:,i+1]
         end

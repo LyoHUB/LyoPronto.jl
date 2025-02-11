@@ -166,11 +166,11 @@ If given, `fitdat` is used to set `saveat` for the ODE solution.
 `kwargs` are passed directly (as is) to the ODE `solve` call.
 """
 function gen_sol_KRp(KRp_log, po::ParamObjPikal; Rp_scl=Rp_base_scl, kwargs...)
-    new_po = @set new_params.Kshf = ConstPhysProp(exp(KRp_prm)[1]*u"W/m^2/K")
+    new_po = @set po.Kshf = ConstPhysProp(exp(KRp_log[1])*u"W/m^2/K")
     return gen_sol_Rp(KRp_log[2:4], new_po; Rp_scl=Rp_scl, kwargs...)
 end
 function gen_sol_KRp(KRp_log, po::ParamObjPikal, fitdat::PrimaryDryFit; Rp_scl=Rp_base_scl, kwargs...)
-    new_po = @set new_params.Kshf = ConstPhysProp(exp(KRp_prm)[1]*u"W/m^2/K")
+    new_po = @set po.Kshf = ConstPhysProp(exp(KRp_log[1])*u"W/m^2/K")
     return gen_sol_Rp(KRp_log[2:4], new_po, fitdat; Rp_scl=Rp_scl, kwargs...)
 end
 
@@ -217,13 +217,13 @@ If given, `fitdat` is used to set `saveat` for the ODE solution.
 `kwargs` are passed directly (as is) to the ODE `solve` call.
 """
 function gen_sol_Rp(Rp_log, po::ParamObjPikal; Rp_scl=Rp_base_scl, kwargs...)
-    new_params = @set po.Rp = RpFormFit((exp.(KRp_prm[2:4]).*Rp_scl)...)
+    new_params = @set po.Rp = RpFormFit((exp.(Rp_log).*Rp_scl)...)
     newprob = ODEProblem(new_params)
     sol = solve(newprob, Rodas4P(); kwargs...)
     return sol
 end
 function gen_sol_Rp(Rp_log, po::ParamObjPikal, fitdat::PrimaryDryFit; Rp_scl=Rp_base_scl, kwargs...)
-    new_params = @set po.Rp = RpFormFit((exp.(KRp_prm[2:4]).*Rp_scl)...)
+    new_params = @set po.Rp = RpFormFit((exp.(Rp_log).*Rp_scl)...)
     newprob = ODEProblem(new_params)
     sol = solve(newprob, Rodas4P(); saveat=ustrip.(u"hr", fitdat.t), kwargs...)
     return sol
@@ -293,7 +293,7 @@ function gen_sol_rf(KBB_log, po::ParamObjRF; rfprm_scale = rfprm_base_scale, kwa
     @reset newp.B_vw = exp(KBB_log[3])*rfprm_scale[3]
     newprob = ODEProblem(newp)
     sol = solve(newprob, Rodas3(); kwargs...)
-    return sol, newp
+    return sol
 end
 function gen_sol_rf(KBB_log, po::ParamObjRF, fitdat::PrimaryDryFit; rfprm_scale = rfprm_base_scale, kwargs...)
     newp = deepcopy(po)
@@ -302,7 +302,7 @@ function gen_sol_rf(KBB_log, po::ParamObjRF, fitdat::PrimaryDryFit; rfprm_scale 
     @reset newp.B_vw = exp(KBB_log[3])*rfprm_scale[3]
     newprob = ODEProblem(newp)
     sol = solve(newprob, Rodas3(); saveat=ustrip.(u"hr", fitdat.t), kwargs...)
-    return sol, newp
+    return sol
 end
 
 """
