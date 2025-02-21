@@ -186,8 +186,9 @@ Calculate the sum of squared error (objective function) for fitting parameters i
 - `verbose`: (Optional) A boolean flag to enable verbose output. Default is `false`.
 """
 function obj_KRp(KRp_log, pf; tweight=1.0, verbose=false)
+    rtype = eltype(KRp_log)
     sol = gen_sol_KRp(KRp_log, pf[1], pf[2])
-    return obj_expT(sol, pf[2], tweight=tweight, verbose=verbose)
+    return obj_expT(sol, pf[2], tweight=tweight, verbose=verbose)::rtype
 end
 
 # function gen_sol_conv_dim(KRp_prm, otherparams, u0, tspan; kwargs...)
@@ -240,8 +241,9 @@ Calculate the sum of squared error (objective function) for fitting parameters i
 - `verbose`: (Optional) A boolean flag to enable verbose output. Default is `false`.
 """
 function obj_Rp(Rp_log, pf; tweight=1.0, verbose=false)
+    rtype = eltype(Rp_log)
     sol = gen_sol_Rp(Rp_log, pf[1], pf[2])
-    return obj_expT(sol, pf[2], tweight=tweight, verbose=verbose)
+    return obj_expT(sol, pf[2], tweight=tweight, verbose=verbose)::rtype
 end
 
 
@@ -317,8 +319,9 @@ Calculate the sum of squared error (objective function) for fitting parameters i
 - `verbose`: (Optional) A boolean flag to enable verbose output. Default is `false`.
 """
 function obj_KBB(KBB_log, pf; tweight=1.0, verbose=false)
+    rtype = eltype(KBB_log)
     sol = gen_sol_rf(KBB_log, pf[1], pf[2])
-    return obj_expT(sol, pf[2], tweight=tweight, verbose=verbose)
+    return obj_expT(sol, pf[2], tweight=tweight, verbose=verbose)::rtype
 end
 
 # @doc raw"""

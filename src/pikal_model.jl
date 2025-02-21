@@ -81,7 +81,7 @@ See [`RpFormFit`](@ref LyoPronto.RpFormFit) and [`RampedVariable`](@ref LyoPront
 - `Kshf(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
 - `Tsh(t)`, `pch(t)` return shelf temperature and chamber pressure respectively at time `t`.
 """
-lyo_1d_dae_f = ODEFunction(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
+const lyo_1d_dae_f = ODEFunction(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
 
 
 # ```
