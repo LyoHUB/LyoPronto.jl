@@ -71,6 +71,6 @@
     # -------------------
     # Simulate RF
     prob = ODEProblem(po_rf)
-    sol = solve(prob, Rosenbrock23(autodiff=false))
+    sol = solve(prob, Rosenbrock23())
     end
 end
