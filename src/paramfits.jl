@@ -310,7 +310,7 @@ end
 """
     obj_KBB(KBB_log, pf; tweight=1.0, verbose=false)
 
-Calculate the sum of squared error (objective function) for fitting parameters in the LC1 model.
+Calculate the sum of squared error (objective function) for fitting parameters in the LC3 model.
 
 # Arguments
 - `KBB_log`: The nondimensional logs of `[Kvwf, Bf, Bvw]`; see [`LyoPronto.gen_sol_rf`](@ref).

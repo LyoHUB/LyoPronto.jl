@@ -1,4 +1,4 @@
-export lumped_cap_rf, lumped_cap_rf_LC1
+export lumped_cap_rf, lumped_cap_rf_LC3
 export ParamObjRF
 
 function shapefac(Bi)
@@ -49,24 +49,24 @@ See [`RpFormFit`](@ref) and [`RampedVariable`](@ref) for convenience types that 
 
 - `A_rad` and `alpha` are used only in the LC2 and LC3 versions of the model, and can be left out.
 
-For implementation details, see [`lumped_cap_rf_LC1`](@ref).
+For implementation details, see [`lumped_cap_rf_LC3`](@ref).
 """
 function lumped_cap_rf!(du, u, params, tn)
-    du .= lumped_cap_rf_LC1(u, params, tn)[1]
+    du .= lumped_cap_rf_LC3(u, params, tn)[1]
 end
 
 
 @doc raw"""
-    lumped_cap_rf_LC1(u, params, tn)
+    lumped_cap_rf_LC3(u, params, tn)
 
 This does the work for [`lumped_cap_rf`](@ref), but returns `dudt,  [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw]` with `Q_...` as Unitful quantities in watts. 
 The extra results are helpful in investigating the significance of the various heat transfer modes,
 but are not necessary in the ODE integration.
 
-LC1: Q_shw evaluated with K_shf; shape factor included; α=0
+LC3: Q_shw evaluated with K_shf; shape factor included; α=0
 My preferred version.
 """
-function lumped_cap_rf_LC1(u, params, tn)
+function lumped_cap_rf_LC3(u, params, tn)
     # Unpack all the parameters
     Rp, h_f0, c_solid, ρ_solution = params[1]
     K_shf_f, A_v, A_p, = params[2]
