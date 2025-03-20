@@ -2,6 +2,7 @@ export lyo_1d!, lyo_1d_dae_f, subflux_Tsub, calc_psub
 export end_drying_callback
 export ParamObjPikal
 export calc_u0
+export RpEstimator, calc_hRp_T
 
 @doc raw"""
     end_cond(u, t, integ)
@@ -208,4 +209,86 @@ end
 
 function subflux_Tsub(sol::T, t) where T<:ODESolution
     subflux_Tsub(sol(t), sol.p, t)
+end
+
+# -----------------
+# Directly estimate Rp from time series
+
+struct RpEstimator{plural}
+    po::ParamObjPikal
+    pdf::PrimaryDryFit
+    Tf_interp
+end
+
+function RpEstimator(po::ParamObjPikal, pdf::PrimaryDryFit)
+    if length(pdf.Tf_iend) == 1
+        return RpEstimator{false}(po, pdf, LinearInterpolation(pdf.Tfs[1], pdf.t[pdf.Tf_iend[1]]))
+    end
+    Tf_interp = [LinearInterpolation(pdf.Tfs[i], pdf.t[begin:i_end]) for (i, i_end) in enumerate(pdf.Tf_iend)]
+    return RpEstimator{true}(po, pdf, Tf_interp)
+end
+
+function Base.show(io::IO, re::RpEstimator{plural}) where plural
+    return print(io, "RpEstimator{$plural}(...)")
+end
+
+function Base.getindex(re::RpEstimator{true}, i)
+    return RpEstimator{false}(re.po, re.pdf, re.Tf_interp[i])
+end
+Base.length(re::RpEstimator{false}) = length(re.Tf_interp.t)
+
+
+function dae_Rp!(du, u, p, tn)
+    t = tn*u"hr"
+    hd = u[1]*u"cm"
+    Rpg = u[2]*u"cm^2*Torr*hr/g"
+
+    (;po, Tf_interp) = p
+    _, hf0, c_solid, ρ_solution = po[1]
+    Kshf, Av, Ap, = po[2]
+    pch, Tsh = po[3] 
+
+    Tf = Tf_interp(t)
+
+
+    Q = Kshf(pch(t))*Av*(Tsh(t) - Tf)
+    Tsub = Tf - Q/Ap/LyoPronto.k_ice * (hf0-hd)
+    md = Q/LyoPronto.ΔH
+    Rp = Ap*(calc_psub(Tsub)-pch(t))/md
+    # Rp < 0u"m/s" && @info "Rp<0" Rp t hd md Q Tf Tsh(t) calc_psub(Tsub)-pch(t)
+    if Q <= 0.0u"W" || Rp <= 0.0u"m/s"
+        #
+        du[1] = du[2] = 0.0
+        return
+    end
+
+    du[1] = ustrip(u"cm/hr", md/(ρ_solution-c_solid)/Ap)
+    du[2] = u[2] - max(0.0, ustrip(u"cm^2*Torr*hr/g", Rp))
+    # du[2] = u[2] - ustrip(u"cm^2*Torr*hr/g", Rp)
+
+    # @info "check" du Tf Tsh(t) Rp|>u"m/s"
+    return
+end
+const dae_Rpf = ODEFunction(dae_Rp!, mass_matrix=[1.0 0; 0 0])
+
+ODEProblem(::RpEstimator{true}) = error("Cannot create ODEProblem for multiple Tf at once. Index into the RpEstimator to choose a Tf series.")
+function ODEProblem(re::RpEstimator{false}; u0=[0.0,0], tspan=(0.0, ustrip(u"hr", re.Tf_interp.t[end])))
+    return ODEProblem(dae_Rpf, u0, tspan, re; tstops=ustrip.(u"hr", re.Tf_interp.t))
+end
+
+function calc_hRp_T(po::ParamObjPikal, pdf::PrimaryDryFit; i=nothing)
+    re = RpEstimator(po, pdf)
+    if re isa RpEstimator{true}
+        if !isnothing(i)
+            prob = ODEProblem(re[i])
+        else
+            @warn "Index needed for multiple Tf. Taken as 1 by default" i 
+            prob = ODEProblem(re[1])
+        end
+    else
+        !isnothing(i) && @warn "Index passed but not needed" i 
+        prob = ODEProblem(re)
+    end
+    sol = solve(prob, Rosenbrock23(), saveat=pdf.t)
+    return sol[1,:]*u"cm", sol[2,:]*u"cm^2*Torr*hr/g"
 end
