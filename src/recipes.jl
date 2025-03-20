@@ -151,7 +151,7 @@ modconvtplot
 
     
     for (i, sol) in enumerate(sols)
-        t_nd = range(0, sol.t[end-1], length=101)
+        t_nd = range(sol.t[begin], sol.t[end-1], length=101)
         time = t_nd*u"hr"
         T = sol.(t_nd, idxs=2)*u"K"
         @series begin
@@ -178,13 +178,13 @@ modrftplot
 @doc (@doc modrftplot) modrftplot!
 
 @userplot ModRFTPlot
-@recipe function f(tpmr::ModRFTPlot; labsuffix = ", model", evensample=true)
+@recipe function f(tpmr::ModRFTPlot; labsuffix = ", model", evensample=true, trimend=0)
     sol = tpmr.args[1]
     if evensample
-        t_nd = range(0, sol.t[end-1], length=31)
+        t_nd = range(sol.t[begin], sol.t[end-trimend], length=31)
         step = 6
     else
-        t_nd = sol.t[1:end-1]
+        t_nd = sol.t[1:end-trimend]
         step = length(sol.t) ÷ 5
     end
     time = t_nd*u"hr"
