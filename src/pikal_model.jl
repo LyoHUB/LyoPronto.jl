@@ -147,9 +147,19 @@ end
 function get_tstops(po::ParamObjPikal)
     _get_tstops((po.Tsh, po.pch))
 end
+function get_t0(po::ParamObjPikal)
+    if calc_psub(po.Tsh(0u"s")) < po.pch(0u"s")
+        t0 = find_zero(t -> ustrip(u"Pa", calc_psub(po.Tsh(t*u"hr")) - po.pch(t*u"hr")), 0.0)
+        return t0
+    else
+        return 0.0
+    end
+end
 
 function ODEProblem(po::ParamObjPikal; u0=calc_u0(po), tspan=(0.0, 1000.0))
     tstops = get_tstops(po)
+    # t0 = get_t0(po)
+    # @reset tspan[1] = t0 # Weird, but adding this functionality leads to worse fit results for Rp in the case I'm looking at
     return ODEProblem{true}(lyo_1d_dae_f, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback)
 end
