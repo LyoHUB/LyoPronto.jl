@@ -289,6 +289,15 @@ function calc_hRp_T(po::ParamObjPikal, pdf::PrimaryDryFit; i=nothing)
         !isnothing(i) && @warn "Index passed but not needed" i 
         prob = ODEProblem(re)
     end
-    sol = solve(prob, Rosenbrock23(), saveat=pdf.t)
-    return sol[1,:]*u"cm", sol[2,:]*u"cm^2*Torr*hr/g"
+    sol = solve(prob, Rosenbrock23(), saveat=ustrip.(u"hr", pdf.t))
+    hd, Rp = sol[1,:]*u"cm", sol[2,:]*u"cm^2*Torr*hr/g"
+    # If there are multiple zeros at the start, trim them off
+    hdi = findlast(hd .== 0.0u"cm")
+    Rpi = findlast(Rp .== 0.0u"m/s")
+    if !isnothing(hdi) && !isnothing(Rpi) 
+        istart = max(min(hdi-1, Rpi-1), 1)
+        hd = hd[istart:end]
+        Rp = Rp[istart:end]
+    end
+    return hd, Rp
 end
