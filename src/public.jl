@@ -1,5 +1,5 @@
 # Kept as a separate file to allow Julia 1.10 compatibility.
-public ΔHsub, θsub, calc_psub
+public ΔHsub, θsub, calc_psub, calc_Tsub
 public k_ice, rho_ice, ρ_ice, cp_ice
 public μ_vap
 public k_gl, cp_gl, ρ_gl, rho_glass
