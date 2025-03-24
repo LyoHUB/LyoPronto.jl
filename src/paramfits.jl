@@ -75,6 +75,14 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
     return ustrip(u"K^2", Tfobj + Tvwobj) + tweight*ustrip(u"hr^2", tobj)
 end
 
+function obj_expT(sol, pdfit; verbose=false, kwargs...)
+    verbose && @warn "`obj_expT` got passed improper args. Might not be a problem, but check." sol
+    if isnan(sol)
+        return NaN
+    end
+    error("Improper call to `obj_expT`.")
+end
+
 @doc raw"""
     err_expT(sol, pdfit; tweight=1, verbose=true, rf = true)
 
