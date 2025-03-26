@@ -133,9 +133,9 @@ function calc_u0(po::ParamObjPikal)
     # return ustrip(u"cm", u"K"),[po.hf0, po.Tsh(0u"s")])
     return [ustrip(u"cm", po.hf0), ustrip(u"K", float(po.Tsh(0u"s")))]
 end
-extract_ts(rv::RampedVariable{true, T1, T2, T3, T4}) where {T1, T2, T3, T4} = ustrip.(u"hr", float.(rv.timestops))
-extract_ts(rv::RampedVariable{false, T1, T2, T3, T4}) where {T1, T2, T3, T4} = [0.0]
-extract_ts(interp::DataInterpolations.AbstractInterpolation) = ustrip.(u"hr", float.(interp.t))
+extract_ts(rv::RampedVariable{true, T1, T2, T3, T4}; un=u"hr") where {T1, T2, T3, T4} = ustrip.(un, float.(rv.timestops))
+extract_ts(rv::RampedVariable{false, T1, T2, T3, T4}; un=u"hr") where {T1, T2, T3, T4} = [0.0]
+extract_ts(interp::DataInterpolations.AbstractInterpolation; un=u"hr") = ustrip.(un, float.(interp.t))
 extract_ts(a::Any) = [0.0]
 function get_tstops(controls::Tuple)
     # tstops = [0.0]
