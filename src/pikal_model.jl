@@ -1,7 +1,7 @@
 export lyo_1d!, lyo_1d_dae_f, subflux_Tsub, calc_psub
 export end_drying_callback
 export ParamObjPikal
-export calc_u0
+export calc_u0, get_tstops
 export RpEstimator, calc_hRp_T
 
 @doc raw"""
@@ -137,7 +137,7 @@ extract_ts(rv::RampedVariable{true, T1, T2, T3, T4}) where {T1, T2, T3, T4} = us
 extract_ts(rv::RampedVariable{false, T1, T2, T3, T4}) where {T1, T2, T3, T4} = [0.0]
 extract_ts(interp::DataInterpolations.AbstractInterpolation) = ustrip.(u"hr", float.(interp.t))
 extract_ts(a::Any) = [0.0]
-function _get_tstops(controls::Tuple)
+function get_tstops(controls::Tuple)
     # tstops = [0.0]
     tstops = mapreduce(extract_ts, vcat, controls)
     # tstops = vcat(tstops, newstops)
@@ -145,7 +145,7 @@ function _get_tstops(controls::Tuple)
     return tstops
 end
 function get_tstops(po::ParamObjPikal)
-    _get_tstops((po.Tsh, po.pch))
+    get_tstops((po.Tsh, po.pch))
 end
 function get_t0(po::ParamObjPikal)
     if calc_psub(po.Tsh(0u"s")) < po.pch(0u"s")

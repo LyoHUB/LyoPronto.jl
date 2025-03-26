@@ -207,7 +207,7 @@ function calc_u0(po::ParamObjRF)
     return [ustrip(u"g", po.m_f0), Tsh0_nd, Tsh0_nd]
 end
 function get_tstops(po::ParamObjRF)
-    _get_tstops((po.Tsh, po.pch, po.P_per_vial))
+    get_tstops((po.Tsh, po.pch, po.P_per_vial))
 end
 
 function ODEProblem(po::ParamObjRF; u0 = calc_u0(po), tspan=(0.0, 400.0))
