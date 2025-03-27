@@ -13,7 +13,7 @@ A callback for use in simulating either the Pikal or RF model.
 
 Terminates the time integration when [`end_cond`](@ref) evaluates to `true`.
 """
-const end_drying_callback = ContinuousCallback(end_cond, terminate!)
+const end_drying_callback = ContinuousCallback(end_cond, terminate!, save_positions=(true, false))
 
 # -------------------------------------------
 # Incorporate the nonlinear algebraic part in a DAE formulation.
@@ -125,6 +125,26 @@ function Base.show(io::IO, po::ParamObjPikal)
            ($(po.Kshf), $(po.Av), $(po.Ap)),
            ($(po.pch), $(po.Tsh)) )"
     return print(io, str)
+end
+
+function ODEProblem(po::ParamObjPikal; u0=nothing, tspan=(0.0, 200.0))
+    if isnothing(u0)
+        u0 = ustrip.([u"cm", u"K"],[po.hf0, po.Tsh(0u"s")])
+    end
+    if isnothing(tspan) 
+        tspan = (0.0, 200.0)
+    end
+    tstops = [0.0]
+    for control in [po.Tsh, po.pch]
+        if control isa RampedVariable && !isnothing(control.timestops)
+            tstops = vcat(tstops, ustrip.(u"hr", control.timestops))
+        elseif control isa LinearInterpolation
+            tstops = vcat(tstops, ustrip.(u"hr", control.t))
+        end
+    end
+    sort!(tstops); unique!(tstops)
+    return ODEProblem(lyo_1d_dae_f, u0, tspan, po; 
+        tstops = tstops, callback=end_drying_callback)
 end
 
 # -------------------------------------------

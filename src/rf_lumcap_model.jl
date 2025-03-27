@@ -17,7 +17,7 @@ end
 
 const Bi_samp = 10.0 .^range(-2, 5, length=71)
 const S_samp = shapefac.(Bi_samp)
-const S_interp = LinearInterpolation(S_samp, Bi_samp, extrapolate=true)
+const S_interp = LinearInterpolation(S_samp, Bi_samp, extrapolation=ExtrapolationType.Linear)
 
 
 @doc raw"""
@@ -68,7 +68,7 @@ My preferred version.
 """
 function lumped_cap_rf_LC1(u, params, tn)
     # Unpack all the parameters
-    Rp, h_f0, cSolid, ρ_solution = params[1]
+    Rp, h_f0, c_solid, ρ_solution = params[1]
     K_shf_f, A_v, A_p, = params[2]
     pch, Tsh, P_per_vial = params[3] 
     m_f0, cp_f, m_v, cp_v = params[4]
@@ -80,7 +80,7 @@ function lumped_cap_rf_LC1(u, params, tn)
     T_f = u[2]*u"K"
     T_vw = u[3]*u"K"
     # Compute some properties
-    porosity = (ρ_solution - cSolid)/ρ_solution
+    porosity = (ρ_solution - c_solid)/ρ_solution
     k_dry = k_sucrose*(1-porosity)
     V_vial = m_v / rho_glass
     # Do some geometry
@@ -90,7 +90,7 @@ function lumped_cap_rf_LC1(u, params, tn)
     # Heat transfer from shelf
     K_shf = K_shf_f(pch(t))
     Q_shf = K_shf*A_p*(Tsh(t)-T_f) 
-    Q_shw = K_shf*(A_v-A_p)*(Tsh(t)-T_f)
+    Q_shw = K_shf*(A_v-A_p)*(Tsh(t)-T_vw)
     # Evaluate mass flow; positive means drying is progressing. Not forced to be positive
     mflow = A_p/Rp(h_d)*(calc_psub(T_f) - pch(t)) # g/s
     Q_sub = mflow*ΔHsub # Sublimation
@@ -109,8 +109,8 @@ function lumped_cap_rf_LC1(u, params, tn)
     # Evaluate derivatives
     # Desublimation is not allowed here: if we clamp mflow itself, then the DAE is unstable
     dm_f = min(0u"kg/s", -mflow/porosity)
-    dT_f = (Q_RF_f-Q_sub+Q_vwf+Q_shf) / (m_f*cp_f) - T_f*dm_f/m_f
-    dT_vw = (Q_RF_vw+Q_shw-Q_vwf) / (m_v*cp_v)
+    dT_f =  (Q_shf+Q_vwf+Q_RF_f -Q_sub) / (m_f*cp_f) - T_f*dm_f/m_f
+    dT_vw = (Q_shw-Q_vwf+Q_RF_vw) / (m_v*cp_v)
     # Strip units from derivatives; return all heat transfer terms
     return ustrip.([u"g/hr", u"K/hr", u"K/hr"], [dm_f, dT_f, dT_vw]), uconvert.(u"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw, ])
 end
@@ -118,7 +118,7 @@ end
 # ```
 # params = (   
 #     (Rp, h_f0, c_solid, ρ_solution),
-#     (K_shf_f, A_v, A_p),
+#     (K_shf, A_v, A_p),
 #     (pch, Tsh, P_per_vial),
 #     (m_f0, cp_f, m_v, cp_v, A_rad),
 #     (f_RF, epp_f, epp_vw),
@@ -133,7 +133,7 @@ struct ParamObjRF{T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
     h_f0::T2
     c_solid::T3
     ρ_solution::T4
-    K_shf_f::T5
+    K_shf::T5
     A_v::T6
     A_p::T7
     pch::T8
@@ -170,11 +170,24 @@ function ParamObjRF(tuptup)
 end
 Base.size(po::ParamObjRF) = (6,)
 
+function Base.show(io::IO, po::ParamObjRF) 
+    return print(io, "ParamObjRF($(po.Rp), $(po.h_f0), $(po.c_solid), $(po.ρ_solution), $(po.K_shf), $(po.A_v), $(po.A_p), $(po.pch), $(po.Tsh), $(po.P_per_vial), $(po.m_f0), $(po.cp_f), $(po.m_v), $(po.cp_v), $(po.A_rad), $(po.f_RF), $(po.epp_f), $(po.epp_vw), $(po.K_vwf), $(po.B_f), $(po.B_vw), $(po.alpha))")
+end
+function Base.show(io::IO, ::MIME"text/plain", po::ParamObjRF)
+    names = fieldnames(ParamObjRF)
+    str = "ParamObjRF(\n"
+    for nm in names
+        str *= "$nm = $(getfield(po, nm))\n"
+    end
+    str *= ")"
+    return print(io, str)
+end
+
 function Base.getindex(po::ParamObjRF, i)
     if i == 1
         return (po.Rp, po.h_f0, po.c_solid, po.ρ_solution)
     elseif i == 2
-        return (po.K_shf_f, po.A_v, po.A_p)
+        return (po.K_shf, po.A_v, po.A_p)
     elseif i==3 
         return (po.pch, po.Tsh, po.P_per_vial)
     elseif i == 4
@@ -186,4 +199,24 @@ function Base.getindex(po::ParamObjRF, i)
     else
         error(BoundsError, "Attempt to access LyoPronto.ParamsObjRF at index $i. Only indices 1 to 6 allowed")
     end
+end
+
+function ODEProblem(po::ParamObjRF; u0 = nothing, tspan=nothing)
+    if isnothing(u0)
+        u0 = ustrip.([u"g", u"K", u"K"], [po.m_f0, po.Tsh(0u"s"), po.Tsh(0u"s")])
+    end
+    if isnothing(tspan)
+        tspan = (0.0, 200.0)
+    end
+    tstops = [0.0]
+    for control in [po.Tsh, po.pch, po.P_per_vial]
+        if control isa RampedVariable && !isnothing(control.timestops)
+            tstops = vcat(tstops, ustrip.(u"hr", control.timestops))
+        elseif control isa LinearInterpolation
+            tstops = vcat(tstops, ustrip.(u"hr", control.t))
+        end
+    end
+    sort!(tstops); unique!(tstops)
+    return ODEProblem(lumped_cap_rf, u0, tspan, po; 
+        tstops = tstops, callback=end_drying_callback)
 end
