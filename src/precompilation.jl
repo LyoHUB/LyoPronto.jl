@@ -18,14 +18,14 @@
     Rp = RpFormFit(R0, A1, A2)
     # Cycle parameters
     pch = RampedVariable(70u"mTorr") # constant pressure
-    T_shelf_0 = -40.0u"°C" # initial shelf temperature
-    T_shelf_final = -10.0u"°C"  # final shelf temperature
+    T_shelf_0 = -40.0ua"°C" # initial shelf temperature
+    T_shelf_final = -10.0ua"°C"  # final shelf temperature
     ramp_rate = 0.5 *u"K/minute" # ramp rate
     # Ramp for shelf temperature: convert to Kelvin because Celsius doesn't do math very well
-    Tsh = RampedVariable(uconvert.(u"K", [T_shelf_0, T_shelf_final]), ramp_rate)
+    Tsh = RampedVariable([T_shelf_0, T_shelf_final], ramp_rate)
     # Heat transfer
-    KC = 6.556e-5u"cal/s/K/cm^2"
-    KP = 2.41e-3u"cal/s/K/cm^2/Torr"
+    KC = 6.556e-5cal*u"1/s/K/cm^2"
+    KP = 2.41e-3cal*u"1/s/K/cm^2/Torr"
     KD = 2.62u"1/Torr"
     Kshf = RpFormFit(KC, KP, KD)
     params_bunch = [
@@ -43,17 +43,17 @@
     # ------------------- 
     # RF-specific parameters
     # Heat transfer
-    cp_f = cp_ice
-    cp_v = cp_gl
+    cp_f = LyoPronto.cp_ice
+    cp_v = LyoPronto.cp_gl
     m_v = get_vial_mass(vialsize)
     m_f0 = Vfill * ρ_solution
     f_RF = 8u"GHz"
     # epp_f = LyoPronto.ϵpp_f
-    epp_w = epp_gl
+    epp_w = LyoPronto.epp_gl
     P_per_vial = RampedVariable(10u"W"/17 * 0.54)
     B_f = 2.0e7u"Ω/m^2"
     B_vw = 0.9e7u"Ω/m^2"
-    K_vwf = 1.0e-3u"cal/s/K/cm^2"
+    K_vwf = 1.0e-3cal*u"1/s/K/cm^2"
     pch_rv = RampedVariable(100u"mTorr")
     Tsh_rv = RampedVariable([233.15u"K", 283.15u"K"], 0.5u"K/minute",)
     P_per_vial = RampedVariable(10u"W"/17 * 0.54) # actual power / vial

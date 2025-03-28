@@ -17,6 +17,9 @@ using DataInterpolations
 using Roots
 using Accessors
 
+@register_unit cal 4.184u"J"
+export cal
+
 include("structs.jl")
 include("rf_lumcap_model.jl")
 include("pikal_model.jl")

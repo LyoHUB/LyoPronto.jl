@@ -54,8 +54,8 @@ ramp_rate = 0.5 *u"K/minute" # ramp rate
 # Ramp for shelf temperature: convert to Kelvin because Celsius doesn't do math very well
 Tsh = RampedVariable(uconvert.(u"K", [T_shelf_0, T_shelf_final]), ramp_rate)
 
-KC = 6.556e-5u"cal/s/K/cm^2"
-KP = 2.41e-3u"cal/s/K/cm^2/Torr"
+KC = 6.556e-5cal*u"/s/K/cm^2"
+KP = 2.41e-3cal*u"/s/K/cm^2/Torr"
 KD = 2.62u"1/Torr"
 Kshf = RpFormFit(KC, KP, KD)
 # Kshf = p-> 5.0u"W/m^2/K"

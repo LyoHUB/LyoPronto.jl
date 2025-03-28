@@ -15,7 +15,7 @@ struct RpFormFit{T1, T2, T3}
 end
 
 function (ff::RpFormFit)(x)
-    return (ff.R0 + ff.A1*x/(1+ustrip(NoUnits, ff.A2*x)))
+    return (ff.R0 + ff.A1*x/(1+ustrip(us"m/m", ff.A2*x)))
 end
 
 function Base.show(io::IO, rp::RpFormFit) 
@@ -187,8 +187,7 @@ Provided constructors:
 
     PrimaryDryFit(t, Tfs, Tvws, t_end)
     PrimaryDryFit(t, Tfs) = PrimaryDryFit(t, Tfs, missing, missing)
-    PrimaryDryFit(t, Tfs, Tvws) = PrimaryDryFit(t, Tfs, Tvws, missing)
-    PrimaryDryFit(t, Tfs, t_end::Unitful.Time)  = PrimaryDryFit(t, Tfs, missing, t_end)
+    PrimaryDryFit(t, Tfs, t_end)  = PrimaryDryFit(t, Tfs, missing, t_end)
 
 The use of this struct is determined in large part by the implementation of 
 [`LyoPronto.obj_expT`](@ref). If a given field is not available, set it
@@ -249,8 +248,8 @@ function PrimaryDryFit(t, Tfs, Tvws, t_end)
 end
 # Convenience constructors
 PrimaryDryFit(t, Tfs) = PrimaryDryFit(t, Tfs, missing, missing)
-PrimaryDryFit(t, Tfs, Tvws) = PrimaryDryFit(t, Tfs, Tvws, missing)
-PrimaryDryFit(t, Tfs, t_end::Unitful.Time)  = PrimaryDryFit(t, Tfs, missing, t_end)
+# PrimaryDryFit(t, Tfs, Tvws) = PrimaryDryFit(t, Tfs, Tvws, missing)
+PrimaryDryFit(t, Tfs, t_end)  = PrimaryDryFit(t, Tfs, missing, t_end)
 
 function Base.:(==)(p1::PrimaryDryFit, p2::PrimaryDryFit)
     cond1 = p1.t == p2.t

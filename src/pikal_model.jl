@@ -46,12 +46,12 @@ function lyo_1d_dae!(du, u, params, t)
     Qshf = Av*Kshf(pchl)*(Tsh(td) - Tf)
     Tsub = Tf - Qshf/k_ice/Ap*hf
     dmdt = - Ap*(calc_psub(Tsub)-pch(td))/Rp(hd)
-    Qsub = uconvert(u"W", dmdt*ΔHsub)
+    Qsub = dmdt*ΔHsub
 
     dhf_dt = min(0u"cm/hr", dmdt/(ρ_solution-c_solid)/Ap) # Cap dhf_dt at 0: no desublimation
 
-    du[1] = ustrip(u"cm/hr", dhf_dt)
-    du[2] = ustrip(u"W", Qsub + Qshf)
+    du[1] = ustrip(us"cm/hr", dhf_dt)
+    du[2] = ustrip(us"W", Qsub + Qshf)
 end
 
 const lyo_1d_mm = [1.0 0.0; 0.0 0.0]
@@ -131,7 +131,7 @@ end
 
 function calc_u0(po::ParamObjPikal)
     # return ustrip(u"cm", u"K"),[po.hf0, po.Tsh(0u"s")])
-    return [ustrip(u"cm", po.hf0), ustrip(u"K", float(po.Tsh(0u"s")))]
+    return [ustrip(us"cm", po.hf0), ustrip(us"K", po.Tsh(0u"s"))]
 end
 extract_ts(rv::RampedVariable{true, T1, T2, T3, T4}; un=u"hr") where {T1, T2, T3, T4} = ustrip.(un, float.(rv.timestops))
 extract_ts(rv::RampedVariable{false, T1, T2, T3, T4}; un=u"hr") where {T1, T2, T3, T4} = [0.0]

@@ -17,7 +17,7 @@ From Feistel and Wagner, 2006
 """
 const ΔHsub = 2838.0u"kJ/kg"
 const ΔH = ΔHsub
-const θsub = ΔHsub*Mw/Unitful.R |> u"K"
+const θsub = ΔHsub*Mw/u"Constants.R" 
 
 """
 Thermal conductivity of ice
@@ -85,7 +85,7 @@ From Hellmann and Vogel, 2015
 260K: 8.383 μPa*s
 270K: 8.714 μPa*s
 """
-const μ_vap = 8.1 * u"μPa*s"
+const μ_vap = 8.1e-6 * u"Pa*s"
 
 # -----------------
 # Definitely varying properties
@@ -100,7 +100,7 @@ This is essentially an Arrhenius fit, where we compute:
 `psub = pref * exp(-ΔHsub*Mw/R/T)`
 """
 calc_psub(T) = 359.7e10 * exp(-θsub/(T*u"K")) # Dimensionless: Pa
-calc_psub(T::Q) where Q<:Quantity = 359.7e10*u"Pa" * exp(-θsub/uconvert(u"K",T))
+calc_psub(T::Q) where Q<:Quantity = 359.7e10*u"Pa" * exp(-θsub/T)
 
 """
 Using the same Arrhenius fit as `calc_psub`, compute the sublimation temperature at a given pressure.
@@ -117,7 +117,7 @@ Takeshi Matsuoka, Shuji Fujita, Shinji Mae; Effect of temperature on dielectric 
 """
 module Dielectric
 using DataInterpolations
-using Unitful
+using DynamicQuantities
 export ϵpp_f
 
 const β = 2.37e4u"K"
@@ -150,7 +150,7 @@ function ϵpp_f(T, f)
     arrh = 5.3e-16*u"s" * (T > 223u"K" ? 1.08*exp(E1/R/T) : 4.9e7*exp(E2/R/T))
     fr = 1/(2π*arrh)
     A = (β/(T-T0)) * fr
-    return uconvert(NoUnits, A/f) + B_interp(T)*ustrip(u"GHz", f)^C_interp(T)
+    return ustrip(us"m/m", A/f) + B_interp(T)*ustrip(us"GHz", f)^C_interp(T)
 end
 @doc """
     ϵpp_f(T, f)

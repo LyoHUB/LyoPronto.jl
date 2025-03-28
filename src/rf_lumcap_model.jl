@@ -95,7 +95,7 @@ function lumped_cap_rf_LC3(u, params, tn)
     mflow = A_p/Rp(h_d)*(calc_psub(T_f) - pch(t)) # g/s
     Q_sub = mflow*ΔHsub # Sublimation
     # Evaluate heat transfer from wall
-    Bi = uconvert(NoUnits, K_vwf*rad/k_dry)
+    Bi = ustrip(us"m/m", K_vwf*rad/k_dry)
     Q_vwf = 2π*(K_vwf*rad*h_f + k_dry*(h_f0-h_f)*S_interp(Bi)) * (T_vw-T_f)
     # Volumetric heating
     Qppp_RF_f  = 2*pi*f_RF*e_0*epp_f(T_f, f_RF)*P_per_vial(t)*B_f # W / m^3
@@ -112,7 +112,7 @@ function lumped_cap_rf_LC3(u, params, tn)
     dT_f =  (Q_shf+Q_vwf+Q_RF_f -Q_sub) / (m_f*cp_f) - T_f*dm_f/m_f
     dT_vw = (Q_shw-Q_vwf+Q_RF_vw) / (m_v*cp_v)
     # Strip units from derivatives; return all heat transfer terms
-    return ustrip.((u"g/hr", u"K/hr", u"K/hr"), [dm_f, dT_f, dT_vw]), uconvert.(u"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw, ])
+    return ustrip.((us"g/hr", us"K/hr", us"K/hr"), [dm_f, dT_f, dT_vw]), uconvert.(us"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw, ])
 end
 
 # ```

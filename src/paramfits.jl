@@ -50,7 +50,7 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
         Tvwobj = 0u"K^2"
     elseif TTvwi == Missing # Endpoint only temperature, encoded in type
         Tvwend = pdfit.Tvws
-        Tvwobj = (sol[3, end]*u"K" - uconvert(u"K", Tvwend))^2
+        Tvwobj = (sol[3, end]*u"K" - Tvwend)^2
     else # Regular case of fitting to at least one full temperature series
         if preinterp
             Tvwmd = sol[3, begin:end-1].*u"K" # Leave off last time point because is end time
