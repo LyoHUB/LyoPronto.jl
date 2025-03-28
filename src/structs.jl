@@ -47,10 +47,10 @@ and will return the value at that time point along the ramp process.
 A plot recipe is also provided for this type, e.g. `plot(rv; tmax=10u"hr")` where `tmax` indicates where to stop drawing the last setpoint hold.
 """
 struct RampedVariable{vary, T1, T2, T3, T4}
-    setpts::Union{T1, Vector{T1}}
-    ramprates::Union{Vector{T2}, T2}
-    holds::Union{Vector{T3}, T3}
-    timestops::Union{Vector{T4}, T4}
+    setpts::T1
+    ramprates::T2
+    holds::T3
+    timestops::T4
 end
 
 # get_dimensions(::Type{Quantity{T,D,U}}) where {T, D, U} = D
@@ -59,8 +59,11 @@ function (rv::RampedVariable{false, T1,T2,T3,T4})(t) where {T1,T2,T3,T4}
 end
 function (rv::RampedVariable{true, T1,T2,T3,T4})(t) where {T1,T2,T3,T4}
     im = findlast(rv.timestops .<= t)
+    # isnothing(im) && (im = 1)
     if im == length(rv.timestops)
         return rv.setpts[end]
+    elseif isnothing(im) # Negative time
+        return rv.setpts[1]
     elseif iseven(im)
         return rv.setpts[im÷2+1]
     else
@@ -87,7 +90,7 @@ function RampedVariable(setpts, ramprate)
     end
     timestops = fill(0.0*setpts[1]/ramprate[1], 2)
     timestops[2] = timestops[1] + (setpts[2]-setpts[1])/ramprate
-    RampedVariable{true, eltype(setpts), typeof(ramprate), Nothing, eltype(timestops)}(setpts, [ramprate], nothing, timestops)
+    RampedVariable{true, typeof(setpts), Vector{typeof(ramprate)}, Nothing, typeof(timestops)}(setpts, [ramprate], nothing, timestops)
 end
 
 function RampedVariable(setpts, ramprates, holds)
@@ -113,7 +116,22 @@ function RampedVariable(setpts, ramprates, holds)
             timestops[2i+2] = timestops[2i+1] + (timestops[2i+1]-timestops[2i+2])
         end
     end
-    RampedVariable{true, eltype(setpts), eltype(ramprates), eltype(holds), eltype(timestops)}(setpts, ramprates, holds, timestops)
+    RampedVariable{true, typeof(setpts), typeof(ramprates), typeof(holds), typeof(timestops)}(setpts, ramprates, holds, timestops)
+end
+RampedVariable(setpts, ramprates::Nothing, holds::Nothing, timestops::Nothing) = RampedVariable{false, typeof(setpts), Nothing, Nothing, Nothing}(setpts, ramprates, holds, timestops)
+RampedVariable(setpts, ramprates, holds::Nothing, timestops) = RampedVariable{true, typeof(setpts), typeof(ramprates), Nothing, typeof(timestops)}(setpts, ramprates, holds, timestops)
+RampedVariable(setpts, ramprates, holds, timestops) = RampedVariable{true, typeof(setpts), typeof(ramprates), typeof(holds), typeof(timestops)}(setpts, ramprates, holds, timestops)
+function Base.:(+)(rv::RampedVariable{b, T1,T2,T3,T4}, x) where {b, T1,T2,T3,T4}
+    return @set rv.setpts .+= x
+end
+function Base.:(+)(x, rv::RampedVariable)
+    return rv + x
+end
+function Base.:(-)(rv::RampedVariable{b, T1,T2,T3,T4}, x) where {b, T1,T2,T3,T4}
+    return @set rv.setpts .-= x
+end
+function Base.:(-)(x, rv::RampedVariable)
+    return @set rv.setpts = x .- rv.setpts
 end
 
 function Base.hash(rv::RampedVariable, h::UInt)
@@ -153,8 +171,8 @@ function PhysProp(x, args...)
     PhysProp{typeof(x), func_T, func_p, func_f}(x)
 end
 
-struct ConstPhysProp 
-    val
+struct ConstPhysProp{T}
+    val::T
 end
 (cpp::ConstPhysProp)(args...) = cpp.val
 
@@ -167,71 +185,79 @@ PrimaryDryFit: a type for storing experimental data and indicating how it should
 
 Provided constructors:
 
-    PrimaryDryFit(t_Tf, Tfs, Tf_iend, t_Tvw, Tvws, Tvw_iend, t_end)
-    PrimaryDryFit(t_Tf, Tf::V) where V<:AbstractVector
-    PrimaryDryFit(t_Tf, Tfs::T) where T<:Tuple
-    PrimaryDryFit(t_Tf, Tfs, t_end::T) where T<:Unitful.Time
-    PrimaryDryFit(t_Tf, Tfs, Tvw_end::T) where T<:Unitful.Temperature
-    PrimaryDryFit(t_Tf, Tfs, Tvw_end::T1, t_end::T2) where {T1<:Unitful.Temperature, T2<:Unitful.Time}
-    PrimaryDryFit(t_Tf, Tfs, t_Tvw, Tvws) 
-    PrimaryDryFit(t_Tf, Tfs, t_Tvw, Tvws, t_end)
+    PrimaryDryFit(t, Tfs, Tvws, t_end)
+    PrimaryDryFit(t, Tfs) = PrimaryDryFit(t, Tfs, missing, missing)
+    PrimaryDryFit(t, Tfs, Tvws) = PrimaryDryFit(t, Tfs, Tvws, missing)
+    PrimaryDryFit(t, Tfs, t_end::Unitful.Time)  = PrimaryDryFit(t, Tfs, missing, t_end)
 
 The use of this struct is determined in large part by the implementation of 
 [`LyoPronto.obj_expT`](@ref). If a given field is not available, set it
-to `missing` and things should basically work. At least `t_Tf` and `Tfs` are 
+to `missing` and things should basically work. At least `t` and `Tfs` are 
 expected to always be provided.
 
-With the exception of the two-argument `(t_Tf, Tf)` constructor, `Tfs` and `Tvws` should always be tuples of vectors (one vector per time series).
+In the end, Tfs and Tvws are each stored as a tuple of vectors, but the constructor tries to be flexible about 
+allowing a single vector to be passed in place of a tuple of vectors.
 
 `Tf_iend` and `Tvw_iend` default to `[length(Tf) for Tf in Tfs]` and `[length(Tvw) for Tvw in Tvws]`, 
 respectively, with one value for each temperature series; 
 they are used to dictate if a given temperature series should
 be truncated sooner than the full length in the fitting procedure.
-This implies that all the `Tf` temperature series are valid initially at the same
+This implies that all the temperature series are valid initially at the same
 time points, then stop having measured values after a different number of measurements.
+If a single value is given for `Tvw`, then it is taken to be an endpoint, and `Tvw_iend` will be `missing`.
 
 `t_end` indicates an end of drying, particularly if taken from other measurements
 (e.g. from Pirani-CM convergence). If set to `missing`, it is ignored in the
 objective function.
 
 Principal Cases:
-- Conventional: provide only `t_Tf, Tfs`
-- RF with measured vial wall: provide `t_Tf, Tfs, t_Tvw, Tvws`, 
-- RF, matching model Tvw to experimental Tf[end] without measured vial wall: provide `t_Tf, Tfs, Tvws`, set `t_Tvw` to `missing`
+- Conventional: provide only `t, Tfs`
+- RF with measured vial wall: provide `t, Tfs, Tvws`, 
+- RF, matching model Tvw to experimental Tf[end] without measured vial wall: provide `t, Tfs, Tvw`
 """
-struct PrimaryDryFit{T1, T2, T3, T4} 
-    t_Tf::Vector{T1}
-    Tfs::Tuple{Vector{T2}, Vararg{Vector{T2}}}
-    Tf_iend::Vector{T3}# = [length(Tf) for Tf in Tfs]
-    t_Tvw::Union{Missing, Vector{T1}}# = missing
-    Tvws::Union{Missing, T2, Tuple{Vector{T2}, Vararg{Vector{T2}}}}# = missing
-    Tvw_iend::Union{Missing, Vector{T3}}# = (ismissing(Tvws) ? missing : [length(Tvw) for Tvw in Tvws])
-    t_end::T4# = missing
+struct PrimaryDryFit{Tt, TT, Ti, Ttv<:AbstractVector{Tt}, TTv<:AbstractVector{TT}, 
+        TTvw<:Union{Missing, TT, Tuple{TTv, Vararg{TTv}}},
+        TTvwi<:Union{Missing, Vector{Ti}},
+        Tte<:Union{Missing, Tt}}
+    t::Ttv
+    Tfs::Tuple{TTv, Vararg{TTv}}
+    Tf_iend::Vector{Ti}# = [length(Tf) for Tf in Tfs]
+    Tvws::TTvw# = missing
+    Tvw_iend::TTvwi# = (ismissing(Tvws) ? missing : [length(Tvw) for Tvw in Tvws])
+    t_end::Tte# = missing
 end
 
 # Primary constructor
-function PrimaryDryFit(t_Tf, Tfs, t_Tvw, Tvws, t_end) 
-    if ismissing(t_Tvw) && !ismissing(Tvws) && (length(Tvws) > 1)
-        throw("If no time passed for `t_Tvw`, `Tvws` should be a single value, treated as a vial endpoint temperature")
+function PrimaryDryFit(t, Tfs, Tvws, t_end) 
+    if Tfs isa AbstractVector
+        if eltype(Tfs) <: Number
+            Tfs = (Tfs,)
+        else
+            Tfs = Tuple(Tfs...)
+        end
     end
-    PrimaryDryFit(t_Tf, Tfs, [length(Tf) for Tf in Tfs], t_Tvw, Tvws, 
-    ((ismissing(Tvws) || ismissing(t_Tvw)) ? missing : [length(Tvw) for Tvw in Tvws]), t_end)
+    if Tvws isa AbstractVector
+        if eltype(Tvws) <: Number
+            Tvws = (Tvws,)
+        else
+            Tvws = Tuple(Tvws...)
+        end
+    end
+    PrimaryDryFit(t, Tfs, [length(Tf) for Tf in Tfs], Tvws, 
+    ((ismissing(Tvws) || Tvws isa Number) ? missing : [length(Tvw) for Tvw in Tvws]),
+    t_end)
 end
 # Convenience constructors
-PrimaryDryFit(t_Tf, Tfs, t_Tvw, Tvws)  = PrimaryDryFit(t_Tf, Tfs, t_Tvw, Tvws, missing)
-PrimaryDryFit(t_Tf, Tfs, Tvw::Unitful.Temperature)  = PrimaryDryFit(t_Tf, Tfs, missing, Tvw, missing)
-PrimaryDryFit(t_Tf, Tfs, Tvw::Unitful.Temperature, t_end::Unitful.Time)  = PrimaryDryFit(t_Tf, Tfs, missing, Tvw, t_end)
-PrimaryDryFit(t_Tf, Tfs, t_end::Unitful.Time)  = PrimaryDryFit(t_Tf, Tfs, missing, missing, t_end)
-PrimaryDryFit(t_Tf, Tf::V) where V<:Vector = PrimaryDryFit(t_Tf, (Tf,), missing, missing, missing)
-PrimaryDryFit(t_Tf, Tfs::T) where T<:Tuple = PrimaryDryFit(t_Tf, Tfs, missing, missing, missing)
+PrimaryDryFit(t, Tfs) = PrimaryDryFit(t, Tfs, missing, missing)
+PrimaryDryFit(t, Tfs, Tvws) = PrimaryDryFit(t, Tfs, Tvws, missing)
+PrimaryDryFit(t, Tfs, t_end::Unitful.Time)  = PrimaryDryFit(t, Tfs, missing, t_end)
 
 function Base.:(==)(p1::PrimaryDryFit, p2::PrimaryDryFit)
-    cond1 = p1.t_Tf == p2.t_Tf
+    cond1 = p1.t == p2.t
     cond2 = p1.Tfs == p2.Tfs
     cond3 = p1.Tf_iend == p2.Tf_iend
-    cond4 = ismissing(p1.t_Tvw) ? ismissing(p2.t_Tvw) : (p1.t_Tvw == p2.t_Tvw)
-    cond5 = ismissing(p1.Tvws) ? ismissing(p2.Tvws) : (p1.Tvws == p2.Tvws)
-    cond6 = ismissing(p1.Tvw_iend) ? ismissing(p2.Tvw_iend) : (p1.Tvw_iend == p2.Tvw_iend)
-    cond7 = ismissing(p1.t_end) ? ismissing(p2.t_end) : (p1.t_end == p2.t_end)
-    return all([cond1, cond2, cond3, cond4, cond5, cond6, cond7])
+    cond4 = ismissing(p1.Tvws) ? ismissing(p2.Tvws) : (p1.Tvws == p2.Tvws)
+    cond5 = ismissing(p1.Tvw_iend) ? ismissing(p2.Tvw_iend) : (p1.Tvw_iend == p2.Tvw_iend)
+    cond6 = ismissing(p1.t_end) ? ismissing(p2.t_end) : (p1.t_end == p2.t_end)
+    return all([cond1, cond2, cond3, cond4, cond5, cond6])
 end
