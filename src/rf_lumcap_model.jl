@@ -1,4 +1,4 @@
-export lumped_cap_rf, lumped_cap_rf_LC1
+export lumped_cap_rf, lumped_cap_rf_LC3
 export ParamObjRF
 
 function shapefac(Bi)
@@ -49,24 +49,24 @@ See [`RpFormFit`](@ref) and [`RampedVariable`](@ref) for convenience types that 
 
 - `A_rad` and `alpha` are used only in the LC2 and LC3 versions of the model, and can be left out.
 
-For implementation details, see [`lumped_cap_rf_LC1`](@ref).
+For implementation details, see [`lumped_cap_rf_LC3`](@ref).
 """
-function lumped_cap_rf(u, params, tn)
-    lumped_cap_rf_LC1(u, params, tn)[1]
+function lumped_cap_rf!(du, u, params, tn)
+    du .= lumped_cap_rf_LC3(u, params, tn)[1]
 end
 
 
 @doc raw"""
-    lumped_cap_rf_LC1(u, params, tn)
+    lumped_cap_rf_LC3(u, params, tn)
 
 This does the work for [`lumped_cap_rf`](@ref), but returns `dudt,  [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw]` with `Q_...` as Unitful quantities in watts. 
 The extra results are helpful in investigating the significance of the various heat transfer modes,
 but are not necessary in the ODE integration.
 
-LC1: Q_shw evaluated with K_shf; shape factor included; α=0
+LC3: Q_shw evaluated with K_shf; shape factor included; α=0
 My preferred version.
 """
-function lumped_cap_rf_LC1(u, params, tn)
+function lumped_cap_rf_LC3(u, params, tn)
     # Unpack all the parameters
     Rp, h_f0, c_solid, ρ_solution = params[1]
     K_shf_f, A_v, A_p, = params[2]
@@ -108,11 +108,11 @@ function lumped_cap_rf_LC1(u, params, tn)
     end
     # Evaluate derivatives
     # Desublimation is not allowed here: if we clamp mflow itself, then the DAE is unstable
-    dm_f = min(0u"kg/s", -mflow/porosity)
+    dm_f = min(0.0u"kg/s", -mflow/porosity)
     dT_f =  (Q_shf+Q_vwf+Q_RF_f -Q_sub) / (m_f*cp_f) - T_f*dm_f/m_f
     dT_vw = (Q_shw-Q_vwf+Q_RF_vw) / (m_v*cp_v)
     # Strip units from derivatives; return all heat transfer terms
-    return ustrip.([u"g/hr", u"K/hr", u"K/hr"], [dm_f, dT_f, dT_vw]), uconvert.(u"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw, ])
+    return ustrip.((u"g/hr", u"K/hr", u"K/hr"), [dm_f, dT_f, dT_vw]), uconvert.(u"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw, ])
 end
 
 # ```
@@ -201,22 +201,17 @@ function Base.getindex(po::ParamObjRF, i)
     end
 end
 
-function ODEProblem(po::ParamObjRF; u0 = nothing, tspan=nothing)
-    if isnothing(u0)
-        u0 = ustrip.([u"g", u"K", u"K"], [po.m_f0, po.Tsh(0u"s"), po.Tsh(0u"s")])
-    end
-    if isnothing(tspan)
-        tspan = (0.0, 200.0)
-    end
-    tstops = [0.0]
-    for control in [po.Tsh, po.pch, po.P_per_vial]
-        if control isa RampedVariable && !isnothing(control.timestops)
-            tstops = vcat(tstops, ustrip.(u"hr", control.timestops))
-        elseif control isa LinearInterpolation
-            tstops = vcat(tstops, ustrip.(u"hr", control.t))
-        end
-    end
-    sort!(tstops); unique!(tstops)
-    return ODEProblem(lumped_cap_rf, u0, tspan, po; 
+function calc_u0(po::ParamObjRF)
+    Tsh0_nd = ustrip(u"K", float(po.Tsh(0u"s")))
+    # return ustrip.((u"g", u"K", u"K"), (po.m_f0, Tsh0, Tsh0))
+    return [ustrip(u"g", po.m_f0), Tsh0_nd, Tsh0_nd]
+end
+function get_tstops(po::ParamObjRF)
+    get_tstops((po.Tsh, po.pch, po.P_per_vial))
+end
+
+function ODEProblem(po::ParamObjRF; u0 = calc_u0(po), tspan=(0.0, 400.0))
+    tstops = get_tstops(po)
+    return ODEProblem{true}(lumped_cap_rf!, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback)
 end

@@ -17,7 +17,7 @@ From Feistel and Wagner, 2006
 """
 const ΔHsub = 2838.0u"kJ/kg"
 const ΔH = ΔHsub
-const θsub = ΔHsub*Mw/Unitful.R
+const θsub = ΔHsub*Mw/Unitful.R |> u"K"
 
 """
 Thermal conductivity of ice
@@ -91,7 +91,7 @@ const μ_vap = 8.1 * u"μPa*s"
 # Definitely varying properties
 
 @doc raw"""
-    calc_psub(T::F) where F<:Number
+    calc_psub(T) 
     calc_psub(T::Q) where Q<:Quantity
 
 Compute pressure (in Pascals) of sublimation at temperature `T` in Kelvin.
@@ -99,8 +99,13 @@ Compute pressure (in Pascals) of sublimation at temperature `T` in Kelvin.
 This is essentially an Arrhenius fit, where we compute:
 `psub = pref * exp(-ΔHsub*Mw/R/T)`
 """
-calc_psub(T::F) where F<:Number = 359.7e10 * exp(-θsub/(T*u"K"))
+calc_psub(T) = 359.7e10 * exp(-θsub/(T*u"K")) # Dimensionless: Pa
 calc_psub(T::Q) where Q<:Quantity = 359.7e10*u"Pa" * exp(-θsub/uconvert(u"K",T))
+
+"""
+Using the same Arrhenius fit as `calc_psub`, compute the sublimation temperature at a given pressure.
+"""
+calc_Tsub(p::Q) where Q<:Quantity = -θsub/log(p/359.7e10u"Pa")
 
 
 """

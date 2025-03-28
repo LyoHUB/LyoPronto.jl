@@ -6,7 +6,6 @@ export qrf_integrate
 @recipe function f(::Type{Val{:samplemarkers}}, x, y, z; step = 10, offset=1)
     n = length(y)
     sx, sy = x[offset:step:n], y[offset:step:n]
-    linewidth --> 2.5
     # add an empty series with the correct type for legend markers
     @series begin
         seriestype := :path
@@ -54,9 +53,9 @@ exptfplot
     markers = (:circle, :square, :diamond, :hexagon)
     
     if length(Ts) == 1
-        labels = ["\$T_{f}\$"*labsuffix]
+        labels = ["\$T_\\mathrm{f}\$"*labsuffix]
     else
-        labels = ["\$T_{f$i}\$"*labsuffix for i in 1:n]
+        labels = ["\$T_\\mathrm{f$i}\$"*labsuffix for i in 1:n]
     end
     for (i, T) in enumerate(Ts)
         @series begin
@@ -102,9 +101,9 @@ exptvwplot
     markers = (:pentagon, :ltriangle, :rtriangle, :heptagon)
     
     if length(Ts) == 1
-        labels = ["\$T_{vw}\$"*labsuffix]
+        labels = ["\$T_\\mathrm{vw}\$"*labsuffix]
     else
-        labels = ["\$T_{vw$i}\$"*labsuffix for i in 1:n]
+        labels = ["\$T_\\mathrm{vw$i}\$"*labsuffix for i in 1:n]
     end
     for (i, T) in enumerate(Ts)
         T_trim = T[begin:trim:end]
@@ -145,14 +144,14 @@ modconvtplot
     ]
     markers = (:utriangle, :dtriangle, :cross)
     if length(sols) == 1
-        labels = ["\$T_{f}\$"*labsuffix]
+        labels = ["\$T_\\mathrm{f}\$"*labsuffix]
     else
-        labels = ["\$T_{f$i}\$"*labsuffix for i in 1:length(sols)]
+        labels = ["\$T_\\mathrm{f$i}\$"*labsuffix for i in 1:length(sols)]
     end
 
     
     for (i, sol) in enumerate(sols)
-        t_nd = range(0, sol.t[end-1], length=101)
+        t_nd = range(sol.t[begin], sol.t[end-1], length=101)
         time = t_nd*u"hr"
         T = sol.(t_nd, idxs=2)*u"K"
         @series begin
@@ -179,13 +178,13 @@ modrftplot
 @doc (@doc modrftplot) modrftplot!
 
 @userplot ModRFTPlot
-@recipe function f(tpmr::ModRFTPlot; labsuffix = ", model", evensample=true)
+@recipe function f(tpmr::ModRFTPlot; labsuffix = ", model", evensample=true, trimend=0)
     sol = tpmr.args[1]
     if evensample
-        t_nd = range(0, sol.t[end-1], length=31)
+        t_nd = range(sol.t[begin], sol.t[end-trimend], length=31)
         step = 6
     else
-        t_nd = sol.t[1:end-1]
+        t_nd = sol.t[1:end-trimend]
         step = length(sol.t) ÷ 5
     end
     time = t_nd*u"hr"
@@ -198,7 +197,7 @@ modrftplot
         T = sol.(t_nd, idxs=2)*u"K"
         markershape --> :dtriangle
         seriescolor --> color
-        label --> "\$T_{f}\$"*labsuffix # Default label
+        label --> "\$T_\\mathrm{f}\$"*labsuffix # Default label
         time, T
     end
     @series begin
@@ -207,7 +206,7 @@ modrftplot
         T = sol.(t_nd, idxs=3)*u"K"
         markershape --> :utriangle
         seriescolor --> color
-        label --> "\$T_{vw}\$"*labsuffix # Default label
+        label --> "\$T_\\mathrm{vw}\$"*labsuffix # Default label
         linestyle := :dash
         time, T
     end
@@ -228,7 +227,7 @@ tendplot
     t_end = tp.args[1]
     @series begin
         seriestype := :vline
-        label --> "\$t_{end}\$"
+        label --> "\$t_\\mathrm{end}\$"
         seriescolor --> :gray
         linestyle --> :dot
         linewidth --> 3
@@ -259,7 +258,8 @@ end
         if pdf.Tvws isa Number
             @series begin
                 seriestype := :scatter
-                return [pdf.t[end]], [pdf.Tvws]
+                label --> "\$T_\\mathrm{vw}\$"
+                return [pdf.t[maximum(pdf.Tf_iend)]], [pdf.Tvws]
             end
         else 
             @series begin
@@ -285,7 +285,7 @@ end
         @series begin
             fillrange := ys_cum[:,i]
             fillcolor --> pal[i]
-            linewidth --> 0
+            linealpha --> 0
             marker --> :none
             return x,  ys_cum[:,i+1]
         end
@@ -335,7 +335,7 @@ function qrf_integrate(sol, RF_params)
 
     # So we do a manual Riemann integration on the solution output
     Qcontrib = map(sol.t) do ti
-        lumped_cap_rf_LC1(sol(ti), RF_params, ti)[2]
+        lumped_cap_rf_LC3(sol(ti), RF_params, ti)[2]
     end
     Qcontrib = hcat(Qcontrib...)
     Qsub = Qcontrib[1,:]

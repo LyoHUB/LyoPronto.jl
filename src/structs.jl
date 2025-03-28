@@ -47,10 +47,10 @@ and will return the value at that time point along the ramp process.
 A plot recipe is also provided for this type, e.g. `plot(rv; tmax=10u"hr")` where `tmax` indicates where to stop drawing the last setpoint hold.
 """
 struct RampedVariable{vary, T1, T2, T3, T4}
-    setpts::Union{T1, Vector{T1}}
-    ramprates::Union{Vector{T2}, T2}
-    holds::Union{Vector{T3}, T3}
-    timestops::Union{Vector{T4}, T4}
+    setpts::T1
+    ramprates::T2
+    holds::T3
+    timestops::T4
 end
 
 # get_dimensions(::Type{Quantity{T,D,U}}) where {T, D, U} = D
@@ -59,8 +59,11 @@ function (rv::RampedVariable{false, T1,T2,T3,T4})(t) where {T1,T2,T3,T4}
 end
 function (rv::RampedVariable{true, T1,T2,T3,T4})(t) where {T1,T2,T3,T4}
     im = findlast(rv.timestops .<= t)
+    # isnothing(im) && (im = 1)
     if im == length(rv.timestops)
         return rv.setpts[end]
+    elseif isnothing(im) # Negative time
+        return rv.setpts[1]
     elseif iseven(im)
         return rv.setpts[im÷2+1]
     else
@@ -87,7 +90,7 @@ function RampedVariable(setpts, ramprate)
     end
     timestops = fill(0.0*setpts[1]/ramprate[1], 2)
     timestops[2] = timestops[1] + (setpts[2]-setpts[1])/ramprate
-    RampedVariable{true, eltype(setpts), typeof(ramprate), Nothing, eltype(timestops)}(setpts, [ramprate], nothing, timestops)
+    RampedVariable{true, typeof(setpts), Vector{typeof(ramprate)}, Nothing, typeof(timestops)}(setpts, [ramprate], nothing, timestops)
 end
 
 function RampedVariable(setpts, ramprates, holds)
@@ -113,11 +116,11 @@ function RampedVariable(setpts, ramprates, holds)
             timestops[2i+2] = timestops[2i+1] + (timestops[2i+1]-timestops[2i+2])
         end
     end
-    RampedVariable{true, eltype(setpts), eltype(ramprates), eltype(holds), eltype(timestops)}(setpts, ramprates, holds, timestops)
+    RampedVariable{true, typeof(setpts), typeof(ramprates), typeof(holds), typeof(timestops)}(setpts, ramprates, holds, timestops)
 end
 RampedVariable(setpts, ramprates::Nothing, holds::Nothing, timestops::Nothing) = RampedVariable{false, typeof(setpts), Nothing, Nothing, Nothing}(setpts, ramprates, holds, timestops)
-RampedVariable(setpts, ramprates, holds::Nothing, timestops) = RampedVariable{true, eltype(setpts), eltype(ramprates), Nothing, eltype(timestops)}(setpts, ramprates, holds, timestops)
-RampedVariable(setpts, ramprates, holds, timestops) = RampedVariable{true, eltype(setpts), eltype(ramprates), eltype(holds), eltype(timestops)}(setpts, ramprates, holds, timestops)
+RampedVariable(setpts, ramprates, holds::Nothing, timestops) = RampedVariable{true, typeof(setpts), typeof(ramprates), Nothing, typeof(timestops)}(setpts, ramprates, holds, timestops)
+RampedVariable(setpts, ramprates, holds, timestops) = RampedVariable{true, typeof(setpts), typeof(ramprates), typeof(holds), typeof(timestops)}(setpts, ramprates, holds, timestops)
 function Base.:(+)(rv::RampedVariable{b, T1,T2,T3,T4}, x) where {b, T1,T2,T3,T4}
     return @set rv.setpts .+= x
 end
@@ -168,8 +171,8 @@ function PhysProp(x, args...)
     PhysProp{typeof(x), func_T, func_p, func_f}(x)
 end
 
-struct ConstPhysProp 
-    val
+struct ConstPhysProp{T}
+    val::T
 end
 (cpp::ConstPhysProp)(args...) = cpp.val
 
@@ -212,13 +215,16 @@ Principal Cases:
 - RF with measured vial wall: provide `t, Tfs, Tvws`, 
 - RF, matching model Tvw to experimental Tf[end] without measured vial wall: provide `t, Tfs, Tvw`
 """
-struct PrimaryDryFit{Tt, TT, Ti, Ttv<:AbstractVector{Tt}, TTv<:AbstractVector{TT}} 
+struct PrimaryDryFit{Tt, TT, Ti, Ttv<:AbstractVector{Tt}, TTv<:AbstractVector{TT}, 
+        TTvw<:Union{Missing, TT, Tuple{TTv, Vararg{TTv}}},
+        TTvwi<:Union{Missing, Vector{Ti}},
+        Tte<:Union{Missing, Tt}}
     t::Ttv
     Tfs::Tuple{TTv, Vararg{TTv}}
     Tf_iend::Vector{Ti}# = [length(Tf) for Tf in Tfs]
-    Tvws::Union{Missing, TT, Tuple{TTv, Vararg{TTv}}}# = missing
-    Tvw_iend::Union{Missing, Vector{Ti}}# = (ismissing(Tvws) ? missing : [length(Tvw) for Tvw in Tvws])
-    t_end::Union{Missing, Tt}# = missing
+    Tvws::TTvw# = missing
+    Tvw_iend::TTvwi# = (ismissing(Tvws) ? missing : [length(Tvw) for Tvw in Tvws])
+    t_end::Tte# = missing
 end
 
 # Primary constructor
