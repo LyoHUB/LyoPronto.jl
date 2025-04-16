@@ -2,6 +2,33 @@ export gen_sol_KRp, gen_sol_Rp, gen_sol_rf
 export obj_KRp, obj_Rp, obj_KBB
 export obj_expT, err_expT 
 
+export copy_nt_into_struct
+function copy_nt_into_struct(po, nt::NamedTuple)
+    @warn "Copying arbitrary NamedTuple into struct. Type unstable. If doing this repeatedly, define a new method for copy_nt_into_struct" nt
+    po_new = deepcopy(po)
+    # Merge the parameters in the NamedTuple into the ParamObjPikal object
+    for (k, v) in zip(keys(nt), values(nt))
+    # map(keys(nt), values(nt)) do k, v
+        # @info "copying" k v PropertyLens(k)
+        po_new = set(po_new, PropertyLens{k}(), v)
+        nothing
+    end
+    return po_new
+end
+function copy_nt_into_struct(po, nt::NamedTuple{(:R0, :A1, :A2)})
+    po_new = deepcopy(po)
+    @reset po_new.Rp.R0 = nt.R0
+    @reset po_new.Rp.A1 = nt.A1
+    @reset po_new.Rp.A2 = nt.A2
+end
+function copy_nt_into_struct(po, nt::NamedTuple{(:Kshf, :R0, :A1, :A2)})
+    po_new = deepcopy(po)
+    @reset po_new.Kshf = nt.Kshf
+    @reset po_new.Rp.R0 = nt.R0
+    @reset po_new.Rp.A1 = nt.A1
+    @reset po_new.Rp.A2 = nt.A2
+end
+
 @doc raw"""
     obj_expT(sol, pdfit; tweight=1, verbose=false)
 
@@ -181,6 +208,7 @@ function gen_sol_KRp(KRp_log, po::ParamObjPikal, fitdat::PrimaryDryFit; Rp_scl=R
     new_po = @set po.Kshf = ConstPhysProp(exp(KRp_log[1])*u"W/m^2/K")
     return gen_sol_Rp(KRp_log[2:4], new_po, fitdat; Rp_scl=Rp_scl, kwargs...)
 end
+
 
 """
     obj_KRp(KRp_log, pf; tweight=1e-4, verbose=false)
