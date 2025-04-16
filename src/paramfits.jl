@@ -21,6 +21,12 @@ function copy_nt_into_struct(po, nt::NamedTuple{(:R0, :A1, :A2)})
     @reset po_new.Rp.A1 = nt.A1
     @reset po_new.Rp.A2 = nt.A2
 end
+function copy_nt_into_struct(rp::RpFormFit, nt::NamedTuple{(:R0, :A1, :A2)})
+    rp_new = deepcopy(rp)
+    @reset rp_new.R0 = nt.R0
+    @reset rp_new.A1 = nt.A1
+    @reset rp_new.A2 = nt.A2
+end
 function copy_nt_into_struct(po, nt::NamedTuple{(:Kshf, :R0, :A1, :A2)})
     po_new = deepcopy(po)
     @reset po_new.Kshf = nt.Kshf
