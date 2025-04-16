@@ -20,7 +20,7 @@ Return inner and outer radius for passed ISO vial size.
 Uses a table provided by Schott, stored internally in a CSV.
 """
 function get_vial_radii(vialsize::String)
-    select_size(vialsize)
+    alldims = select_size(vialsize)
     rad_o = alldims.d1 / 2 * u"mm"
     rad_i = rad_o - alldims.s1 * u"mm"
     return rad_i, rad_o
@@ -34,7 +34,7 @@ Return vial wall thickness for given ISO vial size.
 Uses a table provided by Schott, stored internally in a CSV.
 """
 function get_vial_thickness(vialsize::String)
-    select_size(vialsize)
+    alldims = select_size(vialsize)
     thickness = alldims.s1*u"mm"
     return thickness
 end
@@ -47,7 +47,7 @@ Return vial mass for given ISO vial size.
 Uses a table provided by Schott, stored internally in a CSV.
 """
 function get_vial_mass(vialsize::String)
-    select_size(vialsize)
+    alldims = select_size(vialsize)
     mass = alldims.mass*u"g"
     return mass
 end
@@ -58,7 +58,7 @@ end
 Return a Dict{Symbol, } with a slew of vial dimensions, useful for drawing the shape of the vial with [`make_outlines`](@ref).
 """
 function get_vial_shape(vialsize::String)
-    select_size(vialsize)
+    alldims = select_size(vialsize)
     rad_o = alldims.d1 / 2 * u"mm"
     rad_i = rad_o - alldims.s1 * u"mm"
     bot_thick = alldims.s2*u"mm"
