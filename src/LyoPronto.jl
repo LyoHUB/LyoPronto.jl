@@ -16,6 +16,13 @@ using SpecialFunctions: besselj0, besselj1
 using DataInterpolations
 using Roots
 using Accessors
+using DocStringExtensions
+@template FUNCTIONS =
+    """
+    $(SIGNATURES)
+
+    $(DOCSTRING)
+    """
 
 include("structs.jl")
 include("rf_lumcap_model.jl")
