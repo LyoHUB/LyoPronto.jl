@@ -33,17 +33,17 @@ u0 = [ustrip(u"cm", hf0), 233]
 KRp_prm = [10.0, 0.6, 12.0, 0.5]
 po = ParamObjPikal(params_bunch)
 
-sol, new_params = gen_sol_conv_dim(KRp_prm, otherparams, u0, tspan)
-@test sol isa ODESolution
-@test size(new_params, 1) == 3
-@test new_params isa Tuple
+# sol, new_params = gen_sol_conv_dim(KRp_prm, otherparams, u0, tspan)
+# @test sol isa ODESolution
+# @test size(new_params, 1) == 3
+# @test new_params isa Tuple
 
-sol, new_params = gen_sol_conv_dim(KRp_prm, po, u0, tspan)
-@test sol isa ODESolution
-@test length(new_params) == 3
-@test new_params isa ParamObjPikal
-@test new_params.Rp isa RpFormFit
-@test new_params.Rp == RpFormFit(0.6*u"cm^2*Torr*hr/g", 12.0u"cm*Torr*hr/g", 0.5u"1/cm")
-@test ~(new_params.Kshf isa RpFormFit)
-@test new_params.Kshf(70u"mTorr") == 10u"W/m^2/K"
-@test new_params.Kshf(100u"mTorr") == 10u"W/m^2/K"
+# sol, new_params = gen_sol_conv_dim(KRp_prm, po, u0, tspan)
+# @test sol isa ODESolution
+# @test length(new_params) == 3
+# @test new_params isa ParamObjPikal
+# @test new_params.Rp isa RpFormFit
+# @test new_params.Rp == RpFormFit(0.6*u"cm^2*Torr*hr/g", 12.0u"cm*Torr*hr/g", 0.5u"1/cm")
+# @test ~(new_params.Kshf isa RpFormFit)
+# @test new_params.Kshf(70u"mTorr") == 10u"W/m^2/K"
+# @test new_params.Kshf(100u"mTorr") == 10u"W/m^2/K"

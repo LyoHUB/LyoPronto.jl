@@ -185,9 +185,9 @@ PrimaryDryFit: a type for storing experimental data and indicating how it should
 
 Provided constructors:
 
-    PrimaryDryFit(t, Tfs, Tvws, t_end)
+    PrimaryDryFit(t, Tfs, Tvw, t_end)
     PrimaryDryFit(t, Tfs) = PrimaryDryFit(t, Tfs, missing, missing)
-    PrimaryDryFit(t, Tfs, Tvws) = PrimaryDryFit(t, Tfs, Tvws, missing)
+    PrimaryDryFit(t, Tfs, Tvw) = PrimaryDryFit(t, Tfs, Tvw, missing)
     PrimaryDryFit(t, Tfs, t_end::Unitful.Time)  = PrimaryDryFit(t, Tfs, missing, t_end)
 
 The use of this struct is determined in large part by the implementation of 
@@ -212,6 +212,7 @@ objective function.
 
 Principal Cases:
 - Conventional: provide only `t, Tfs`
+- Conventional with Pirani ending: provide `t, Tfs, t_end`
 - RF with measured vial wall: provide `t, Tfs, Tvws`, 
 - RF, matching model Tvw to experimental Tf[end] without measured vial wall: provide `t, Tfs, Tvw`
 """
