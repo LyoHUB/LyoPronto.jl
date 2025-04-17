@@ -1,9 +1,10 @@
 CI = get(ENV, "CI", nothing) == "true" || get(ENV, "GITHUB_TOKEN", nothing) !== nothing
 using LyoPronto
 using Documenter
+using Literate
 
-# Here you may include files from the source directory
-# include(srcdir("dummy_src_file.jl"))
+@info "Using Literate to generate example"
+Literate.markdown("./example/fitting_mannitol.jl", "./src", documenter=true)
 
 @info "Building Documentation"
 makedocs(;
@@ -13,7 +14,7 @@ makedocs(;
     # By default all markdown files in `docs/src` are expanded and included.
     pages = [
         "Home" => "index.md",
-        "Example, conventional lyo" => "example_conv.md",
+        "Example, conventional lyo" => "fitting_mannitol.md",
         "Reference" => "alldocstrings.md",
     ],
     # Don't worry about what `CI` does in this line.
