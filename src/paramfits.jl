@@ -185,107 +185,50 @@ function err_expT(sol, pdfit; tweight=1.0, verbose = false)
     return errs
 end
 
-# function genobj_posprm(gen_sol, obj, fitdat; kwargs...)
-#     return (x->(any(x .< 0) && return NaN; obj(gen_sol(x)[1], fitdat; kwargs...)))
-# end
-
-const Rp_base_scl = (1.0u"cm^2*Torr*hr/g", 20.0u"cm*Torr*hr/g", 0.5u"1/cm")
-
 @doc raw"""
-    gen_sol_KRp(KRp_log, po::ParamObjPikal[, fitdat::PrimaryDryFit]; Rp_scl=Rp_base_scl, kwargs...)
+    gen_sol_conv(fitlog, tr, po::ParamObjPikal[, fitdat]; saveat=[], kwargs...)
 
-Given values of the log of Kv and Rp, and other parameters in `po`, simulate primary drying 
-with the Pikal model.
+Simulate primary drying with the Pikal model, given a vector of guesses, a mapping `tr` from `fitlog` to named coefficients, and other parameters in `po`.
 
-`KRp_log` has the form `[Kv, R0, A1, A2]`; this function takes an exponential of each, then 
-multiplies by `W/m^2/K` for Kv and by `Rp_scl` for the rest. 
+`tr` should be a `TransformTuple` object, from TransformVariables, which maps e.g. a vector of 3
+real numbers to 3 a NamedTuple with `R0, A1, A2` as keys and appropriate Unitful dimensions on the values.
+Inside, this function runs 
+```
+fitprm = transform(tr, fitlog)
+new_params = copy_nt_into_struct(po, fitprm)
+```
+which is done here to avoid code duplication.
+
+So, to choose which parameters to fitting, all that is necessary is to provide an appropriate transform `tr`
+and add a method of `copy_nt_into_struct` for the desired parameters.
+Therefore this function can be used for both K-Rp fitting, or just Rp, or just a subset of the 3 Rp coefficients.
 
 If given, `fitdat` is used to set `saveat` for the ODE solution.
 
-`Rp_scl` defaults to `(1.0u"cm^2*Torr*hr/g", 20.0u"cm*Torr*hr/g", 0.5u"1/cm")`
-
-`kwargs` are passed directly (as is) to the ODE `solve` call.
+Other `kwargs` are passed directly (as is) to the ODE `solve` call.
 """
-function gen_sol_KRp(KRp_log, po::ParamObjPikal; Rp_scl=Rp_base_scl, kwargs...)
-    new_po = @set po.Kshf = ConstPhysProp(exp(KRp_log[1])*u"W/m^2/K")
-    return gen_sol_Rp(KRp_log[2:4], new_po; Rp_scl=Rp_scl, kwargs...)
-end
-function gen_sol_KRp(KRp_log, po::ParamObjPikal, fitdat::PrimaryDryFit; Rp_scl=Rp_base_scl, kwargs...)
-    new_po = @set po.Kshf = ConstPhysProp(exp(KRp_log[1])*u"W/m^2/K")
-    return gen_sol_Rp(KRp_log[2:4], new_po, fitdat; Rp_scl=Rp_scl, kwargs...)
-end
-
-
-"""
-    obj_KRp(KRp_log, pf; tweight=1e-4, verbose=false)
-
-Calculate the sum of squared error (objective function) for fitting parameters in the Pikal model.
-
-# Arguments
-- `KRp_log`: The nondimensional logs of Kv and Rp; see [`LyoPronto.gen_sol_KRp`](@ref).
-- `pf`: Tuple of `(p::ParamObjPikal, f::PrimaryDryFit)`
-- `tweight`: (Optional) A weighting factor for the objective function. Default is `1.0`.
-- `verbose`: (Optional) A boolean flag to enable verbose output. Default is `false`.
-"""
-function obj_KRp(KRp_log, pf; tweight=1.0, verbose=false)
-    rtype = eltype(KRp_log)
-    sol = gen_sol_KRp(KRp_log, pf[1], pf[2])
-    return obj_expT(sol, pf[2], tweight=tweight, verbose=verbose)::rtype
-end
-
-# function gen_sol_conv_dim(KRp_prm, otherparams, u0, tspan; kwargs...)
-#     hf0, c_solid, ρ_solution, Av, Ap, pch, Tsh = otherparams
-#     Rp_un = (u"cm^2*Torr*hr/g", u"cm*Torr*hr/g", u"1/cm")
-#     Kshf_g = ConstPhysProp(KRp_prm[1]*u"W/m^2/K")
-#     Rp_g = RpFormFit((KRp_prm[2:4].*Rp_un)...)
-#     new_params = ((Rp_g, hf0, c_solid, ρ_solution), (Kshf_g, Av, Ap),
-#                     (pch, Tsh))
-#     newprob = ODEProblem(new_params; u0=u0, tspan=tspan)
-#     sol = solve(newprob, Rodas4P(); kwargs...)
-#     return sol, new_params
-# end
-@doc raw"""
-    gen_sol_Rp(Rp_log, po::ParamObjPikal; Rp_scl=Rp_base_scl, kwargs...)
-
-Given values of the log of Rp, and other parameters in `po`, simulate primary drying 
-with the Pikal model.
-
-`Rp_log` has the form `[R0, A1, A2]`; this function takes an exponential of each, then 
-multiplies by `Rp_scl`. 
-
-`Rp_scl` defaults to `(1.0u"cm^2*Torr*hr/g", 20.0u"cm*Torr*hr/g", 0.5u"1/cm")`
-
-If given, `fitdat` is used to set `saveat` for the ODE solution.
-
-`kwargs` are passed directly (as is) to the ODE `solve` call.
-"""
-function gen_sol_Rp(Rp_log, po::ParamObjPikal; Rp_scl=Rp_base_scl, kwargs...)
-    new_params = @set po.Rp = RpFormFit((exp.(Rp_log).*Rp_scl)...)
-    newprob = ODEProblem(new_params)
-    sol = solve(newprob, Rodas4P(); kwargs...)
+function gen_sol_conv(fitlog, tr, po; saveat=[], kwargs...)
+    fitprm = transform(tr, fitlog)
+    new_params = copy_nt_into_struct(po, fitprm)
+    prob = ODEProblem(new_params; tspan=(0.0, 1000.0))
+    sol = solve(prob, Rodas3(); saveat=saveat, kwargs...)
     return sol
 end
-function gen_sol_Rp(Rp_log, po::ParamObjPikal, fitdat::PrimaryDryFit; Rp_scl=Rp_base_scl, kwargs...)
-    new_params = @set po.Rp = RpFormFit((exp.(Rp_log).*Rp_scl)...)
-    newprob = ODEProblem(new_params)
-    sol = solve(newprob, Rodas4P(); saveat=ustrip.(u"hr", fitdat.t), kwargs...)
+function gen_sol_conv(fitlog, tr, po, fitdat; kwargs...)
+    sol = gen_sol_Rp(fitlog, tr, po; saveat=ustrip.(u"hr", fitdat.t), kwargs...)
     return sol
 end
 """
-    obj_Rp(Rp_log, pf; tweight=1.0, verbose=false)
+    obj_conv(fitlog, tpf; tweight=1.0, verbose=false)
 
-Calculate the sum of squared error (objective function) for fitting parameters in the Pikal model.
+Calculate the sum of squared error (objective function) for fitting parameters to primary drying data.
+This directly calls [`gen_sol_conv`](@ref), then [`obj_expT`](@ref), so see those docstrings.
 
-# Arguments
-- `Rp_log`: The nondimensional logs of Rp; see [`LyoPronto.gen_sol_Rp`](@ref).
-- `pf`: Tuple of `(p::ParamObjPikal, f::PrimaryDryFit)`
-- `tweight`: (Optional) A weighting factor for the objective function. Default is `1.0`.
-- `verbose`: (Optional) A boolean flag to enable verbose output. Default is `false`.
 """
-function obj_Rp(Rp_log, pf; tweight=1.0, verbose=false)
+function obj_pd(fitlog, tpf; tweight=1.0, verbose=false)
     rtype = eltype(Rp_log)
-    sol = gen_sol_Rp(Rp_log, pf[1], pf[2])
-    return obj_expT(sol, pf[2], tweight=tweight, verbose=verbose)::rtype
+    sol = gen_sol_Rp(Rp_log, tpf...)
+    return rtype(obj_expT(sol, tpf[3], tweight=tweight, verbose=verbose))
 end
 
 
