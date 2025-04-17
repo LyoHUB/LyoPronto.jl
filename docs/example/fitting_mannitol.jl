@@ -21,8 +21,8 @@ using SavitzkyGolay
 # # Read in process data
 
 ## Data start at 8th row of CSV file.
-## This needs to point to the right file, which for documentation 
-procdata = CSV.read(joinpath(@__DIR__, "..", "example", "2024-06-04-10_MFD_AH.csv"), Table, header=8)
+## This needs to point to the right file, which for documentation is kinda wonky
+procdata = CSV.read(joinpath(@__DIR__, "..", "..", "example", "2024-06-04-10_MFD_AH.csv"), Table, header=8)
 ## MicroFD, used for this experiment, has a column indicating primary drying
 pd_raw = filter(row->row.Phase == 4, procdata)
 ## Count time from the beginning of experiment

@@ -4,7 +4,7 @@ using Documenter
 using Literate
 
 @info "Using Literate to generate example"
-Literate.markdown("./example/fitting_mannitol.jl", "./src", documenter=true)
+Literate.markdown("./example/fitting_mannitol.jl", "./src/generated", documenter=true)
 
 @info "Building Documentation"
 makedocs(;
@@ -14,7 +14,7 @@ makedocs(;
     # By default all markdown files in `docs/src` are expanded and included.
     pages = [
         "Home" => "index.md",
-        "Example, conventional lyo" => "fitting_mannitol.md",
+        "Example, conventional lyo" => "generated/fitting_mannitol.md",
         "Reference" => "alldocstrings.md",
     ],
     # Don't worry about what `CI` does in this line.

@@ -41,47 +41,6 @@ This file has 7 rows of metadata at the top, so the data headers are at row 8; i
 data_raw = CSV.read(datadir("exp_raw", "2024-06-21-16_MFD_AH.csv"), Table, header=8)
 ```
 
-We can use the tools from `TypedTables` to make the native column names from the Millrock MicroFD lyophilizer a little more Julia-friendly, with a function like the following. 
-This function does the double duty of also attaching Unitful units to these columns.
-(This function can be put into your own package if you will use it often.)  
-```julia
-function microfd_columnrename(row)
-    # nt = (tstamp = DateTime(row.Timestamp, dateformat"mm/dd/yyyy H:M:S"),
-    nt = (tstamp = row.CycleTime,
-          phase = row.Phase,
-          step = row.Step,
-          pch_sp = row.VacSetPT*u"mTorr",
-          pch_pir = row.VacPirani*u"mTorr",
-          pch_cm = row.VacCPM*u"mTorr",
-          Tsh_sp = row.ShelfSetPT*u"°C",
-          Tsh_i = row.ShelfInlet*u"°C",
-          T1 = row.TP1*u"°C",
-          T2 = row.TP2*u"°C",
-          T3 = row.TP4*u"°C", # Not a mistake: quirk of experimental apparatus that connection TP3 was more annoying than TP4
-          # if a column has names with whitespace 
-          # or special characters in it, do this:
-          # mfr = row.var"Mass Flow Rate"
-    )
-    return nt
-end
-```
-Apply this function as [shown in the TypedTables tutorial](https://typedtables.juliadata.org/stable/man/tutorial/#Mapping-data), then we will add a column where time counts from 0 rather than being the time it was gathered. (We also need to account for how this cycle ran over several nights and so timesteps go to 0.)
-```julia
-procdata_pre = map(microfd_columnrename, data_raw)
-t = procdata_pre.tstamp .- procdata_pre.tstamp[1] .|> u"hr"
-for _ in 1:7 # Check up to 7 days
-    # If the time isn't monotonically increasing... 
-    all(t[2:end] .- t[1:end-1] .> 0u"hr") && break
-    # find the first place where it drops,
-    first_i = findfirst(t[2:end] .- t[1:end-1] .< 0u"hr") + 1
-    # and add 24 hours to the rest of the points
-    t[first_i:end] .+= 24u"hr"
-end
-procdata = Table(procdata_pre; t=t)
-```
-To make sure you did this right, a good sanity check is to `plot(t)` and see that it is monotonically increasing.
-
-For the Millrock MicroFD lyophilizer that data was gathered on, the file has a column `Phase` indicating what step of the process is going on, so to select out the primary drying data out we can filter by rows where `phase == 4`:
 
 ```julia
 pd_data = filter(x->x.phase == 4, procdata)
@@ -200,18 +159,6 @@ modconvtplot!(sol, label=L"$T_p$, model")
 ```
 
 ## Minimize least square difference to compare to experimental data
-
-First, set up a function that takes $K_{sh-f}$ and $R_p$ and returns a solution object (see [`gen_sol_conv_dim`](@ref LyoPronto.gen_sol_conv_dim) ).
-
-```julia
-gen_sol_conv = KRp -> gen_sol_conv_dim(KRp, paramobj, u0, tspan)
-```
-
-Next, set up an objective function we will minimize (see [`obj_expT`](@ref LyoPronto.obj_expT) for details), but basically: we use `gen_sol_conv` to generate a solution object, which is the first in a tuple of return values, and compare that solution to `fitdat` which are the fitting data selected above.
-
-```julia
-obj_KRp = KRp ->  obj_expT(gen_sol_conv(KRp)[1], fitdat)
-```
 
 It's a good idea at this point to make sure that the objective function is working as expected:
 ```julia
