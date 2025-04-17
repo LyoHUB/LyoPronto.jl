@@ -126,7 +126,7 @@ end
     modconvtplot(sols; labsuffix = ", model")
     modconvtplot!(sols; labsuffix = ", model")
 
-Plot recipe for one or multiple solutions to the Pikal model, e.g. the output of [`gen_sol_conv_dim`](@ref LyoPronto.gen_sol_conv_dim).
+Plot recipe for one or multiple solutions to the Pikal model, e.g. the output of [`gen_sol_Rp`](@ref LyoPronto.gen_sol_Rp).
 This adds a series to the plot for each passed solution, with labels defaulting to `"T_{fi}"*labsuffix`.
 """
 modconvtplot

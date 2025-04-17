@@ -40,11 +40,11 @@ end
 
 Evaluate an objective function which compares model solution computed by `sol` to experimental data in `pdfit`.
 
-- `sol` is a solution to an appropriate model; see [`gen_sol_conv_dim`](@ref) and [`gen_sol_rf_dim`](@ref) for some helper functions for this.
+- `sol` is a solution to an appropriate model; see [`gen_sol_Rp`](@ref), [`gen_sol_KRp`](@ref), and [`gen_sol for some helper functions for this.
 - `pdfit` is an instance of `PrimaryDryFit`, which contains some information about what to compare.
 - `tweight = 1` gives the weighting (in K^2/hr^2) of the total drying time in the objective, as compared to the temperature error.
 
-Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable in `sol` is assumed to be temperature, as is true for [`gen_sol_rf_dim`](@ref).
+Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable in `sol` is assumed to be temperature, as is true for [`gen_sol_rf`](@ref).
 
 If there are multiple series of `Tf` in `pdfit`, squared error is computed for each separately then summed; likewise for `Tvw`.
 
@@ -123,12 +123,12 @@ Evaluate the error between model solution `sol` to experimental data in `pdfit`.
 
 In contrast to `obj_expT()`, this function returns an array of all the errors, which would be squared and summed to produce an objective function.
 
-- `sol` is a solution to an appropriate model; see [`gen_sol_conv_dim`](@ref) and [`gen_sol_rf_dim`](@ref) for some helper functions for this.
+- `sol` is a solution to an appropriate model; see [`gen_sol_Rp`](@ref), [`gen_sol_KRp`](@ref), and [`gen_sol_rf`](@ref) for some helper functions for this.
 - `pdfit` is an instance of `PrimaryDryFit`, which contains some information about what to compare.
 - `tweight = 1` gives the weighting (in K^2/hr^2) of the total drying time in the objective, as compared to the temperature error.
 Each time series, plus the end time, is given equal weight by dividing by its length; error is given in K (but `ustrip`ped).
 
-Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable in `sol` is assumed to be temperature, as is true for [`gen_sol_rf_dim`](@ref).
+Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable in `sol` is assumed to be temperature, as is true for [`gen_sol_rf`](@ref).
 
 If there are multiple series of `Tf` in `pdfit`, squared error is computed for each separately then summed; likewise for `Tvw`.
 """
@@ -296,7 +296,7 @@ end
 # Evaluate an objective function which compares model solution with `KRp_prm` to experimental data in `tTdat`.
 
 # Arguments:
-# - `gen_sol` is a function taking `[Kv, R0, A1, A2]` and returning a solution to Pikal model; see [`gen_sol_conv_dim`](@ref LyoPronto.gen_sol_conv_dim).
+# - `gen_sol` is a function taking `[Kv, R0, A1, A2]` and returning a solution to Pikal model; see [`gen_sol_conv_dim`](@ref LyoPronto.).
 # - `tTdat` is experimental temperature series, of the form `(time, Tf)`.
 # - `tweight` gives the weighting (in `K^2/hr^2`) of the end of drying in the objective, as compared to the temperature error.
 # - `t_end` defaults to `missing`, in which case it is excluded from the objective.

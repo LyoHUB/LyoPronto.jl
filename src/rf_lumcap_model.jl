@@ -59,7 +59,7 @@ end
 @doc raw"""
     lumped_cap_rf_LC3(u, params, tn)
 
-This does the work for [`lumped_cap_rf`](@ref), but returns `dudt,  [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw]` with `Q_...` as Unitful quantities in watts. 
+This does the work for [`lumped_cap_rf!`](@ref), but returns `dudt,  [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw]` with `Q_...` as Unitful quantities in watts. 
 The extra results are helpful in investigating the significance of the various heat transfer modes,
 but are not necessary in the ODE integration.
 
