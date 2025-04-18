@@ -175,6 +175,7 @@ struct ConstPhysProp{T}
     val::T
 end
 (cpp::ConstPhysProp)(args...) = cpp.val
+Base.show(io::IO, cpp::ConstPhysProp) = print(io, "ConstPhysProp($(cpp.val))")
 
 # function Base.show(io::IO, pp::PhysProp) 
 #     return print(io, "PhysProp($(rv.setpts[1]))")
