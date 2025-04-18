@@ -104,9 +104,15 @@ struct ParamObjPikal{T1, T2, T3, T4, T5, T6, T7, T8, T9}
     Tsh::T9
 end
 
-
+# This constructor takes the legacy tuple of tuples form I used and unpacks it
 function ParamObjPikal(tuptup) 
     return ParamObjPikal(tuptup[1]..., tuptup[2]..., tuptup[3]...)
+end
+
+# This constructor catches if Rp is passed as a tuple or NamedTuple and constructs an appropriate object
+function ParamObjPikal(Rp::Union{NamedTuple, Tuple},
+    hf0, c_solid, ρ_solution, Kshf, Av, Ap, pch, Tsh)
+    return ParamObjPikal(RpFormFit(Rp...), hf0, c_solid, ρ_solution, Kshf, Av, Ap, pch, Tsh)
 end
 
 function Base.getindex(p::ParamObjPikal, i::Int)
@@ -120,8 +126,8 @@ function Base.getindex(p::ParamObjPikal, i::Int)
         error(BoundsError, "Attempt to access LyoPronto.ParamsObjPikal at index $i. Only indices 1 to 3 allowed")
     end
 end
-Base.size(p::ParamObjPikal) = (3,)
-Base.length(p::ParamObjPikal) = 3
+Base.size(::ParamObjPikal) = (3,)
+Base.length(::ParamObjPikal) = 3
 function Base.show(io::IO, po::ParamObjPikal)
     str = "ParamObjPikal( ($(po.Rp), $(po.hf0), $(po.c_solid), $(po.ρ_solution)),
            ($(po.Kshf), $(po.Av), $(po.Ap)),

@@ -16,6 +16,7 @@ using SpecialFunctions: besselj0, besselj1
 using DataInterpolations
 using Roots
 using Accessors
+using ConstructionBase: setproperties
 using DocStringExtensions
 
 include("structs.jl")

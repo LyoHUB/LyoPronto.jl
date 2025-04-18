@@ -207,14 +207,14 @@ If given, `fitdat` is used to set `saveat` for the ODE solution.
 
 Other `kwargs` are passed directly (as is) to the ODE `solve` call.
 """
-function gen_sol_conv(fitlog, tr, po; saveat=[], kwargs...)
+function gen_sol_pd(fitlog, tr, po; saveat=[], kwargs...)
     fitprm = transform(tr, fitlog)
-    new_params = copy_nt_into_struct(po, fitprm)
+    new_params = setproperties(po, fitprm)
     prob = ODEProblem(new_params; tspan=(0.0, 1000.0))
-    sol = solve(prob, Rodas3(); saveat=saveat, kwargs...)
+    sol = solve(prob, Rodas3(); saveat, kwargs...)
     return sol
 end
-function gen_sol_conv(fitlog, tr, po, fitdat; kwargs...)
+function gen_sol_pd(fitlog, tr, po, fitdat; kwargs...)
     sol = gen_sol_Rp(fitlog, tr, po; saveat=ustrip.(u"hr", fitdat.t), kwargs...)
     return sol
 end
