@@ -42,9 +42,9 @@ end
 Construct a typical transform for fitting Kvwf, Bf, and Bvw (as for a microwave cycle).
 """
 function KBB_transform_basic(Kvwfg, Bfg, Bvwg)
-    tr = as((Kvwf = TVScale(Kvwfg) ∘ TVExp(), 
-        Bf = TVScale(Bfg) ∘ TVExp(),
-        Bvw = TVScale(Bvwg) ∘ TVExp(),))
+    tr = as((K_vwf = TVScale(Kvwfg) ∘ TVExp(), 
+        B_f = TVScale(Bfg) ∘ TVExp(),
+        B_vw = TVScale(Bvwg) ∘ TVExp(),))
     return tr
 end
 

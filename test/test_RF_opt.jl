@@ -50,7 +50,7 @@ Tvw = base_sol[3,:]*u"K"
 t_end = t[end]
 pdfit = PrimaryDryFit(t, T, Tvw, t_end)
 
-tr = KBB_transform_basic(Kvwf*0.75, Bf*0.5, 2*Bvw)
+tr = KBB_transform_basic(K_vwf*0.75, B_f*0.5, 2*B_vw)
 pg = fill(0.0, 3)
 sol = gen_sol_pd(pg, tr, po)
 @test sol != base_sol
@@ -60,7 +60,7 @@ err = obj_pd(pg, pass)
 obj = OptimizationFunction(obj_pd, AutoForwardDiff())
 opt = solve(OptimizationProblem(obj, pg, pass), optalg)
 vals = transform(tr, opt.u)
-@test vals.Kvwf ≈ Kvwf rtol=0.1
-@test vals.Bf ≈ Bf rtol=0.1
-@test vals.Bvw ≈ Bvw rtol=0.1
+@test vals.K_vwf ≈ K_vwf rtol=0.1
+@test vals.B_f ≈ B_f rtol=0.1
+@test vals.B_vw ≈ B_vw rtol=0.1
 
