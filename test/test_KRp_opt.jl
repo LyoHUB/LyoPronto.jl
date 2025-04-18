@@ -7,8 +7,8 @@ rad_i, rad_o = get_vial_radii(vialsize)
 Ap = π*rad_i^2  # cross-sectional area inside the vial
 Av = π*rad_o^2 # vial bottom area
 # Formulation parameters
-c_solid = 0.06u"g/mL" # g solute / mL solution
-ρ_solution = 1u"g/mL" # g/mL total solution density
+csolid = 0.06u"g/mL" # g solute / mL solution
+ρsolution = 1u"g/mL" # g/mL total solution density
 R0 = 0.8u"cm^2*Torr*hr/g"
 A1 = 14u"cm*Torr*hr/g"
 A2 = 1u"1/cm"
@@ -27,7 +27,7 @@ Kshf = RpFormFit(KC, KP, KD)
 # Computed parameters based on above
 hf0 = Vfill / Ap
 po = ParamObjPikal((
-    (Rp, hf0, c_solid, ρ_solution),
+    (Rp, hf0, csolid, ρsolution),
     (Kshf, Av, Ap),
     (pch, Tsh)
 ))

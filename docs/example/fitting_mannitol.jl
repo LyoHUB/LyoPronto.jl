@@ -97,8 +97,8 @@ Ap = π*ri^2
 Av = π*ro^2
 
 ## Formulation parameters
-c_solid = 0.05u"g/mL" # g solute / mL solution
-ρ_solution = 1u"g/mL" # g/mL total solution density
+csolid = 0.05u"g/mL" # g solute / mL solution
+ρsolution = 1u"g/mL" # g/mL total solution density
 ## Provide some guess values for Rp, partly as a dummy for the model
 R0 = 0.8u"cm^2*Torr*hr/g"
 A1 = 14u"cm*Torr*hr/g"
@@ -126,7 +126,7 @@ Tsh = RampedVariable(uconvert.(u"K", [T_shelf_0, T_shelf_final]), ramp_rate)
 Kshf = ConstPhysProp(5.0u"W/m^2/K")
 
 po = ParamObjPikal([
-    (Rp, hf0, c_solid, ρ_solution),
+    (Rp, hf0, csolid, ρsolution),
     (Kshf, Av, Ap),
     (pch, Tsh)
 ]);

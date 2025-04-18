@@ -4,7 +4,7 @@ public k_ice, rho_ice, ρ_ice, cp_ice
 public μ_vap
 public k_gl, cp_gl, ρ_gl, rho_glass
 public σ
-public e_0, ϵpp_f, epp_f, εpp_f, ϵpp_gl, epp_gl, εpp_gl
+public e_0, ϵppf, eppf, εppf, ϵpp_gl, epp_gl, εpp_gl
 public ρ_sucrose, k_sucrose
 
 public extract_ts

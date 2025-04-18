@@ -29,7 +29,7 @@ See [`lyo_1d_dae_f`](@ref) for the wrapped version, which is more fully document
 """
 function lyo_1d_dae!(du, u, params, t)
 
-    Rp, hf0, c_solid, ρ_solution = params[1]
+    Rp, hf0, csolid, ρsolution = params[1]
     Kshf, Av, Ap, = params[2]
     pch, Tsh = params[3] 
     # Deliberately ignore other parameters that may be used for RF model
@@ -48,7 +48,7 @@ function lyo_1d_dae!(du, u, params, t)
     dmdt = - Ap*(calc_psub(Tsub)-pch(td))/Rp(hd)
     Qsub = uconvert(u"W", dmdt*ΔHsub)
 
-    dhf_dt = min(0u"cm/hr", dmdt/(ρ_solution-c_solid)/Ap) # Cap dhf_dt at 0: no desublimation
+    dhf_dt = min(0u"cm/hr", dmdt/(ρsolution-csolid)/Ap) # Cap dhf_dt at 0: no desublimation
 
     du[1] = ustrip(u"cm/hr", dhf_dt)
     du[2] = ustrip(u"W", Qsub + Qshf)
@@ -71,7 +71,7 @@ The unitless time is taken to be in hours, so derivatives are given in unitless 
 `params` has the form:
 ```
 params = (
-    (Rp, hf0, c_solid, ρ_solution),
+    (Rp, hf0, csolid, ρsolution),
     (Kshf, Av, Ap),
     (pch, Tsh) ,
 )
@@ -87,7 +87,7 @@ const lyo_1d_dae_f = ODEFunction(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
 
 # ```
 # params = (
-#     (Rp, hf0, c_solid, ρ_solution),
+#     (Rp, hf0, csolid, ρsolution),
 #     (Kshf, Av, Ap),
 #     (pch, Tsh) ,
 # )
@@ -95,8 +95,8 @@ const lyo_1d_dae_f = ODEFunction(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
 struct ParamObjPikal{T1, T2, T3, T4, T5, T6, T7, T8, T9}
     Rp::T1
     hf0::T2
-    c_solid::T3
-    ρ_solution::T4
+    csolid::T3
+    ρsolution::T4
     Kshf::T5
     Av::T6
     Ap::T7 
@@ -111,13 +111,13 @@ end
 
 # This constructor catches if Rp is passed as a tuple or NamedTuple and constructs an appropriate object
 function ParamObjPikal(Rp::Union{NamedTuple, Tuple},
-    hf0, c_solid, ρ_solution, Kshf, Av, Ap, pch, Tsh)
-    return ParamObjPikal(RpFormFit(Rp...), hf0, c_solid, ρ_solution, Kshf, Av, Ap, pch, Tsh)
+    hf0, csolid, ρsolution, Kshf, Av, Ap, pch, Tsh)
+    return ParamObjPikal(RpFormFit(Rp...), hf0, csolid, ρsolution, Kshf, Av, Ap, pch, Tsh)
 end
 
 function Base.getindex(p::ParamObjPikal, i::Int)
     if i == 1
-        return (p.Rp, p.hf0, p.c_solid, p.ρ_solution)
+        return (p.Rp, p.hf0, p.csolid, p.ρsolution)
     elseif i == 2
         return (p.Kshf, p.Av, p.Ap)
     elseif i == 3
@@ -129,7 +129,7 @@ end
 Base.size(::ParamObjPikal) = (3,)
 Base.length(::ParamObjPikal) = 3
 function Base.show(io::IO, po::ParamObjPikal)
-    str = "ParamObjPikal( ($(po.Rp), $(po.hf0), $(po.c_solid), $(po.ρ_solution)),
+    str = "ParamObjPikal( ($(po.Rp), $(po.hf0), $(po.csolid), $(po.ρsolution)),
            ($(po.Kshf), $(po.Av), $(po.Ap)),
            ($(po.pch), $(po.Tsh)) )"
     return print(io, str)
@@ -187,7 +187,7 @@ function compute_T_pseudosteady(Pchl, Rpl, Kvl, Tshl, Ap, Av, hd)
 end
 
 function lyo_1d!(du, u, params, t)
-    Rp, hf0, c_solid, ρ_solution = params[1]
+    Rp, hf0, csolid, ρsolution = params[1]
     Kshf, Av, Ap, = params[2]
     pch, Tsh = params[3] 
     
@@ -198,7 +198,7 @@ function lyo_1d!(du, u, params, t)
     Tp = compute_T_pseudosteady(pch(td), Rp(hd), Kshf(pch(td)), Tsh(td), Ap, Av, hd)
     dmdt = - Ap*(calc_psub(Tp)-pch(td))/Rp(hd)
 
-    dhf_dt = min(0u"cm/s", dmdt/Ap/(ρ_solution - c_solid))
+    dhf_dt = min(0u"cm/s", dmdt/Ap/(ρsolution - csolid))
 
     # Q = uconvert(u"W/m^2", Kshf(pch(td))*(Tsh(td)-Tp))
     # flux = uconvert(u"kg/hr/m^2", -dmdt/Ap)
@@ -207,7 +207,7 @@ function lyo_1d!(du, u, params, t)
 end
 
 function subflux_Tsub(u, params, t)
-    Rp, hf0, c_solid, ρ_solution = params[1]
+    Rp, hf0, csolid, ρsolution = params[1]
     Kshf, Av, Ap, = params[2]
     pch, Tsh = params[3] 
 
@@ -260,7 +260,7 @@ function dae_Rp!(du, u, p, tn)
     Rpg = u[2]*u"cm^2*Torr*hr/g"
 
     (;po, Tf_interp) = p
-    _, hf0, c_solid, ρ_solution = po[1]
+    _, hf0, csolid, ρsolution = po[1]
     Kshf, Av, Ap, = po[2]
     pch, Tsh = po[3] 
 
@@ -278,7 +278,7 @@ function dae_Rp!(du, u, p, tn)
         return
     end
 
-    du[1] = ustrip(u"cm/hr", md/(ρ_solution-c_solid)/Ap)
+    du[1] = ustrip(u"cm/hr", md/(ρsolution-csolid)/Ap)
     du[2] = u[2] - max(0.0, ustrip(u"cm^2*Torr*hr/g", Rp))
     # du[2] = u[2] - ustrip(u"cm^2*Torr*hr/g", Rp)
 

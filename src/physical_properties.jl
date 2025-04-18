@@ -110,7 +110,7 @@ calc_Tsub(p::Q) where Q<:Quantity = -θsub/log(p/359.7e10u"Pa")
 
 """
 Single-purpose module for computing the dielectric loss coefficient of ice, as a function of temperature and frequency.
-This module exports a function `ϵpp_f(T, f)` for doing so.
+This module exports a function `ϵppf(T, f)` for doing so.
 (Set as a separate module just to keep namespaces clean.)
 This code is a nearly-direct implementation of the correlation, Eqs. 3-6 presented in:
 Takeshi Matsuoka, Shuji Fujita, Shinji Mae; Effect of temperature on dielectric properties of ice in the range 5–39 GHz. J. Appl. Phys. 15 November 1996; 80 (10): 5884–5890. https://doi.org/10.1063/1.363582
@@ -118,7 +118,7 @@ Takeshi Matsuoka, Shuji Fujita, Shinji Mae; Effect of temperature on dielectric 
 module Dielectric
 using DataInterpolations
 using Unitful
-export ϵpp_f
+export ϵppf
 
 const β = 2.37e4u"K"
 const T0 = 15u"K"
@@ -130,7 +130,7 @@ const E2 = 22.6u"kJ/mol"
 # const fr = T->1/(2π*τ0(T)*arrhenius(T)) 
 # const debye_comp = T-> (β/(T-T0))
 # const A = T-> debye_comp(T) * fr(T)
-# function ϵpp_f(T, f)
+# function ϵppf(T, f)
 #     uconvert(NoUnits, A(T)/f) + B_interp(T)*ustrip(u"GHz", f)^C_interp(T)
 # end
 
@@ -141,7 +141,7 @@ const Cref = [1.175, 1.168, 1.129, 1.088, 1.073, 1.062, 1.056, 1.038, 1.024]
 const B_interp = LinearInterpolation(Bref, Tref, extrapolation=ExtrapolationType.Linear)
 const C_interp = LinearInterpolation(Cref, Tref, extrapolation=ExtrapolationType.Linear)
 
-function ϵpp_f(T, f)
+function ϵppf(T, f)
     if f == 0u"Hz"
         return 0.0
     end
@@ -153,20 +153,20 @@ function ϵpp_f(T, f)
     return uconvert(NoUnits, A/f) + B_interp(T)*ustrip(u"GHz", f)^C_interp(T)
 end
 @doc """
-    ϵpp_f(T, f)
+    ϵppf(T, f)
 
 Compute the dielectric loss of ice as a function of temperature and frequency.
 Expects temperature in Kelvin and frequency in Hz, with Unitful units.
 """
-ϵpp_f
+ϵppf
 
 end # module Dielectric
 
-using .Dielectric: ϵpp_f
-const epp_f = ϵpp_f
-const εpp_f = ϵpp_f
+using .Dielectric: ϵppf
+const eppf = ϵppf
+const εppf = ϵppf
 
 # Test that it looks like the figure
 # freq = (10 .^ range(7, 11, step=0.1))*u"Hz"
-# e1 = ϵpp_f.(200u"K", freq)
-# e2 = ϵpp_f.(258u"K", freq)
+# e1 = ϵppf.(200u"K", freq)
+# e2 = ϵppf.(258u"K", freq)

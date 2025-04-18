@@ -32,22 +32,22 @@ Specifically, this is `[dmf/dt, dTf/dt, dTvw/dt]` given `u = [mf, Tf, Tvw]`.
 The full set of necessary parameters is given in the form of a tuple-of-tuples:
 ```
 params = (   
-    (Rp, h_f0, cSolid, ρ_solution),
-    (K_shf_f, A_v, A_p),
+    (Rp, hf0, cSolid, ρsolution),
+    (Kshf_f, Av, Ap),
     (pch, Tsh, P_per_vial),
-    (m_f0, cp_f, m_v, cp_v, A_rad),
-    (f_RF, epp_f, epp_vw),
-    (K_vwf, B_f, B_vw, alpha),
+    (mf0, cpf, mv, cpv, Arad),
+    (f_RF, eppf, eppvw),
+    (Kvwf, Bf, Bvw, alpha),
 )
 ```
 
 These should all be Unitful quantities with appropriate dimensions, with some exceptions which are callables returning quantities.
 See [`RpFormFit`](@ref) and [`RampedVariable`](@ref) for convenience types that can help with these cases.
 - `Rp(x)` with `x` a length returns mass transfer resistance (as a Unitful quantity)
-- `K_shf_f(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
+- `Kshf_f(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
 - `Tsh(t)`, `pch(t)`, `P_per_vial(t)` return shelf temperature, chamber pressure, and microwave power respectively at time `t`.
 
-- `A_rad` and `alpha` are used only in the LC2 and LC3 versions of the model, and can be left out.
+- `Arad` and `alpha` are used only in the LC2 and LC3 versions of the model, and can be left out.
 
 For implementation details, see [`lumped_cap_rf_LC3`](@ref).
 """
@@ -63,44 +63,44 @@ This does the work for [`lumped_cap_rf!`](@ref), but returns `dudt,  [Q_sub, Q_s
 The extra results are helpful in investigating the significance of the various heat transfer modes,
 but are not necessary in the ODE integration.
 
-LC3: Q_shw evaluated with K_shf; shape factor included; α=0
+LC3: Q_shw evaluated with Kshf; shape factor included; α=0
 My preferred version.
 """
 function lumped_cap_rf_LC3(u, params, tn)
     # Unpack all the parameters
-    Rp, h_f0, c_solid, ρ_solution = params[1]
-    K_shf_f, A_v, A_p, = params[2]
+    Rp, hf0, csolid, ρsolution = params[1]
+    Kshf_f, Av, Ap, = params[2]
     pch, Tsh, P_per_vial = params[3] 
-    m_f0, cp_f, m_v, cp_v = params[4]
-    f_RF, epp_f, epp_vw = params[5]
-    K_vwf, B_f, B_vw = params[6]
+    mf0, cpf, mv, cpv = params[4]
+    f_RF, eppf, eppvw = params[5]
+    Kvwf, Bf, Bvw = params[6]
     # Dimensionalize the state variables
     t = tn*u"hr" 
     m_f = u[1]*u"g"
     T_f = u[2]*u"K"
     T_vw = u[3]*u"K"
     # Compute some properties
-    porosity = (ρ_solution - c_solid)/ρ_solution
+    porosity = (ρsolution - csolid)/ρsolution
     k_dry = k_sucrose*(1-porosity)
-    V_vial = m_v / rho_glass
+    V_vial = mv / rho_glass
     # Do some geometry
-    rad = sqrt(A_p/π)
-    h_f = m_f/m_f0 * h_f0 
-    h_d = h_f0 - h_f
+    rad = sqrt(Ap/π)
+    h_f = m_f/mf0 * hf0 
+    h_d = hf0 - h_f
     # Heat transfer from shelf
-    K_shf = K_shf_f(pch(t))
-    Q_shf = K_shf*A_p*(Tsh(t)-T_f) 
-    Q_shw = K_shf*(A_v-A_p)*(Tsh(t)-T_vw)
+    Kshf = Kshf_f(pch(t))
+    Q_shf = Kshf*Ap*(Tsh(t)-T_f) 
+    Q_shw = Kshf*(Av-Ap)*(Tsh(t)-T_vw)
     # Evaluate mass flow; positive means drying is progressing. Not forced to be positive
-    mflow = A_p/Rp(h_d)*(calc_psub(T_f) - pch(t)) # g/s
+    mflow = Ap/Rp(h_d)*(calc_psub(T_f) - pch(t)) # g/s
     Q_sub = mflow*ΔHsub # Sublimation
     # Evaluate heat transfer from wall
-    Bi = uconvert(NoUnits, K_vwf*rad/k_dry)
-    Q_vwf = 2π*(K_vwf*rad*h_f + k_dry*(h_f0-h_f)*S_interp(Bi)) * (T_vw-T_f)
+    Bi = uconvert(NoUnits, Kvwf*rad/k_dry)
+    Q_vwf = 2π*(Kvwf*rad*h_f + k_dry*(hf0-h_f)*S_interp(Bi)) * (T_vw-T_f)
     # Volumetric heating
-    Qppp_RF_f  = 2*pi*f_RF*e_0*epp_f(T_f, f_RF)*P_per_vial(t)*B_f # W / m^3
-    Qppp_RF_vw = 2*pi*f_RF*e_0*epp_vw*P_per_vial(t)*B_vw # W / m^3
-    Q_RF_f = Qppp_RF_f*A_p*h_f # W
+    Qppp_RF_f  = 2*pi*f_RF*e_0*eppf(T_f, f_RF)*P_per_vial(t)*Bf # W / m^3
+    Qppp_RF_vw = 2*pi*f_RF*e_0*eppvw*P_per_vial(t)*Bvw # W / m^3
+    Q_RF_f = Qppp_RF_f*Ap*h_f # W
     Q_RF_vw = Qppp_RF_vw*V_vial # W
     # Check that total volumetric heating is less than input power
     if Q_RF_f + Q_RF_vw > P_per_vial(t) && t == 0u"hr"
@@ -109,20 +109,20 @@ function lumped_cap_rf_LC3(u, params, tn)
     # Evaluate derivatives
     # Desublimation is not allowed here: if we clamp mflow itself, then the DAE is unstable
     dm_f = min(0.0u"kg/s", -mflow/porosity)
-    dT_f =  (Q_shf+Q_vwf+Q_RF_f -Q_sub) / (m_f*cp_f) - T_f*dm_f/m_f
-    dT_vw = (Q_shw-Q_vwf+Q_RF_vw) / (m_v*cp_v)
+    dT_f =  (Q_shf+Q_vwf+Q_RF_f -Q_sub) / (m_f*cpf) - T_f*dm_f/m_f
+    dT_vw = (Q_shw-Q_vwf+Q_RF_vw) / (mv*cpv)
     # Strip units from derivatives; return all heat transfer terms
     return ustrip.((u"g/hr", u"K/hr", u"K/hr"), [dm_f, dT_f, dT_vw]), uconvert.(u"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw, ])
 end
 
 # ```
 # params = (   
-#     (Rp, h_f0, c_solid, ρ_solution),
-#     (K_shf, A_v, A_p),
+#     (Rp, hf0, csolid, ρsolution),
+#     (Kshf, Av, Ap),
 #     (pch, Tsh, P_per_vial),
-#     (m_f0, cp_f, m_v, cp_v, A_rad),
-#     (f_RF, epp_f, epp_vw),
-#     (K_vwf, B_f, B_vw, alpha),
+#     (mf0, cpf, mv, cpv, Arad),
+#     (f_RF, eppf, eppvw),
+#     (Kvwf, Bf, Bvw, alpha),
 # )
 # ```
 
@@ -130,26 +130,26 @@ struct ParamObjRF{T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
                 T11, T12, T13, T14, T15, T16, T17, T18, T19,
                 T20, T21, T22} 
     Rp::T1
-    h_f0::T2
-    c_solid::T3
-    ρ_solution::T4
-    K_shf::T5
-    A_v::T6
-    A_p::T7
+    hf0::T2
+    csolid::T3
+    ρsolution::T4
+    Kshf::T5
+    Av::T6
+    Ap::T7
     pch::T8
     Tsh::T9
     P_per_vial::T10
-    m_f0::T11
-    cp_f::T12
-    m_v::T13
-    cp_v::T14
-    A_rad::T15
+    mf0::T11
+    cpf::T12
+    mv::T13
+    cpv::T14
+    Arad::T15
     f_RF::T16
-    epp_f::T17
-    epp_vw::T18
-    K_vwf::T19
-    B_f::T20
-    B_vw::T21
+    eppf::T17
+    eppvw::T18
+    Kvwf::T19
+    Bf::T20
+    Bvw::T21
     alpha::T22
 end
 
@@ -171,7 +171,7 @@ end
 Base.size(po::ParamObjRF) = (6,)
 
 function Base.show(io::IO, po::ParamObjRF) 
-    return print(io, "ParamObjRF($(po.Rp), $(po.h_f0), $(po.c_solid), $(po.ρ_solution), $(po.K_shf), $(po.A_v), $(po.A_p), $(po.pch), $(po.Tsh), $(po.P_per_vial), $(po.m_f0), $(po.cp_f), $(po.m_v), $(po.cp_v), $(po.A_rad), $(po.f_RF), $(po.epp_f), $(po.epp_vw), $(po.K_vwf), $(po.B_f), $(po.B_vw), $(po.alpha))")
+    return print(io, "ParamObjRF($(po.Rp), $(po.hf0), $(po.csolid), $(po.ρsolution), $(po.Kshf), $(po.Av), $(po.Ap), $(po.pch), $(po.Tsh), $(po.P_per_vial), $(po.mf0), $(po.cpf), $(po.mv), $(po.cpv), $(po.Arad), $(po.f_RF), $(po.eppf), $(po.eppvw), $(po.Kvwf), $(po.Bf), $(po.Bvw), $(po.alpha))")
 end
 function Base.show(io::IO, ::MIME"text/plain", po::ParamObjRF)
     names = fieldnames(ParamObjRF)
@@ -185,17 +185,17 @@ end
 
 function Base.getindex(po::ParamObjRF, i)
     if i == 1
-        return (po.Rp, po.h_f0, po.c_solid, po.ρ_solution)
+        return (po.Rp, po.hf0, po.csolid, po.ρsolution)
     elseif i == 2
-        return (po.K_shf, po.A_v, po.A_p)
+        return (po.Kshf, po.Av, po.Ap)
     elseif i==3 
         return (po.pch, po.Tsh, po.P_per_vial)
     elseif i == 4
-        return (po.m_f0, po.cp_f, po.m_v, po.cp_v, po.A_rad)
+        return (po.mf0, po.cpf, po.mv, po.cpv, po.Arad)
     elseif i == 5
-        return (po.f_RF, po.epp_f, po.epp_vw)
+        return (po.f_RF, po.eppf, po.eppvw)
     elseif i == 6
-        return (po.K_vwf, po.B_f, po.B_vw, po.alpha)
+        return (po.Kvwf, po.Bf, po.Bvw, po.alpha)
     else
         error(BoundsError, "Attempt to access LyoPronto.ParamsObjRF at index $i. Only indices 1 to 6 allowed")
     end
@@ -203,8 +203,8 @@ end
 
 function calc_u0(po::ParamObjRF)
     Tsh0_nd = ustrip(u"K", float(po.Tsh(0u"s")))
-    # return ustrip.((u"g", u"K", u"K"), (po.m_f0, Tsh0, Tsh0))
-    return [ustrip(u"g", po.m_f0), Tsh0_nd, Tsh0_nd]
+    # return ustrip.((u"g", u"K", u"K"), (po.mf0, Tsh0, Tsh0))
+    return [ustrip(u"g", po.mf0), Tsh0_nd, Tsh0_nd]
 end
 function get_tstops(po::ParamObjRF)
     get_tstops((po.Tsh, po.pch, po.P_per_vial))

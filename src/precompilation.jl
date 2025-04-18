@@ -10,8 +10,8 @@
     Vfill = 3u"mL" # ml
     hf0 = Vfill / Ap
     # Formulation
-    c_solid = 0.05u"g/mL" # g solute / mL solution
-    ρ_solution = 1u"g/mL" # g/mL total solution density
+    csolid = 0.05u"g/mL" # g solute / mL solution
+    ρsolution = 1u"g/mL" # g/mL total solution density
     R0 = 0.8u"cm^2*Torr*hr/g"
     A1 = 14u"cm*Torr*hr/g"
     A2 = 1u"1/cm"
@@ -29,7 +29,7 @@
     KD = 2.62u"1/Torr"
     Kshf = RpFormFit(KC, KP, KD)
     params_bunch = [
-        (Rp, hf0, c_solid, ρ_solution),
+        (Rp, hf0, csolid, ρsolution),
         (Kshf, Av, Ap),
         (pch, Tsh)
     ]
@@ -43,28 +43,28 @@
     # ------------------- 
     # RF-specific parameters
     # Heat transfer
-    cp_f = cp_ice
-    cp_v = cp_gl
-    m_v = get_vial_mass(vialsize)
-    m_f0 = Vfill * ρ_solution
+    cpf = cp_ice
+    cpv = cp_gl
+    mv = get_vial_mass(vialsize)
+    mf0 = Vfill * ρsolution
     f_RF = 8u"GHz"
-    # epp_f = LyoPronto.ϵpp_f
+    # eppf = LyoPronto.ϵppf
     epp_w = epp_gl
     P_per_vial = RampedVariable(10u"W"/17 * 0.54)
-    B_f = 2.0e7u"Ω/m^2"
-    B_vw = 0.9e7u"Ω/m^2"
-    K_vwf = 1.0e-3u"cal/s/K/cm^2"
+    Bf = 2.0e7u"Ω/m^2"
+    Bvw = 0.9e7u"Ω/m^2"
+    Kvwf = 1.0e-3u"cal/s/K/cm^2"
     pch_rv = RampedVariable(100u"mTorr")
     Tsh_rv = RampedVariable([233.15u"K", 283.15u"K"], 0.5u"K/minute",)
     P_per_vial = RampedVariable(10u"W"/17 * 0.54) # actual power / vial
 
     params_bunch_rf = Vector{Any}([
-        (Rp, hf0, c_solid, ρ_solution),
+        (Rp, hf0, csolid, ρsolution),
         (Kshf, Av, Ap),
         (pch_rv, Tsh_rv, P_per_vial),
-        (m_f0, cp_f, m_v, cp_v),
-        (f_RF, epp_f, epp_w),
-        (K_vwf, B_f, B_vw),
+        (mf0, cpf, mv, cpv),
+        (f_RF, eppf, epp_w),
+        (Kvwf, Bf, Bvw),
     ])
     po_rf = ParamObjRF(params_bunch_rf)
 
