@@ -17,12 +17,6 @@ using DataInterpolations
 using Roots
 using Accessors
 using DocStringExtensions
-@template FUNCTIONS =
-    """
-    $(SIGNATURES)
-
-    $(DOCSTRING)
-    """
 
 include("structs.jl")
 include("rf_lumcap_model.jl")

@@ -35,8 +35,8 @@ function copy_nt_into_struct(po, nt::NamedTuple{(:Kshf, :R0, :A1, :A2)})
     @reset po_new.Rp.A2 = nt.A2
 end
 
-@doc raw"""
-    obj_expT(sol, pdfit; tweight=1, verbose=false)
+"""
+    $(SIGNATURES)
 
 Evaluate an objective function which compares model solution computed by `sol` to experimental data in `pdfit`.
 

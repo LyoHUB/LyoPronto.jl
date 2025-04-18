@@ -62,18 +62,21 @@ t_end = pd_data.t[argmax(pir_der2[1u"hr" .< pd_data.t .< 50u"hr" ])] + 1u"hr"
 @df pd_data plot(:t, :pirani, label="Pirani")
 @df pd_data plot!(:t, :cm, label="CM")
 tendplot!(t_end) # Use a custom recipe provided by LyoPronto for plotting t_end
-savefig("pirani.svg") #md
+savefig("pirani.svg"); #md
 # ![](pirani.svg) #md
 
 # Plot the temperature data, with another plot recipe
 # To check that everything looks right, plot the temperatures, taking advantage of a recipe from this package, as well as the `L"[latex]"` macro from `LaTeXStrings`. We can also exploit the `@df` macro from `StatsPlots` to make this really smooth.
 @df pd_data exptfplot(:t, :T1, :T2, :T3)
 @df pd_data plot!(:t, :Tsh, label=L"T_{sh}", c=:black)
-savefig("exptemps.svg") #md
+savefig("exptemps.svg"); #md
 # ![](exptemps.svg) #md
 
-# Based on an examination of the temperature data, we want to go only up to the "temperature rise" commonly observed in lyophilization near (but not at) the end of drying. This happens at 7.5 hours for `T1` and `T3` and at about 12.5 hours for `T2`.
-# To pass this information on to the least-squares fitting routine, one could manually trim down all the data to compare, which I have done many times. But since this is such a common operation, I made [a tool](@ref LyoPronto.PrimaryDryFit) which encodes this information:
+# Based on an examination of the temperature data, we want to go only up to the "temperature 
+# rise" commonly observed in lyophilization near (but not at) the end of drying. 
+# To pass this information on to the least-squares fitting routine, pass the temperatures up to 
+# the end of primary drying into a  [`PrimaryDryFit`](@ref LyoPronto.PrimaryDryFit) 
+# object. To be clear, no fitting happens yet: this object just wraps the data up for fitting.
 fitdat_all = @df PrimaryDryFit(:t, (:T1[:t .< 13u"hr"],
                                     :T2[:t .< 16u"hr"],
                                     :T3[:t .< 13u"hr"]),
@@ -122,21 +125,21 @@ po = ParamObjPikal([
     (Rp, hf0, c_solid, ρ_solution),
     (Kshf, Av, Ap),
     (pch, Tsh)
-])
+]);
 
 # As a sanity check, run the model to see that temperatures are in the right ballpark
 prob = ODEProblem(po)
 sol = solve(prob, Rodas3())
 @df pd_data exptfplot(:t, :T1, :T2, :T3)
 modconvtplot!(sol, label=L"$T_p$, model")
-savefig("modelpre.svg") #md
+savefig("modelpre.svg"); #md
 # ![](modelpre.svg) #md
 
 # # Fit model parameters to match data
 # Optimization algorithms are happiest when they can run across all real numbers.
 # So we use TransformVariables.jl to map all reals to positive values of our parameters, with sensible scales.
 # The `TVExp` transform maps all real numbers to positive values, and the `TVScale` transform scales the value to a more reasonable range.
-# The transform `ConstWrapTV` is defined in LyoPronto, and makes a constant callable function from a value
+# The transform `ConstWrapTV` is defined in LyoPronto, and makes a constant callable function from a value.
 
 trans_KRp = as((Kshf = ConstWrapTV() ∘ TVScale(Kshf(0)) ∘ TVExp(),
                 R0 = TVScale(R0) ∘ TVExp(),
