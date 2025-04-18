@@ -1,3 +1,7 @@
+using Optimization, OptimizationOptimJL
+using LineSearches
+optalg = LBFGS(linesearch=LineSearches.BackTracking())
+
 vialsize = "6R"
 rad_i, rad_o = get_vial_radii(vialsize)
 Ap = π*rad_i^2  # cross-sectional area inside the vial
@@ -22,28 +26,48 @@ KD = 0.46u"1/Torr"
 Kshf = RpFormFit(KC, KP, KD)
 # Computed parameters based on above
 hf0 = Vfill / Ap
-params_bunch = [
+po = ParamObjPikal((
     (Rp, hf0, c_solid, ρ_solution),
     (Kshf, Av, Ap),
     (pch, Tsh)
-]
-otherparams = (hf0, c_solid, ρ_solution, Av, Ap, pch, Tsh)
-tspan = (0.0, 100.0) # hours
-u0 = [ustrip(u"cm", hf0), 233]
-KRp_prm = [10.0, 0.6, 12.0, 0.5]
-po = ParamObjPikal(params_bunch)
+))
+base_sol = solve(ODEProblem(po), Rodas3())
 
-# sol, new_params = gen_sol_conv_dim(KRp_prm, otherparams, u0, tspan)
-# @test sol isa ODESolution
-# @test size(new_params, 1) == 3
-# @test new_params isa Tuple
+t = base_sol.t*u"hr"
+T = base_sol[2,:]*u"K"
+t_end = t[end]
+pdfit = PrimaryDryFit(t, T, t_end)
 
-# sol, new_params = gen_sol_conv_dim(KRp_prm, po, u0, tspan)
-# @test sol isa ODESolution
-# @test length(new_params) == 3
-# @test new_params isa ParamObjPikal
-# @test new_params.Rp isa RpFormFit
-# @test new_params.Rp == RpFormFit(0.6*u"cm^2*Torr*hr/g", 12.0u"cm*Torr*hr/g", 0.5u"1/cm")
-# @test ~(new_params.Kshf isa RpFormFit)
-# @test new_params.Kshf(70u"mTorr") == 10u"W/m^2/K"
-# @test new_params.Kshf(100u"mTorr") == 10u"W/m^2/K"
+@testset "Both Kv and Rp" begin
+    tr = KRp_transform_basic(Kshf(pch(0))*0.75, R0*0.5, 2*A1, A2)
+    pg = fill(0.0, 4)
+    sol = gen_sol_pd(pg, tr, po)
+    @test sol != base_sol
+    pass = (tr, po, pdfit)
+    # err = @inferred obj_pd(pg, pass)
+    err = obj_pd(pg, pass)
+    obj = OptimizationFunction(obj_pd, AutoForwardDiff())
+    opt = solve(OptimizationProblem(obj, pg, pass), optalg)
+    vals = transform(tr, opt.u)
+    @test vals.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.1
+    @test vals.Rp.R0 ≈ R0 rtol=0.1
+    @test vals.Rp.A1 ≈ A1 rtol=0.1
+    @test vals.Rp.A2 ≈ A2 rtol=0.1
+end
+
+@testset "Only Rp" begin
+    tr = Rp_transform_basic(R0*0.5, 2*A1, A2)
+    pg = fill(0.0, 3)
+    sol = gen_sol_pd(pg, tr, po)
+    @test sol != base_sol
+    pass = (tr, po, pdfit)
+    # err = @inferred obj_pd(pg, pass)
+    err = obj_pd(pg, pass)
+    obj = OptimizationFunction(obj_pd, AutoForwardDiff())
+    opt = solve(OptimizationProblem(obj, pg, pass), optalg)
+    vals = transform(tr, opt.u)
+    @test vals.Rp.R0 ≈ R0 rtol=0.1
+    @test vals.Rp.A1 ≈ A1 rtol=0.1
+    @test vals.Rp.A2 ≈ A2 rtol=0.1
+end
+
