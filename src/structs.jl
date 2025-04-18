@@ -269,3 +269,6 @@ export ConstWrapTV
 struct ConstWrapTV <: TransformVariables.ScalarTransform end
 TransformVariables.transform(::ConstWrapTV, x) = ConstPhysProp(x)
 TransformVariables.inverse(::ConstWrapTV, x) = x.value
+
+TransformVariables.transform(t::TVScale{ConstPhysProp}, x) = ConstPhysProp(t.scale.value*x)
+TransformVariables.inverse(t::TVScale{ConstPhysProp}, x) = x.value/t.scale.value
