@@ -1,5 +1,6 @@
 export gen_sol_pd, obj_pd
 export KRp_transform_basic, K_transform_basic, Rp_transform_basic
+export KBB_transform_basic
 export obj_expT, err_expT 
 
 """
@@ -18,12 +19,13 @@ end
 Construct a typical transform for fitting Rp.
 """
 function Rp_transform_basic(R0g, A1g, A2g)
-    tr = as(
-        (Rp = as((R0 = TVScale(R0g) ∘ TVExp(),
+    tr = as((
+        Rp = as((
+            R0 = TVScale(R0g) ∘ TVExp(),
             A1 = TVScale(A1g) ∘ TVExp(),
-            A2 = TVScale(A2g) ∘ TVExp(),),),
-            )
-        )
+            A2 = TVScale(A2g) ∘ TVExp(),
+            )),
+        ))
     return tr
 end
 """
@@ -35,6 +37,17 @@ function K_transform_basic(Kshfg)
     tr = as((Kshf = ConstWrapTV() ∘ TVScale(Kshfg) ∘ TVExp(),))
     return tr
 end
+"""
+    $(SIGNATURES)
+Construct a typical transform for fitting Kvwf, Bf, and Bvw (as for a microwave cycle).
+"""
+function KBB_transform_basic(Kvwfg, Bfg, Bvwg)
+    tr = as((Kvwf = TVScale(Kvwfg) ∘ TVExp(), 
+        Bf = TVScale(Bfg) ∘ TVExp(),
+        Bvw = TVScale(Bvwg) ∘ TVExp(),))
+    return tr
+end
+
 
 
 @doc raw"""

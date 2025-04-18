@@ -71,8 +71,12 @@ end
     include("test_sucrose.jl")
 end
 
-@testset "Kv-Rp optimization" begin
+@testset "Kv-Rp fitting" begin
     include("test_KRp_opt.jl")
+end
+
+@testset "RF fitting" begin
+    include("test_RF_opt.jl")
 end
 
 ti = time() - ti
