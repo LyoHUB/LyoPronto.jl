@@ -50,7 +50,7 @@ end
 
 
 
-@doc raw"""
+"""
     $(SIGNATURES)
 
 Simulate primary drying, given a vector of parameter guesses, a mapping `tr` from `fitlog` to named coefficients, and other parameters in `po`.
@@ -84,6 +84,7 @@ function gen_sol_pd(fitlog, tr, po; saveat=[], kwargs...)
     sol = solve(prob, Rodas3(); saveat, kwargs...)
     return sol
 end
+"$(SIGNATURES)"
 function gen_sol_pd(fitlog, tr, po, fitdat; kwargs...)
     sol = gen_sol_pd(fitlog, tr, po; saveat=ustrip.(u"hr", fitdat.t), kwargs...)
     return sol
@@ -185,7 +186,7 @@ function obj_expT(sol, pdfit; verbose=false, kwargs...)
     error("Improper call to `obj_expT`.")
 end
 
-@doc raw"""
+"""
     $(SIGNATURES)
 
 Evaluate the error between model solution `sol` to experimental data in `pdfit`.
