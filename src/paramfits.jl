@@ -150,7 +150,7 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
         Tfobj += sum(abs2, (pdfit.Tfs[j][begin:trim] .- Tfmd[begin:trim]))/trim
     end
     if TTvw == Missing # No vial wall temperatures, encoded in type
-        Tvwobj = 0u"K^2"
+        Tvwobj = 0.0u"K^2"
     elseif TTvwi == Missing # Endpoint only temperature, encoded in type
         Tvwend = pdfit.Tvws
         Tvwobj = (sol[3, end]*u"K" - uconvert(u"K", Tvwend))^2
@@ -171,8 +171,17 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
     end
     if Tte == Missing # No drying time provided: encoded in type
         tobj = 0.0u"hr^2"
-    else # Compare drying time
-        tobj = ((pdfit.t_end - tmd))^2
+    elseif Tte <: Tuple # See if is inside window and scale appropriately
+        mid_t = (pdfit.t_end[1] + pdfit.t_end[2]) / 2.0
+        if tmd < pdfit.t_end[1]
+            tobj = (mid_t - tmd)^2
+        elseif tmd > pdfit.t_end[2]
+            tobj = (mid_t - tmd)^2
+        else # Inside window, so no error
+            tobj = 0.0u"hr^2"
+        end
+    else # Compare to a single drying time
+        tobj = (pdfit.t_end - tmd)^2
     end
     verbose && @info "loss call" tmd tobj Tfobj Tvwobj 
     return ustrip(u"K^2", Tfobj + Tvwobj) + tweight*ustrip(u"hr^2", tobj)

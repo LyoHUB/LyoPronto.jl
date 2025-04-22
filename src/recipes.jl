@@ -151,7 +151,7 @@ modconvtplot
 
     
     for (i, sol) in enumerate(sols)
-        t_nd = range(sol.t[begin], sol.t[end-1], length=101)
+        t_nd = range(sol.t[begin], sol.t[end], length=101)
         time = t_nd*u"hr"
         T = sol.(t_nd, idxs=2)*u"K"
         @series begin
@@ -215,23 +215,44 @@ end
 @doc raw"""
     tendplot(t_end)
     tendplot!(t_end)
+    tendplot(t_end1, t_end2)
+    tendplot!(t_end1, t_end2)
 
 Plot recipe that adds a labeled vertical line to the plot at time `t_end`. 
 A default label and styling are applied, but these can be modified by keyword arguments as usual
+If two time points are passed, a light shading is applied between instead of a vertical line.
 """
 tendplot
 @doc (@doc tendplot) tendplot!
 
 @userplot tendPlot
 @recipe function f(tp::tendPlot)
-    t_end = tp.args[1]
-    @series begin
-        seriestype := :vline
-        label --> "\$t_\\mathrm{end}\$"
-        seriescolor --> :gray
-        linestyle --> :dot
-        linewidth --> 3
-        return [ustrip(u"hr", t_end)]
+    if length(tp.args) == 1 && ~(tp.args[1] isa Tuple)
+        t_end = tp.args[1]
+        @series begin
+            seriestype := :vline
+            label --> "\$t_\\mathrm{end}\$"
+            seriescolor --> :gray
+            linestyle --> :dot
+            linewidth --> 3
+            return [ustrip(u"hr", t_end)]
+        end
+    elseif length(tp.args) == 2 || tp.args[1] isa Tuple
+        if tp.args[1] isa Tuple
+            t_end = tp.args[1]
+        else
+            t_end = tp.args[1:2]
+        end
+        @series begin
+            seriestype := :vspan
+            label --> "\$t_\\mathrm{end}\$, range"
+            seriescolor --> :gray
+            seriesalpha --> 0.3
+            linewidth --> 1
+            return [ustrip.(u"hr", t_end)...]
+        end
+    else
+        error("tendPlot requires 1 or 2 arguments")
     end
 end
 
