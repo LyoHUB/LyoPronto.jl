@@ -29,29 +29,31 @@ See [`lyo_1d_dae_f`](@ref) for the wrapped version, which is more fully document
 """
 function lyo_1d_dae!(du, u, params, t)
 
-    Rp, hf0, csolid, ρsolution = params[1]
-    Kshf, Av, Ap, = params[2]
-    pch, Tsh = params[3] 
+    (; Rp, hf0, csolid, ρsolution,
+      Kshf, Av, Ap, pch, Tsh) = params
     # Deliberately ignore other parameters that may be used for RF model
     
     td = t*u"hr" # Dimensional time
     hf = u[1]*u"cm"
     Tf = u[2]*u"K"
-    if Tf < 0u"K"
-        return [NaN, NaN]
+    if Tf < 0.0u"K"
+        du .= NaN
+        return nothing
     end
 
     hd = hf0 - hf
     pchl = pch(td)
     Qshf = Av*Kshf(pchl)*(Tsh(td) - Tf)
     Tsub = Tf - Qshf/k_ice/Ap*hf
-    dmdt = - Ap*(calc_psub(Tsub)-pch(td))/Rp(hd)
+    delta_p = calc_psub(Tsub)-pch(td)
+    dmdt = - Ap*(delta_p)/Rp(hd)
     Qsub = uconvert(u"W", dmdt*ΔHsub)
 
-    dhf_dt = min(0u"cm/hr", dmdt/(ρsolution-csolid)/Ap) # Cap dhf_dt at 0: no desublimation
+    dhf_dt = min(0.0u"cm/hr", dmdt/(ρsolution-csolid)/Ap |> u"cm/hr") # Cap dhf_dt at 0: no desublimation
 
     du[1] = ustrip(u"cm/hr", dhf_dt)
     du[2] = ustrip(u"W", Qsub + Qshf)
+    return nothing
 end
 
 const lyo_1d_mm = [1.0 0.0; 0.0 0.0]

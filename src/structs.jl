@@ -58,12 +58,11 @@ function (rv::RampedVariable{false, T1,T2,T3,T4})(t) where {T1,T2,T3,T4}
     return rv.setpts::T1
 end
 function (rv::RampedVariable{true, T1,T2,T3,T4})(t) where {T1,T2,T3,T4}
-    im = findlast(rv.timestops .<= t)
-    # isnothing(im) && (im = 1)
-    if im == length(rv.timestops)
-        return rv.setpts[end]
-    elseif isnothing(im) # Negative time
+    im = searchsortedfirst(rv.timestops, t) - 1
+    if im == 0 # Negative time
         return rv.setpts[1]
+    elseif im == length(rv.timestops)
+        return rv.setpts[end]
     elseif iseven(im)
         return rv.setpts[im÷2+1]
     else
