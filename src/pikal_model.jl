@@ -158,7 +158,7 @@ end
 
 function get_t0(Tsh, pch)
     if calc_psub(Tsh(0u"s")) < pch(0u"s")
-        t0 = find_zero(t -> ustrip(u"Pa", calc_psub(Tsh(t*u"hr")) - pch(t*u"hr")), 0.0)
+        t0 = find_zero(t -> ustrip(u"Pa", calc_psub(Tsh(t*u"hr")) - pch(t*u"hr")), (0.0, ustrip(u"hr", Tsh.timestops[end])))
         return t0 * 1.001 # Go jslightly after the zero, to ensure stability
     else
         return 0.0
@@ -244,7 +244,7 @@ function RpEstimator(po::ParamObjPikal, pdf::PrimaryDryFit)
     if length(pdf.Tf_iend) == 1
         return RpEstimator{false}(po, pdf, LinearInterpolation(pdf.Tfs[1], pdf.t[pdf.Tf_iend[1]]))
     end
-    Tf_interp = [LinearInterpolation(pdf.Tfs[i], pdf.t[begin:i_end]) for (i, i_end) in enumerate(pdf.Tf_iend)]
+    Tf_interp = [LinearInterpolation(pdf.Tfs[i], pdf.t[begin:i_end], extrapolation=ExtrapolationType.Constant) for (i, i_end) in enumerate(pdf.Tf_iend)]
     return RpEstimator{true}(po, pdf, Tf_interp)
 end
 
