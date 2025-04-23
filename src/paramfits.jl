@@ -128,7 +128,18 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
     end
     tmd = sol.t[end].*u"hr"
     nt = length(sol.t) - 1
-    preinterp = all(sol.t[begin:nt÷2]*u"hr" .≈ pdfit.t[begin:nt÷2]) # If ODE solution has been interpolated already to time points...
+    n_solstart = searchsortedfirst(pdfit.t, sol.t[begin]*u"hr") 
+    # Identify if the solution is pre-interpolated to the time points in pdfit.t
+    preinterp = true
+    for i in 1:nt
+        if sol.t[i]*u"hr" ≈ pdfit.t[n_solstart + i - 1]
+            continue
+        else
+            preinterp = false
+            break
+        end
+    end
+
     # Compute temperature objective for all frozen temperatures
     if preinterp
         Tfmd = sol[2, begin:end-1].*u"K" # Leave off last time point because is end time
@@ -147,7 +158,7 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
     Tfobj = 0.0u"K^2"
     for (j, iend) in enumerate(pdfit.Tf_iend)
         trim = min(iend, length(Tfmd))
-        Tfobj += sum(abs2, (pdfit.Tfs[j][begin:trim] .- Tfmd[begin:trim]))/trim
+        Tfobj += sum(abs2, (pdfit.Tfs[j][begin:trim] - Tfmd[begin:trim]))/trim
     end
     if TTvw == Missing # No vial wall temperatures, encoded in type
         Tvwobj = 0.0u"K^2"
