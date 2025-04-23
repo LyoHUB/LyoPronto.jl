@@ -128,23 +128,24 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
     end
     tmd = sol.t[end].*u"hr"
     nt = length(sol.t) - 1
-    n_solstart = searchsortedfirst(pdfit.t, sol.t[begin]*u"hr") 
+    i_solstart = searchsortedfirst(pdfit.t, sol.t[begin]*u"hr") 
     # Identify if the solution is pre-interpolated to the time points in pdfit.t
     preinterp = true
     for i in 1:nt
-        if sol.t[i]*u"hr" ≈ pdfit.t[n_solstart + i - 1]
+        if sol.t[i]*u"hr" ≈ pdfit.t[i_solstart + i - 1]
             continue
         else
             preinterp = false
             break
         end
     end
+    # @info "here" preinterp i_solstart sol.t[begin:begin+4] pdfit.t[i_solstart:i_solstart+4]
 
     # Compute temperature objective for all frozen temperatures
     if preinterp
         Tfmd = sol[2, begin:end-1].*u"K" # Leave off last time point because is end time
     else
-        ftrim = pdfit.t .< tmd
+        ftrim = sol.t[begin]*u"hr" .< pdfit.t .< tmd
         tf_trim = pdfit.t[ftrim]
         Tfmd = sol(ustrip.(u"hr", tf_trim), idxs=2).*u"K"
         # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
@@ -158,7 +159,7 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
     Tfobj = 0.0u"K^2"
     for (j, iend) in enumerate(pdfit.Tf_iend)
         trim = min(iend, length(Tfmd))
-        Tfobj += sum(abs2, (pdfit.Tfs[j][begin:trim] - Tfmd[begin:trim]))/trim
+        Tfobj += sum(abs2, (pdfit.Tfs[j][i_solstart:trim] - Tfmd[begin:trim-i_solstart+1]))/(trim-i_solstart+1)
     end
     if TTvw == Missing # No vial wall temperatures, encoded in type
         Tvwobj = 0.0u"K^2"
@@ -169,7 +170,7 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
         if preinterp
             Tvwmd = sol[3, begin:end-1].*u"K" # Leave off last time point because is end time
         else
-            vwtrim = pdfit.t .< tmd
+            vwtrim = sol.t[begin]*u"hr" .< pdfit.t .< tmd
             tvw_trim = pdfit.t[vwtrim]
             Tvwmd = sol(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
         end
@@ -177,7 +178,7 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
         Tvwobj = 0.0u"K^2"
         for (j, iend) in enumerate(pdfit.Tvw_iend)
             trim = min(iend, length(Tvwmd))
-            Tvwobj += sum(abs2, (pdfit.Tvws[j][begin:trim] .- Tvwmd[begin:trim]))/trim
+            Tvwobj += sum(abs2, (pdfit.Tvws[j][i_solstart:trim] .- Tvwmd[begin:trim-i_solstart+1]))/(trim-i_solstart+1)
         end
     end
     if Tte == Missing # No drying time provided: encoded in type
