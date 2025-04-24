@@ -113,6 +113,7 @@ Evaluate an objective function which compares model solution computed by `sol` t
 - `sol` is a solution to an appropriate model; see [`gen_sol_Rp`](@ref), [`gen_sol_KRp`](@ref), and [`gen_sol for some helper functions for this.
 - `pdfit` is an instance of `PrimaryDryFit`, which contains some information about what to compare.
 - `tweight = 1` gives the weighting (in K^2/hr^2) of the total drying time in the objective, as compared to the temperature error.
+- `Tvw_weight = 1` gives the weighting of Tvw in the objective, as compared to Tf.
 
 Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable in `sol` is assumed to be temperature, as is true for [`gen_sol_rf`](@ref).
 
@@ -120,7 +121,8 @@ If there are multiple series of `Tf` in `pdfit`, squared error is computed for e
 
 I've considered writing several methods and dispatching on `pdfit` somehow, which would be cool and might individually be easier to read. But control flow might be harder to document and explain, and this should work just fine.
 """
-function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5, TTvw, TTvwi, Tte}, ; tweight=1.0, verbose = false) where {TT1, TT2, TT3, TT4, TT5, TTvw, TTvwi, Tte}
+function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5, TTvw, TTvwi, Tte};
+     tweight=1.0, verbose = false, Tvw_weight=1.0) where {TT1, TT2, TT3, TT4, TT5, TTvw, TTvwi, Tte}
     if sol.retcode !== ReturnCode.Terminated
         # hf_end = sol[1, end]*u"cm"
         verbose && @warn "ODE solve did not reach end of drying. Either parameters are bad, or tspan is not large enough." sol.retcode sol.prob.p.hf0 sol[end]
@@ -196,7 +198,7 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
         tobj = (pdfit.t_end - tmd)^2
     end
     verbose && @info "loss call" tmd tobj Tfobj Tvwobj 
-    return ustrip(u"K^2", Tfobj + Tvwobj) + tweight*ustrip(u"hr^2", tobj)
+    return ustrip(u"K^2", Tfobj + Tvw_weight*Tvwobj) + tweight*ustrip(u"hr^2", tobj)
 end
 
 function obj_expT(sol, pdfit; verbose=false, kwargs...)
