@@ -52,7 +52,8 @@ See [`RpFormFit`](@ref) and [`RampedVariable`](@ref) for convenience types that 
 For implementation details, see [`lumped_cap_rf_LC3`](@ref).
 """
 function lumped_cap_rf!(du, u, params, tn)
-    du .= lumped_cap_rf_LC3(u, params, tn)[1]
+    lumped_cap_rf_LC3!(du, u, params, tn, Val{false})
+    return nothing
 end
 
 
@@ -66,7 +67,7 @@ but are not necessary in the ODE integration.
 LC3: Q_shw evaluated with Kshf; shape factor included; α=0
 My preferred version.
 """
-function lumped_cap_rf_LC3(u, params, tn)
+function lumped_cap_rf_LC3!(du, u, params, tn, qret = Val{false})
     # Unpack all the parameters
     Rp, hf0, csolid, ρsolution = params[1]
     Kshf_f, Av, Ap, = params[2]
@@ -111,8 +112,16 @@ function lumped_cap_rf_LC3(u, params, tn)
     dm_f = min(0.0u"kg/s", -mflow/porosity)
     dT_f =  (Q_shf+Q_vwf+Q_RF_f -Q_sub) / (m_f*cpf) - T_f*dm_f/m_f
     dT_vw = (Q_shw-Q_vwf+Q_RF_vw) / (mv*cpv)
+
+    du[1] = ustrip(u"g/hr", dm_f)
+    du[2] = ustrip(u"K/hr", dT_f)
+    du[3] = ustrip(u"K/hr", dT_vw)
     # Strip units from derivatives; return all heat transfer terms
-    return ustrip.((u"g/hr", u"K/hr", u"K/hr"), [dm_f, dT_f, dT_vw]), uconvert.(u"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw, ])
+    if qret == Val{true}
+        return uconvert.(u"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw])
+    else
+        return nothing
+    end
 end
 
 # ```
