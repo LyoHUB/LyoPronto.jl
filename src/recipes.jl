@@ -166,12 +166,17 @@ modconvtplot
     end
 
 
-    @doc raw"""
-    modrftplot(sol, labsuffix=", model")
-    modrftplot!(sol, labsuffix=", model")
+"""
+    modrftplot(sol, labsuffix=", model", evensample=true, trimend=0)
+    modrftplot!(sol, labsuffix=", model", evensample=true, trimend=0)
 
 Plot recipe for one solution to the lumped capacitance model.
 This adds two series to the plot, with labels defaulting to `["T_f" "T_{vw}"] .* labsuffix`.
+The optional arguments `evensample` and `trimend` control whether time points are taken directly 
+from the solution object (which are adaptively spaced) and how many to trim from the end
+(which is helpful if temperature shoots up as mf -> 0).
+
+
 Since this is a recipe, any Plots.jl keyword arguments can be passed to modify the plot.
 """
 modrftplot
@@ -356,7 +361,7 @@ function qrf_integrate(sol, RF_params)
 
     # So we do a manual Riemann integration on the solution output
     Qcontrib = map(sol.t) do ti
-        lumped_cap_rf_LC3(sol(ti), RF_params, ti)[2]
+        lumped_cap_rf_LC3!([0.0, 0.0, 0.0], sol(ti), RF_params, ti, Val{true})
     end
     Qcontrib = hcat(Qcontrib...)
     Qsub = Qcontrib[1,:]
