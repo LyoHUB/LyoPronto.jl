@@ -94,7 +94,7 @@ const lyo_1d_dae_f = ODEFunction(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
 #     (pch, Tsh) ,
 # )
 # ```
-struct ParamObjPikal{T1, T2, T3, T4, T5, T6, T7, T8, T9}
+struct ParamObjPikal{T1, T2, T3, T4, T5, T6, T7, T8, T9} <: ParamObj
     Rp::T1
     hf0::T2
     csolid::T3

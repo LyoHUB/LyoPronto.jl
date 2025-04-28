@@ -19,6 +19,8 @@ using Accessors
 @reexport import ConstructionBase: setproperties
 using DocStringExtensions
 
+abstract type ParamObj end
+
 include("structs.jl")
 include("rf_lumcap_model.jl")
 include("pikal_model.jl")
