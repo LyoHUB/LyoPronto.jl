@@ -1,4 +1,4 @@
-export gen_sol_pd, obj_pd
+export gen_sol_pd, obj_pd, gen_nsol_pd, objn_pd
 export KRp_transform_basic, K_transform_basic, Rp_transform_basic
 export KBB_transform_basic
 export obj_expT, err_expT 
@@ -79,8 +79,8 @@ Other `kwargs` are passed directly (as is) to the ODE `solve` call.
 """
 function gen_sol_pd(fitlog, tr, po; saveat=[], kwargs...)
     fitprm = transform(tr, fitlog)
-    new_params = setproperties(po, fitprm)
-    prob = ODEProblem(new_params; tspan=(0.0, 1000.0))
+    prms = setproperties(po, fitprm)
+    prob = ODEProblem(prms; tspan=(0.0, 1000.0))
     sol = solve(prob, Rodas3(); saveat, kwargs...)
     return sol
 end
@@ -89,6 +89,59 @@ function gen_sol_pd(fitlog, tr, po, fitdat; kwargs...)
     sol = gen_sol_pd(fitlog, tr, po; saveat=ustrip.(u"hr", fitdat.t), kwargs...)
     return sol
 end
+
+"""
+    $(SIGNATURES)
+
+Generate multiple solutions at once.
+If the transformation `tr` makes something (e.g. NamedTuple) with properties `separate` and 
+`shared`, then one each of `separate` is combined with `shared`, then they are matched up with each
+element of `pos` and `fitdats`. If `pos` is a single object, it is repeated.
+
+"""
+function gen_nsol_pd(fitlog, tr, pos, fitdats; kwargs...)
+    fitprm = transform(tr, fitlog)
+    if pos isa ParamObj # only one param object...
+        pos = repeat([pos], length(fitdats))
+    end
+    if hasproperty(fitprm, :separate) && hasproperty(fitprm, :shared)
+        # if length(fitprm.separate) == 0
+        #     prms =  [setproperties(po, fitprm.shared) for po in pos, fitprm.separate)]
+        if length(fitprm.separate) != length(fitdats)
+            error("Length of transformed variable and fitdats do not match.")
+        end
+        prms =  [setproperties(po, merge(s, fitprm.shared)) for (po, s) in zip(pos, fitprm.separate)]
+    else
+        prms = [setproperties(po, fitprm) for po in pos]
+    end
+    if length(prms) != length(pos)
+        error("Length of transformed variable and pos do not match.")
+    end
+    # Allow for one shared parameter fit to several experiments at once
+    # prms = setproperties(pos, fitprm)
+    sols = map(prms, fitdats) do prm, fitdat
+        prob = ODEProblem(prm; tspan=(0.0, 1000.0))
+        soli = solve(prob, Rodas3(); saveat=ustrip.(u"hr", fitdat.t), kwargs...)
+    end
+    return sols
+end
+
+# function setproperties(pos::Vector{ParamObj}, patch::NamedTuple)
+#     if hasproperty(patch, :separate) && hasproperty(patch, :shared)
+#         return [setproperties(po, merge(s, patch.shared)) for (po, s) in zip(pos, patch.separate)]
+#     else
+#         return [setproperties(po, patch) for po in pos]
+#     end
+# end
+# function setproperties(pos, patch::NamedTuple{(:separate, :shared)})
+#     if length(pos) != length(patch.separate)
+#         error("Length of pos and patch.separate do not match.")
+#     end
+#     map(pos, patch.separate) do po, s
+#         setproperties(po, merge(s, patch.shared))
+#     end
+#     # return [setproperties(po, merge(s, patch.shared)) for (po, s) in zip(pos, patch.separate)]
+# end
 
 """
     $(SIGNATURES)
@@ -103,6 +156,15 @@ function obj_pd(fitlog, tpf; tweight=1.0, verbose=false)
     rtype = eltype(fitlog)
     sol = gen_sol_pd(fitlog, tpf...)
     return rtype(obj_expT(sol, tpf[3]; tweight, verbose))
+end
+
+function objn_pd(fitlog, tpf; tweight=1.0, verbose=false)
+    rtype = eltype(fitlog)
+    sols = gen_nsol_pd(fitlog, tpf...)
+    obj = mapreduce(+, sols, tpf[3]) do sol, fitdat
+        obj_expT(sol, fitdat; tweight, verbose)
+    end
+    return rtype(obj)
 end
 
 """
