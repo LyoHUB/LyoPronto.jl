@@ -242,7 +242,7 @@ end
 
 function RpEstimator(po::ParamObjPikal, pdf::PrimaryDryFit)
     if length(pdf.Tf_iend) == 1
-        return RpEstimator{false}(po, pdf, LinearInterpolation(pdf.Tfs[1], pdf.t[pdf.Tf_iend[1]]))
+        return RpEstimator{false}(po, pdf, LinearInterpolation(pdf.Tfs[1], pdf.t[begin:pdf.Tf_iend[1]]))
     end
     Tf_interp = [LinearInterpolation(pdf.Tfs[i], pdf.t[begin:i_end], extrapolation=ExtrapolationType.Constant) for (i, i_end) in enumerate(pdf.Tf_iend)]
     return RpEstimator{true}(po, pdf, Tf_interp)
@@ -274,25 +274,30 @@ function dae_Rp!(du, u, p, tn)
     Q = Kshf(pch(t))*Av*(Tsh(t) - Tf)
     Tsub = Tf - Q/Ap/LyoPronto.k_ice * (hf0-hd)
     md = Q/LyoPronto.ΔH
-    Rp = Ap*(calc_psub(Tsub)-pch(t))/md
-    # Rp < 0u"m/s" && @info "Rp<0" Rp t hd md Q Tf Tsh(t) calc_psub(Tsub)-pch(t)
-    if Q <= 0.0u"W" || Rp <= 0.0u"m/s"
-        #
+    Rp = Ap*(calc_psub(Tsub)-pch(t))/md |> u"cm^2*Torr*hr/g"
+    if Q <= 0.0u"W" || Rp <= 0.0u"m/s" 
         du[1] = du[2] = 0.0
         return
     end
 
     du[1] = ustrip(u"cm/hr", md/(ρsolution-csolid)/Ap)
-    du[2] = u[2] - max(0.0, ustrip(u"cm^2*Torr*hr/g", Rp))
-    # du[2] = u[2] - ustrip(u"cm^2*Torr*hr/g", Rp)
-
-    # @info "check" du Tf Tsh(t) Rp|>u"m/s"
+    du[2] = u[2] - ustrip(u"cm^2*Torr*hr/g", Rp)
     return
 end
 const dae_Rpf = ODEFunction(dae_Rp!, mass_matrix=[1.0 0; 0 0])
 
+function get_t0(re::RpEstimator{false})
+    (; Tf_interp, po) = re
+    if Tf_interp(0u"s") > po.Tsh(0u"s")
+        t0 = find_zero(t -> ustrip(u"K", po.Tsh(t*u"hr") - Tf_interp(t*u"hr")), (0.0, ustrip(u"hr", Tf_interp.t[end])))
+        return t0 * 1.01 # Go slightly after the zero, to ensure stability
+    else
+        return 0.0
+    end
+end
+
 ODEProblem(::RpEstimator{true}) = error("Cannot create ODEProblem for multiple Tf at once. Index into the RpEstimator to choose a Tf series.")
-function ODEProblem(re::RpEstimator{false}; u0=[0.0,0], tspan=(0.0, ustrip(u"hr", re.Tf_interp.t[end])))
+function ODEProblem(re::RpEstimator{false}; u0=[0.0,0], tspan=(get_t0(re), ustrip(u"hr", re.Tf_interp.t[end])))
     return ODEProblem(dae_Rpf, u0, tspan, re; tstops=ustrip.(u"hr", re.Tf_interp.t))
 end
 
