@@ -159,23 +159,18 @@ end
 
 Calculate the sum of squared error (objective function) for fitting parameters to primary drying data.
 This directly calls [`gen_sol_pd`](@ref), then [`obj_expT`](@ref), so see those docstrings.
-
-TODO: in future, when https://github.com/SciML/OrdinaryDiffEq.jl/issues/2594 is resolved, this
-does not need to check the `eltype` of `fitlog`.
 """
 function obj_pd(fitlog, tpf; tweight=1.0, verbose=false)
-    rtype = eltype(fitlog)
     sol = gen_sol_pd(fitlog, tpf...)
-    return rtype(obj_expT(sol, tpf[3]; tweight, verbose))
+    return obj_expT(sol, tpf[3]; tweight, verbose)
 end
 
 function objn_pd(fitlog, tpf; tweight=1.0, verbose=false)
-    rtype = eltype(fitlog)
     sols = gen_nsol_pd(fitlog, tpf...)
     obj = mapreduce(+, sols, tpf[3]) do sol, fitdat
         obj_expT(sol, fitdat; tweight, verbose)
     end
-    return rtype(obj)
+    return obj
 end
 
 """
@@ -207,9 +202,7 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
     # Identify if the solution is pre-interpolated to the time points in pdfit.t
     preinterp = true
     for i in 1:nt
-        if sol.t[i]*u"hr" ≈ pdfit.t[i_solstart + i - 1]
-            continue
-        else
+        if ~(sol.t[i]*u"hr" ≈ pdfit.t[i_solstart + i - 1])
             preinterp = false
             break
         end
@@ -222,7 +215,7 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
     else
         ftrim = sol.t[begin]*u"hr" .< pdfit.t .< tmd
         tf_trim = pdfit.t[ftrim]
-        Tfmd = sol(ustrip.(u"hr", tf_trim), idxs=2).*u"K"
+        Tfmd = sol.(ustrip.(u"hr", tf_trim), idxs=2).*u"K"
         # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
         # This bit replaces any subzero values with the previous positive temperature, and notifies that it happened.
         if any(Tfmd .< 0u"K")
