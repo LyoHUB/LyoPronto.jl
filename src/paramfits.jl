@@ -94,12 +94,20 @@ end
     $(SIGNATURES)
 
 Generate multiple solutions at once.
+
 If the transformation `tr` makes something (e.g. NamedTuple) with properties `separate` and 
 `shared`, then one each of `separate` is combined with `shared`, then they are matched up with each
 element of `pos` and `fitdats`. If `pos` is a single object, it is repeated.
+Further, if `tr` also has a field `sep_inds`, then those indices are used to map `separate` 
+to the sets of `pos` and `fitdats`. This is useful for when e.g. 2 sets of `separate` parameters 
+are to be applied across 5 different experiments.
 
 """
 function gen_nsol_pd(fitlog, tr, pos, fitdats; kwargs...)
+    saveats = [ustrip.(u"hr", fitdat.t) for fitdat in fitdats]
+    return gen_nsol_pd(fitlog, tr, pos; saveats, kwargs...)
+end
+function gen_nsol_pd(fitlog, tr, pos; saveats=fill([], length(pos)), kwargs...)
     fitprm = transform(tr, fitlog)
     if pos isa ParamObj # only one param object...
         pos = repeat([pos], length(fitdats))
@@ -107,10 +115,13 @@ function gen_nsol_pd(fitlog, tr, pos, fitdats; kwargs...)
     if hasproperty(fitprm, :separate) && hasproperty(fitprm, :shared)
         # if length(fitprm.separate) == 0
         #     prms =  [setproperties(po, fitprm.shared) for po in pos, fitprm.separate)]
-        if length(fitprm.separate) != length(fitdats)
-            error("Length of transformed variable and fitdats do not match.")
+        sep_inds = hasproperty(fitprm, :sep_inds) ? fitprm.sep_inds : 1:length(fitprm.separate)
+        if length(sep_inds) != length(saveats)
+            error("Length of either the transformed variable or `sep_inds` does not match fitdats.")
         end
-        prms =  [setproperties(po, merge(s, fitprm.shared)) for (po, s) in zip(pos, fitprm.separate)]
+            # prms =  [setproperties(po, merge(s, fitprm.shared)) for (po, s) in zip(pos, fitprm.separate)]
+            # prms =  [setproperties(po, merge(s, fitprm.shared)) for (po, s) in zip(pos, fitprm.separate)]
+        prms =  [setproperties(po, merge(s, fitprm.shared)) for (po, s) in zip(pos, fitprm.separate[sep_inds])]
     else
         prms = [setproperties(po, fitprm) for po in pos]
     end
@@ -119,9 +130,9 @@ function gen_nsol_pd(fitlog, tr, pos, fitdats; kwargs...)
     end
     # Allow for one shared parameter fit to several experiments at once
     # prms = setproperties(pos, fitprm)
-    sols = map(prms, fitdats) do prm, fitdat
+    sols = map(prms, saveats) do prm, saveat
         prob = ODEProblem(prm; tspan=(0.0, 1000.0))
-        soli = solve(prob, Rodas3(); saveat=ustrip.(u"hr", fitdat.t), kwargs...)
+        soli = solve(prob, odealg_chunk2; saveat, kwargs...)
     end
     return sols
 end
