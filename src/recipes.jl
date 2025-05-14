@@ -123,18 +123,21 @@ exptvwplot
 end
 
 @doc raw"""
-    modconvtplot(sols; labsuffix = ", model")
-    modconvtplot!(sols; labsuffix = ", model")
+    modconvtplot(sols; sampmarks=false, labsuffix = ", model")
+    modconvtplot!(sols; sampmarks=false, labsuffix = ", model")
 
 Plot recipe for one or multiple solutions to the Pikal model, e.g. the output of [`gen_sol_Rp`](@ref LyoPronto.gen_sol_Rp).
 This adds a series to the plot for each passed solution, with labels defaulting to `"T_{fi}"*labsuffix`.
+
+If `sampmarks` is true, the solution will be interpolated to evenly spaced time points and 
+markers will be added to some of those points.
 """
 modconvtplot
 @doc (@doc modconvtplot) modconvtplot!
 
 
 @userplot ModConvTPlot
-@recipe function f(tpmc::ModConvTPlot; labsuffix = ", model")
+@recipe function f(tpmc::ModConvTPlot; sampmarks=false, labsuffix = ", model")
     sols = tpmc.args
     # pal = palette(:Oranges_4).colors[end:-1:begin+1] # Requires Plots as dependency...
     pal = [
@@ -149,33 +152,47 @@ modconvtplot
         labels = ["\$T_\\mathrm{f$i}\$"*labsuffix for i in 1:length(sols)]
     end
 
-    
-    for (i, sol) in enumerate(sols)
-        t_nd = range(sol.t[begin], sol.t[end], length=101)
-        time = t_nd*u"hr"
-        T = sol.(t_nd, idxs=2)*u"K"
-        @series begin
-            seriestype := :samplemarkers
-            step := 20
-            markershape --> :auto
-            seriescolor --> pal[i]
-            label --> labels[i]
-            return time, T
+    if sampmarks 
+        for (i, sol) in enumerate(sols)
+            t_nd = range(sol.t[begin], sol.t[end], length=101)
+            time = t_nd*u"hr"
+            T = sol.(t_nd, idxs=2)*u"K"
+            @series begin
+                seriestype := :samplemarkers
+                step := 20
+                markershape --> :auto
+                seriescolor --> pal[i]
+                label --> labels[i]
+                return time, T
+            end
+        end
+    else
+        for (i, sol) in enumerate(sols)
+            t_nd = sol.t
+            time = t_nd*u"hr"
+            T = sol[2,:]*u"K"
+            @series begin
+                seriescolor --> pal[i]
+                label --> labels[i]
+                return time, T
             end
         end
     end
+end
 
 
 """
-    modrftplot(sol, labsuffix=", model", evensample=true, trimend=0)
-    modrftplot!(sol, labsuffix=", model", evensample=true, trimend=0)
+    modrftplot(sol, labsuffix=", model", sampmarks=false, trimend=0)
+    modrftplot!(sol, labsuffix=", model", sampmarks=false, trimend=0)
 
 Plot recipe for one solution to the lumped capacitance model.
+
 This adds two series to the plot, with labels defaulting to `["T_f" "T_{vw}"] .* labsuffix`.
-The optional arguments `evensample` and `trimend` control whether time points are taken directly 
-from the solution object (which are adaptively spaced) and how many to trim from the end
+The optional argument `trimend` controls how many time points to trim from the end
 (which is helpful if temperature shoots up as mf -> 0).
 
+If `sampmarks` is true, the solution will be interpolated to evenly spaced time points and 
+markers will be added to some of those points.
 
 Since this is a recipe, any Plots.jl keyword arguments can be passed to modify the plot.
 """
@@ -183,37 +200,52 @@ modrftplot
 @doc (@doc modrftplot) modrftplot!
 
 @userplot ModRFTPlot
-@recipe function f(tpmr::ModRFTPlot; labsuffix = ", model", evensample=true, trimend=0)
+@recipe function f(tpmr::ModRFTPlot; labsuffix = ", model", sampmarks=false, trimend=0)
     sol = tpmr.args[1]
-    if evensample
+    if sampmarks
         t_nd = range(sol.t[begin], sol.t[end-trimend], length=31)
         step = 6
     else
         t_nd = sol.t[1:end-trimend]
-        step = length(sol.t) ÷ 5
     end
     time = t_nd*u"hr"
     # color = palette(:Oranges_3)[end]
     color = RGB{Float64}(0.902,0.333,0.051)
     # Frozen temperature: tends to have a crazy time point at end
-    @series begin
-        seriestype := :samplemarkers
-        step := step
-        T = sol.(t_nd, idxs=2)*u"K"
-        markershape --> :dtriangle
-        seriescolor --> color
-        label --> "\$T_\\mathrm{f}\$"*labsuffix # Default label
-        time, T
-    end
-    @series begin
-        seriestype := :samplemarkers
-        step := step
-        T = sol.(t_nd, idxs=3)*u"K"
-        markershape --> :utriangle
-        seriescolor --> color
-        label --> "\$T_\\mathrm{vw}\$"*labsuffix # Default label
-        linestyle := :dash
-        time, T
+    if sampmarks
+        @series begin
+            seriestype := :samplemarkers
+            step := step
+            T = sol.(t_nd, idxs=2)*u"K"
+            markershape --> :dtriangle
+            seriescolor --> color
+            label --> "\$T_\\mathrm{f}\$"*labsuffix # Default label
+            time, T
+        end
+        @series begin
+            seriestype := :samplemarkers
+            step := step
+            T = sol.(t_nd, idxs=3)*u"K"
+            markershape --> :utriangle
+            seriescolor --> color
+            label --> "\$T_\\mathrm{vw}\$"*labsuffix # Default label
+            linestyle := :dash
+            time, T
+        end
+    else
+        @series begin
+            T = sol.(t_nd, idxs=2)*u"K"
+            seriescolor --> color
+            label --> "\$T_\\mathrm{f}\$"*labsuffix # Default label
+            time, T
+        end
+        @series begin
+            T = sol.(t_nd, idxs=3)*u"K"
+            seriescolor --> color
+            label --> "\$T_\\mathrm{vw}\$"*labsuffix # Default label
+            linestyle := :dash
+            time, T
+        end
     end
 end
 
