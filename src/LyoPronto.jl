@@ -16,10 +16,15 @@ using SpecialFunctions: besselj0, besselj1
 using DataInterpolations
 using Roots
 using Accessors
+using ADTypes: AutoForwardDiff
 @reexport import ConstructionBase: setproperties
 using DocStringExtensions
 
 abstract type ParamObj end
+
+const odealg_chunk1 = Rodas4(autodiff=AutoForwardDiff(chunksize=1))
+const odealg_chunk2 = Rodas4(autodiff=AutoForwardDiff(chunksize=2))
+const odealg_chunk3 = Rodas4(autodiff=AutoForwardDiff(chunksize=3))
 
 include("structs.jl")
 include("rf_lumcap_model.jl")

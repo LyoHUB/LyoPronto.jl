@@ -65,7 +65,7 @@ This small function runs
 fitprm = transform(tr, fitlog)
 new_params = setproperties(po, fitprm)
 prob = ODEProblem(new_params; tspan=(0.0, 1000.0))
-sol = solve(prob, Rodas3(); saveat, kwargs...)
+sol = solve(prob, Rodas4(autodiff=AutoForwardDiff(chunksize=2)); saveat, kwargs...)
 ```
 which is wrapped to avoid code duplication.
 
@@ -81,7 +81,7 @@ function gen_sol_pd(fitlog, tr, po; saveat=[], kwargs...)
     fitprm = transform(tr, fitlog)
     prms = setproperties(po, fitprm)
     prob = ODEProblem(prms; tspan=(0.0, 1000.0))
-    sol = solve(prob, Rodas3(); saveat, kwargs...)
+    sol = solve(prob, odealg_chunk2; saveat, kwargs...)
     return sol
 end
 "$(SIGNATURES)"
@@ -191,7 +191,7 @@ I've considered writing several methods and dispatching on `pdfit` somehow, whic
 """
 function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5, TTvw, TTvwi, Tte};
      tweight=1.0, verbose = false, Tvw_weight=1.0) where {TT1, TT2, TT3, TT4, TT5, TTvw, TTvwi, Tte}
-    if sol.retcode !== ReturnCode.Terminated
+    if sol.retcode !== ReturnCode.Terminated || length(sol.u) <= 1
         # hf_end = sol[1, end]*u"cm"
         verbose && @warn "ODE solve did not reach end of drying. Either parameters are bad, or tspan is not large enough." sol.retcode sol.prob.p.hf0 sol[end]
         return NaN

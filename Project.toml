@@ -4,6 +4,7 @@ authors = ["Isaac Wheeler <ickaser@gmail.com>"]
 version = "0.1.1"
 
 [deps]
+ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 ColorTypes = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
@@ -23,6 +24,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
+ADTypes = "1.14.0"
 ConstructionBase = "1"
 DocStringExtensions = "0.9"
 Test = "1"
