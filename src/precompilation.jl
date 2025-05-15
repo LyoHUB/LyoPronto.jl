@@ -13,8 +13,8 @@
     csolid = 0.05u"g/mL" # g solute / mL solution
     ρsolution = 1u"g/mL" # g/mL total solution density
     R0 = 0.8u"cm^2*Torr*hr/g"
-    A1 = 14u"cm*Torr*hr/g"
-    A2 = 1u"1/cm"
+    A1 = 14.0u"cm*Torr*hr/g"
+    A2 = 1.0u"1/cm"
     Rp = RpFormFit(R0, A1, A2)
     # Cycle parameters
     pch = RampedVariable(70u"mTorr") # constant pressure
@@ -37,8 +37,8 @@
 
     # -------------------
     # Simulate conventional
-    prob = ODEProblem(po)
-    sol = solve(prob, Rosenbrock23())
+    prob1 = ODEProblem(po)
+    sol1 = solve(prob1, odealg_chunk2)
 
     # ------------------- 
     # RF-specific parameters
@@ -70,7 +70,8 @@
 
     # -------------------
     # Simulate RF
-    prob = ODEProblem(po_rf)
-    sol = solve(prob, Rosenbrock23())
+    prob2 = ODEProblem(po_rf)
+    sol2a = solve(prob2, odealg_chunk2)
+    sol2b = solve(prob2, odealg_chunk3)
     end
 end
