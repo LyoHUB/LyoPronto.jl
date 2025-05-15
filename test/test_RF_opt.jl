@@ -42,25 +42,26 @@ po = ParamObjRF((
     (Kvwf, Bf, Bvw),
 ))
 
-base_sol = solve(ODEProblem(po), Rodas3())
+base_sol = solve(ODEProblem(po), odealg_chunk3)
 
 t = base_sol.t*u"hr"
 Tf = base_sol[2,:]*u"K"
 Tvw = base_sol[3,:]*u"K"
 t_end = t[end]
-pdfit = PrimaryDryFit(t, T, Tvw, t_end)
+pdfit = PrimaryDryFit(t, Tf, Tvw, t_end)
 
-tr = KBB_transform_basic(Kvwf*0.75, Bf*0.5, 2*Bvw)
-pg = fill(0.0, 3)
+tr = KBB_transform_basic(Kvwf*0.5, Bf*0.5, 0.5*Bvw)
+pg = fill(1.0, 3)
 sol = gen_sol_pd(pg, tr, po)
 @test sol != base_sol
 pass = (tr, po, pdfit)
 # err = @inferred obj_pd(pg, pass)
-err = obj_pd(pg, pass)
+err = obj_pd(pg, pass, verbose=true)
 obj = OptimizationFunction(obj_pd, AutoForwardDiff())
-opt = solve(OptimizationProblem(obj, pg, pass), optalg)
+opt = solve(OptimizationProblem(obj, pg, pass), optalg;)
 vals = transform(tr, opt.u)
-@test_broken vals.Kvwf ≈ Kvwf rtol=0.1
-@test_broken vals.Bf ≈ Bf rtol=0.1
+@test vals.Kvwf ≈ Kvwf rtol=0.1
+@test vals.Bf ≈ Bf rtol=0.5
 @test vals.Bvw ≈ Bvw rtol=0.1
+
 
