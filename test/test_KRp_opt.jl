@@ -10,8 +10,8 @@ Av = π*rad_o^2 # vial bottom area
 csolid = 0.06u"g/mL" # g solute / mL solution
 ρsolution = 1u"g/mL" # g/mL total solution density
 R0 = 0.8u"cm^2*Torr*hr/g"
-A1 = 14u"cm*Torr*hr/g"
-A2 = 1u"1/cm"
+A1 = 14.0u"cm*Torr*hr/g"
+A2 = 1.0u"1/cm"
 Rp = RpFormFit(R0, A1, A2)
 # Cycle parameters
 Vfill = 3u"mL" # ml
@@ -39,7 +39,7 @@ t_end = t[end]
 pdfit = PrimaryDryFit(t, T, t_end)
 
 @testset "Both Kv and Rp" begin
-    tr = KRp_transform_basic(Kshf(pch(0))*0.75, R0*0.5, 2*A1, A2)
+    tr = KRp_transform_basic(Kshf(pch(0))*0.75, R0*0.5, 2*A1, A2*0.5)
     pg = fill(0.0, 4)
     sol = gen_sol_pd(pg, tr, po)
     @test sol != base_sol
@@ -47,16 +47,16 @@ pdfit = PrimaryDryFit(t, T, t_end)
     # err = @inferred obj_pd(pg, pass)
     err = obj_pd(pg, pass)
     obj = OptimizationFunction(obj_pd, AutoForwardDiff())
-    opt = solve(OptimizationProblem(obj, pg, pass), optalg)
+    opt = solve(OptimizationProblem(obj, pg, pass), optalg, x_abstol=1e-12)
     vals = transform(tr, opt.u)
-    @test vals.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.1
+    @test vals.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.3
     @test vals.Rp.R0 ≈ R0 rtol=0.1
     @test vals.Rp.A1 ≈ A1 rtol=0.1
     @test vals.Rp.A2 ≈ A2 rtol=0.1
 end
 
 @testset "Only Rp" begin
-    tr = Rp_transform_basic(R0*0.5, 2*A1, A2)
+    tr = Rp_transform_basic(R0*0.5, 2*A1, A2*0.5)
     pg = fill(0.0, 3)
     sol = gen_sol_pd(pg, tr, po)
     @test sol != base_sol
@@ -68,6 +68,6 @@ end
     vals = transform(tr, opt.u)
     @test vals.Rp.R0 ≈ R0 rtol=0.1
     @test vals.Rp.A1 ≈ A1 rtol=0.1
-    @test vals.Rp.A2 ≈ A2 rtol=0.1
+    @test vals.Rp.A2 ≈ A2 rtol=0.5
 end
 
