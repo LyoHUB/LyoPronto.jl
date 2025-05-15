@@ -221,6 +221,6 @@ end
 
 function ODEProblem(po::ParamObjRF; u0 = calc_u0(po), tspan=(0.0, 400.0))
     tstops = get_tstops(po)
-    return ODEProblem{true}(lumped_cap_rf!, u0, tspan, po; 
+    return ODEProblem{true, SciMLBase.FullSpecialize}(lumped_cap_rf!, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback)
 end

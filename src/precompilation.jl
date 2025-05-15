@@ -28,12 +28,11 @@
     KP = 2.41e-3u"cal/s/K/cm^2/Torr"
     KD = 2.62u"1/Torr"
     Kshf = RpFormFit(KC, KP, KD)
-    params_bunch = [
+    po = ParamObjPikal((
         (Rp, hf0, csolid, ρsolution),
         (Kshf, Av, Ap),
         (pch, Tsh)
-    ]
-    po = ParamObjPikal(params_bunch)
+    ))
 
     # -------------------
     # Simulate conventional
@@ -58,15 +57,14 @@
     Tsh_rv = RampedVariable([233.15u"K", 283.15u"K"], 0.5u"K/minute",)
     P_per_vial = RampedVariable(10u"W"/17 * 0.54) # actual power / vial
 
-    params_bunch_rf = Vector{Any}([
+    po_rf = ParamObjRF((
         (Rp, hf0, csolid, ρsolution),
         (Kshf, Av, Ap),
         (pch_rv, Tsh_rv, P_per_vial),
         (mf0, cpf, mv, cpv),
         (f_RF, eppf, epp_w),
         (Kvwf, Bf, Bvw),
-    ])
-    po_rf = ParamObjRF(params_bunch_rf)
+    ))
 
     # -------------------
     # Simulate RF
