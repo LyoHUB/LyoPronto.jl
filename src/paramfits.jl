@@ -189,8 +189,8 @@ If there are multiple series of `Tf` in `pdfit`, squared error is computed for e
 
 I've considered writing several methods and dispatching on `pdfit` somehow, which would be cool and might individually be easier to read. But control flow might be harder to document and explain, and this should work just fine.
 """
-function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5, TTvw, TTvwi, Tte};
-     tweight=1.0, verbose = false, Tvw_weight=1.0) where {TT1, TT2, TT3, TT4, TT5, TTvw, TTvwi, Tte}
+function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit; 
+    tweight=1.0, verbose = false, Tvw_weight=1.0)
     if sol.retcode !== ReturnCode.Terminated || length(sol.u) <= 1
         # hf_end = sol[1, end]*u"cm"
         verbose && @warn "ODE solve did not reach end of drying. Either parameters are bad, or tspan is not large enough." sol.retcode sol.prob.p.hf0 sol[end]
@@ -207,7 +207,6 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
             break
         end
     end
-    # @info "here" preinterp i_solstart sol.t[begin:begin+4] pdfit.t[i_solstart:i_solstart+4]
 
     # Compute temperature objective for all frozen temperatures
     if preinterp
@@ -229,9 +228,9 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
         trim = min(iend, length(Tfmd))
         Tfobj += sum(abs2, (pdfit.Tfs[j][i_solstart:trim] - Tfmd[begin:trim-i_solstart+1]))/(trim-i_solstart+1)
     end
-    if TTvw == Missing # No vial wall temperatures, encoded in type
+    if ismissing(pdfit.Tvws) # No vial wall temperatures
         Tvwobj = 0.0u"K^2"
-    elseif TTvwi == Missing # Endpoint only temperature, encoded in type
+    elseif ismissing(pdfit.Tvw_iend) # Only an endpoint temperature provided
         Tvwend = pdfit.Tvws
         Tvwobj = (sol[3, end]*u"K" - uconvert(u"K", Tvwend))^2
     else # Regular case of fitting to at least one full temperature series
@@ -249,9 +248,9 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
             Tvwobj += sum(abs2, (pdfit.Tvws[j][i_solstart:trim] .- Tvwmd[begin:trim-i_solstart+1]))/(trim-i_solstart+1)
         end
     end
-    if Tte == Missing # No drying time provided: encoded in type
+    if ismissing(pdfit.t_end) # No drying time provided
         tobj = 0.0u"hr^2"
-    elseif Tte <: Tuple # See if is inside window and scale appropriately
+    elseif pdfit.t_end isa Tuple # See if is inside window and scale appropriately
         mid_t = (pdfit.t_end[1] + pdfit.t_end[2]) / 2.0
         if tmd < pdfit.t_end[1]
             tobj = (mid_t - tmd)^2
@@ -267,9 +266,11 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
     return ustrip(u"K^2", Tfobj + Tvw_weight*Tvwobj) + tweight*ustrip(u"hr^2", tobj)
 end
 
-function obj_expT(sol, pdfit; verbose=false, kwargs...)
+function obj_expT(sol, pdfit; verbose=false, kwargs...) 
     verbose && @warn "`obj_expT` got passed improper args. Might not be a problem, but check." sol
-    if isnan(sol)
+    # In some cases, inputs are so bad it's not worth an ODE solve, so this method
+    # provides an escape hatch for NaN returns instead of crashing.
+    if isnan(sol) 
         return NaN
     end
     error("Improper call to `obj_expT`.")
