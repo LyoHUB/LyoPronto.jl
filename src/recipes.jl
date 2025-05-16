@@ -126,7 +126,7 @@ end
     modconvtplot(sols; sampmarks=false, labsuffix = ", model")
     modconvtplot!(sols; sampmarks=false, labsuffix = ", model")
 
-Plot recipe for one or multiple solutions to the Pikal model, e.g. the output of [`gen_sol_Rp`](@ref LyoPronto.gen_sol_Rp).
+Plot recipe for one or multiple solutions to the Pikal model, e.g. the output of [`gen_sol_pd`](@ref LyoPronto.gen_sol_pd).
 This adds a series to the plot for each passed solution, with labels defaulting to `"T_{fi}"*labsuffix`.
 
 If `sampmarks` is true, the solution will be interpolated to evenly spaced time points and 

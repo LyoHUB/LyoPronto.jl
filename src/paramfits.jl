@@ -190,12 +190,12 @@ end
 
 Evaluate an objective function which compares model solution computed by `sol` to experimental data in `pdfit`.
 
-- `sol` is a solution to an appropriate model; see [`gen_sol_Rp`](@ref), [`gen_sol_KRp`](@ref), and [`gen_sol for some helper functions for this.
+- `sol` is a solution to an appropriate model; see [`gen_sol_pd`](@ref) for a helper.
 - `pdfit` is an instance of `PrimaryDryFit`, which contains some information about what to compare.
 - `tweight = 1` gives the weighting (in K^2/hr^2) of the total drying time in the objective, as compared to the temperature error.
 - `Tvw_weight = 1` gives the weighting of Tvw in the objective, as compared to Tf.
 
-Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable in `sol` is assumed to be temperature, as is true for [`gen_sol_rf`](@ref).
+Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable in `sol` is assumed to be temperature, as is true for the lumped capacitance model (see [ParamObjRF`](@ref).
 
 If there are multiple series of `Tf` in `pdfit`, squared error is computed for each separately then summed; likewise for `Tvw`.
 
@@ -300,7 +300,7 @@ Evaluate the error between model solution `sol` to experimental data in `pdfit`.
 
 In contrast to `obj_expT()`, this function makes an array of all the errors, which would be squared and summed to produce an objective function.
 - `errs` is a vector of length `num_errs(pdfit)`, which this function fills with the errors.
--`sol` is a solution to an appropriate model; see [`gen_sol_Rp`](@ref), [`gen_sol_KRp`](@ref), and [`gen_sol_rf`](@ref) for some helper functions for this.
+-`sol` is a solution to an appropriate model; see [`gen_sol_pd`](@ref) for a helper function.
 - `pdfit` is an instance of `PrimaryDryFit`, which contains some information about what to compare.
 - `tweight = 1` gives the weighting (in K^2/hr^2) of the total drying time in the objective, as compared to the temperature error.
 Each time series, plus the end time, is given equal weight by dividing by its length; error is given in K (but `ustrip`ped).
