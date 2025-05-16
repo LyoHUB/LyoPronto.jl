@@ -4,7 +4,7 @@ using Documenter
 using Literate
 
 @info "Using Literate to generate example"
-Literate.markdown("./example/fitting_mannitol.jl", "./src/generated", documenter=true)
+Literate.markdown((@__DIR__)*"/example/fitting_mannitol.jl", "./src/generated", documenter=true)
 
 @info "Building Documentation"
 makedocs(;
