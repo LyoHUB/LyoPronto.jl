@@ -56,7 +56,7 @@ function lyo_1d_dae!(du, u, params, t)
     return nothing
 end
 
-const lyo_1d_mm = [1.0 0.0; 0.0 0.0]
+const lyo_1d_mm = Diagonal([1.0, 0.0])
 
 @doc raw"""
     lyo_1d_dae_f = ODEFunction(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
@@ -84,7 +84,7 @@ See [`RpFormFit`](@ref LyoPronto.RpFormFit) and [`RampedVariable`](@ref LyoPront
 - `Kshf(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
 - `Tsh(t)`, `pch(t)` return shelf temperature and chamber pressure respectively at time `t`.
 """
-const lyo_1d_dae_f = ODEFunction{true}(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
+const lyo_1d_dae_f = ODEFunction{true, SciMLBase.AutoSpecialize}(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
 
 
 # ```
@@ -170,7 +170,7 @@ function ODEProblem(po::ParamObjPikal; u0=calc_u0(po), tspan=(0.0, 1000.0))
     tstops = get_tstops(po)
     t0 = get_t0(po)
     @reset tspan[1] = t0 
-    return ODEProblem{true, SciMLBase.FullSpecialize}(lyo_1d_dae_f, u0, tspan, po; 
+    return ODEProblem(lyo_1d_dae_f, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback)
 end
 

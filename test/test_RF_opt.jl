@@ -56,7 +56,7 @@ sol = @inferred gen_sol_pd(pg, tr, po)
 @test sol != base_sol
 pass = (tr, po, pdfit)
 # err = @inferred obj_pd(pg, pass)
-err = @inferred obj_pd(pg, pass, verbose=true)
+err = @inferred obj_pd(pg, pass)
 obj = OptimizationFunction(obj_pd, AutoForwardDiff(chunksize=3))
 opt = solve(OptimizationProblem(obj, pg, pass), optalg;)
 vals = transform(tr, opt.u)

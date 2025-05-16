@@ -19,6 +19,7 @@ using Accessors
 using ADTypes: AutoForwardDiff
 @reexport import ConstructionBase: setproperties
 using DocStringExtensions
+using LinearAlgebra: Diagonal
 
 abstract type ParamObj end
 

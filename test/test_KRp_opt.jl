@@ -31,7 +31,7 @@ po = ParamObjPikal((
     (Kshf, Av, Ap),
     (pch, Tsh)
 ))
-base_sol = solve(ODEProblem(po), Rodas3())
+base_sol = solve(ODEProblem(po), LyoPronto.odealg_chunk2)
 
 t = base_sol.t*u"hr"
 T = base_sol[2,:]*u"K"
@@ -46,8 +46,8 @@ pdfit = PrimaryDryFit(t, T, t_end)
     pass = (tr, po, pdfit)
     # err = @inferred obj_pd(pg, pass)
     err = @inferred obj_pd(pg, pass)
-    obj = OptimizationFunction(obj_pd, AutoForwardDiff())
-    opt = solve(OptimizationProblem(obj, pg, pass), optalg, x_abstol=1e-12)
+    obj = OptimizationFunction(obj_pd, AutoForwardDiff(chunksize=4))
+    opt = solve(OptimizationProblem(obj, pg, pass), optalg)
     vals = transform(tr, opt.u)
     @test vals.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.3
     @test vals.Rp.R0 ≈ R0 rtol=0.1
@@ -63,7 +63,7 @@ end
     pass = (tr, po, pdfit)
     # err = @inferred obj_pd(pg, pass)
     err = @inferred obj_pd(pg, pass)
-    obj = OptimizationFunction(obj_pd, AutoForwardDiff())
+    obj = OptimizationFunction(obj_pd, AutoForwardDiff(chunksize=3))
     opt = solve(OptimizationProblem(obj, pg, pass), optalg)
     vals = transform(tr, opt.u)
     @test vals.Rp.R0 ≈ R0 rtol=0.1

@@ -240,7 +240,7 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
         else
             vwtrim = sol.t[begin]*u"hr" .< pdfit.t .< tmd
             tvw_trim = pdfit.t[vwtrim]
-            Tvwmd = sol(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
+            Tvwmd = sol.(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
         end
         # Compute temperature objective for all vial wall temperatures
         Tvwobj = 0.0u"K^2"
