@@ -1,5 +1,6 @@
 using Optimization, OptimizationOptimJL
 using LineSearches
+using NonlinearSolve
 optalg = LBFGS(linesearch=LineSearches.BackTracking())
 
 vialsize = "6R"
@@ -38,7 +39,7 @@ T = base_sol[2,:]*u"K"
 t_end = t[end]
 pdfit = PrimaryDryFit(t, T, t_end)
 
-@testset "Both Kv and Rp" begin
+@testset "Both Kv and Rp, optimization routine" begin
     tr = KRp_transform_basic(Kshf(pch(0))*0.75, R0*0.5, 2*A1, A2*0.5)
     pg = fill(0.0, 4)
     sol = @inferred gen_sol_pd(pg, tr, po)
@@ -71,3 +72,18 @@ end
     @test vals.Rp.A2 ≈ A2 rtol=0.5
 end
 
+
+@testset "Both Kv and Rp, least squares routine" begin
+    tr = KRp_transform_basic(Kshf(pch(0))*0.75, R0*0.5, 2*A1, A2*0.5)
+    pg = fill(0.0, 4)
+    sol = @inferred gen_sol_pd(pg, tr, po)
+    @test sol != base_sol
+    pass = (tr, po, pdfit)
+    nls = NonlinearFunction{true}(nls_pd, resid_prototype=zeros(num_errs(pdfit)))
+    opt = solve(NonlinearLeastSquaresProblem(nls, pg, pass), LevenbergMarquardt(autodiff=AutoForwardDiff()), reltol=1e-8, abstol=1e-8)
+    vals = transform(tr, opt.u)
+    @test_broken vals.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.1
+    @test_broken vals.Rp.R0 ≈ R0 rtol=0.1
+    @test_broken vals.Rp.A1 ≈ A1 rtol=0.1
+    @test_broken vals.Rp.A2 ≈ A2 rtol=0.1
+end
