@@ -42,7 +42,7 @@ po = ParamObjRF((
     (Kvwf, Bf, Bvw),
 ))
 
-base_sol = solve(ODEProblem(po), odealg_chunk3)
+base_sol = solve(ODEProblem(po), LyoPronto.odealg_chunk3)
 
 t = base_sol.t*u"hr"
 Tf = base_sol[2,:]*u"K"
@@ -52,12 +52,12 @@ pdfit = PrimaryDryFit(t, Tf, Tvw, t_end)
 
 tr = KBB_transform_basic(Kvwf*0.5, Bf*0.5, 0.5*Bvw)
 pg = fill(1.0, 3)
-sol = gen_sol_pd(pg, tr, po)
+sol = @inferred gen_sol_pd(pg, tr, po)
 @test sol != base_sol
 pass = (tr, po, pdfit)
 # err = @inferred obj_pd(pg, pass)
-err = obj_pd(pg, pass, verbose=true)
-obj = OptimizationFunction(obj_pd, AutoForwardDiff())
+err = @inferred obj_pd(pg, pass, verbose=true)
+obj = OptimizationFunction(obj_pd, AutoForwardDiff(chunksize=3))
 opt = solve(OptimizationProblem(obj, pg, pass), optalg;)
 vals = transform(tr, opt.u)
 @test vals.Kvwf ≈ Kvwf rtol=0.1
