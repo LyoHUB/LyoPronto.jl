@@ -64,6 +64,15 @@ end
     @test_throws MethodError PrimaryDryFit(T1a, t_end)
     @test_throws MethodError PrimaryDryFit(t1, t_end)
     @test_throws MethodError PrimaryDryFit(t1, T1a, T2, T1b, t_end)
+
+    # Check that i_end has correct length
+    for pdfit in (master1, master2, master3, master4, master5, master6)
+        @test length(pdfit.Tfs) == length(pdfit.Tf_iend)
+        if !ismissing(pdfit.Tvw_iend)
+            @test length(pdfit.Tvws) == length(pdfit.Tvw_iend)
+        end
+    end
+
 end
 
 
