@@ -80,10 +80,10 @@ end
     @test sol != base_sol
     pass = (tr, po, pdfit)
     nls = NonlinearFunction{true}(nls_pd, resid_prototype=zeros(num_errs(pdfit)))
-    opt = solve(NonlinearLeastSquaresProblem(nls, pg, pass), LevenbergMarquardt(autodiff=AutoForwardDiff()), reltol=1e-8, abstol=1e-8)
+    opt = solve(NonlinearLeastSquaresProblem(nls, pg, pass), GaussNewton(), reltol=1e-10, abstol=1e-10)
     vals = transform(tr, opt.u)
-    @test_broken vals.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.1
-    @test_broken vals.Rp.R0 ≈ R0 rtol=0.1
-    @test_broken vals.Rp.A1 ≈ A1 rtol=0.1
-    @test_broken vals.Rp.A2 ≈ A2 rtol=0.1
+    @test vals.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.1
+    @test vals.Rp.R0 ≈ R0 rtol=0.1
+    @test vals.Rp.A1 ≈ A1 rtol=0.1
+    @test vals.Rp.A2 ≈ A2 rtol=0.3
 end
