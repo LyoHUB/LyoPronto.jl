@@ -29,32 +29,34 @@ See [`lyo_1d_dae_f`](@ref) for the wrapped version, which is more fully document
 """
 function lyo_1d_dae!(du, u, params, t)
 
-    Rp, hf0, c_solid, ρ_solution = params[1]
-    Kshf, Av, Ap, = params[2]
-    pch, Tsh = params[3] 
+    (; Rp, hf0, csolid, ρsolution,
+      Kshf, Av, Ap, pch, Tsh) = params
     # Deliberately ignore other parameters that may be used for RF model
     
     td = t*u"hr" # Dimensional time
     hf = u[1]*u"cm"
     Tf = u[2]*u"K"
-    if Tf < 0u"K"
-        return [NaN, NaN]
+    if Tf < 0.0u"K"
+        du .= NaN
+        return nothing
     end
 
     hd = hf0 - hf
     pchl = pch(td)
     Qshf = Av*Kshf(pchl)*(Tsh(td) - Tf)
     Tsub = Tf - Qshf/k_ice/Ap*hf
-    dmdt = - Ap*(calc_psub(Tsub)-pch(td))/Rp(hd)
+    delta_p = calc_psub(Tsub)-pch(td)
+    dmdt = - Ap*(delta_p)/Rp(hd)
     Qsub = uconvert(u"W", dmdt*ΔHsub)
 
-    dhf_dt = min(0u"cm/hr", dmdt/(ρ_solution-c_solid)/Ap) # Cap dhf_dt at 0: no desublimation
+    dhf_dt = min(0.0u"cm/hr", dmdt/(ρsolution-csolid)/Ap |> u"cm/hr") # Cap dhf_dt at 0: no desublimation
 
     du[1] = ustrip(u"cm/hr", dhf_dt)
     du[2] = ustrip(u"W", Qsub + Qshf)
+    return nothing
 end
 
-const lyo_1d_mm = [1.0 0.0; 0.0 0.0]
+const lyo_1d_mm = Diagonal([1.0, 0.0])
 
 @doc raw"""
     lyo_1d_dae_f = ODEFunction(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
@@ -71,7 +73,7 @@ The unitless time is taken to be in hours, so derivatives are given in unitless 
 `params` has the form:
 ```
 params = (
-    (Rp, hf0, c_solid, ρ_solution),
+    (Rp, hf0, csolid, ρsolution),
     (Kshf, Av, Ap),
     (pch, Tsh) ,
 )
@@ -82,21 +84,21 @@ See [`RpFormFit`](@ref LyoPronto.RpFormFit) and [`RampedVariable`](@ref LyoPront
 - `Kshf(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
 - `Tsh(t)`, `pch(t)` return shelf temperature and chamber pressure respectively at time `t`.
 """
-const lyo_1d_dae_f = ODEFunction(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
+const lyo_1d_dae_f = ODEFunction{true, SciMLBase.AutoSpecialize}(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
 
 
 # ```
 # params = (
-#     (Rp, hf0, c_solid, ρ_solution),
+#     (Rp, hf0, csolid, ρsolution),
 #     (Kshf, Av, Ap),
 #     (pch, Tsh) ,
 # )
 # ```
-struct ParamObjPikal{T1, T2, T3, T4, T5, T6, T7, T8, T9}
+struct ParamObjPikal{T1, T2, T3, T4, T5, T6, T7, T8, T9} <: ParamObj
     Rp::T1
     hf0::T2
-    c_solid::T3
-    ρ_solution::T4
+    csolid::T3
+    ρsolution::T4
     Kshf::T5
     Av::T6
     Ap::T7 
@@ -104,14 +106,20 @@ struct ParamObjPikal{T1, T2, T3, T4, T5, T6, T7, T8, T9}
     Tsh::T9
 end
 
-
+# This constructor takes the legacy tuple of tuples form I used and unpacks it
 function ParamObjPikal(tuptup) 
     return ParamObjPikal(tuptup[1]..., tuptup[2]..., tuptup[3]...)
 end
 
+# This constructor catches if Rp is passed as a tuple or NamedTuple and constructs an appropriate object
+function ParamObjPikal(Rp::Union{NamedTuple, Tuple},
+    hf0, csolid, ρsolution, Kshf, Av, Ap, pch, Tsh)
+    return ParamObjPikal(RpFormFit(Rp...), hf0, csolid, ρsolution, Kshf, Av, Ap, pch, Tsh)
+end
+
 function Base.getindex(p::ParamObjPikal, i::Int)
     if i == 1
-        return (p.Rp, p.hf0, p.c_solid, p.ρ_solution)
+        return (p.Rp, p.hf0, p.csolid, p.ρsolution)
     elseif i == 2
         return (p.Kshf, p.Av, p.Ap)
     elseif i == 3
@@ -120,10 +128,10 @@ function Base.getindex(p::ParamObjPikal, i::Int)
         error(BoundsError, "Attempt to access LyoPronto.ParamsObjPikal at index $i. Only indices 1 to 3 allowed")
     end
 end
-Base.size(p::ParamObjPikal) = (3,)
-Base.length(p::ParamObjPikal) = 3
+Base.size(::ParamObjPikal) = (3,)
+Base.length(::ParamObjPikal) = 3
 function Base.show(io::IO, po::ParamObjPikal)
-    str = "ParamObjPikal( ($(po.Rp), $(po.hf0), $(po.c_solid), $(po.ρ_solution)),
+    str = "ParamObjPikal( ($(po.Rp), $(po.hf0), $(po.csolid), $(po.ρsolution)),
            ($(po.Kshf), $(po.Av), $(po.Ap)),
            ($(po.pch), $(po.Tsh)) )"
     return print(io, str)
@@ -147,20 +155,22 @@ end
 function get_tstops(po::ParamObjPikal)
     get_tstops((po.Tsh, po.pch))
 end
-function get_t0(po::ParamObjPikal)
-    if calc_psub(po.Tsh(0u"s")) < po.pch(0u"s")
-        t0 = find_zero(t -> ustrip(u"Pa", calc_psub(po.Tsh(t*u"hr")) - po.pch(t*u"hr")), 0.0)
-        return t0
+
+function get_t0(Tsh, pch)
+    if calc_psub(Tsh(0u"s")) < pch(0u"s")
+        t0 = find_zero(t -> ustrip(u"Pa", calc_psub(Tsh(t*u"hr")) - pch(t*u"hr")), (0.0, ustrip(u"hr", Tsh.timestops[end])))
+        return t0 * 1.001 # Go jslightly after the zero, to ensure stability
     else
         return 0.0
     end
 end
+get_t0(po::ParamObjPikal) = get_t0(po.Tsh, po.pch)
 
 function ODEProblem(po::ParamObjPikal; u0=calc_u0(po), tspan=(0.0, 1000.0))
     tstops = get_tstops(po)
-    # t0 = get_t0(po)
-    # @reset tspan[1] = t0 # Weird, but adding this functionality leads to worse fit results for Rp in the case I'm looking at
-    return ODEProblem{true}(lyo_1d_dae_f, u0, tspan, po; 
+    t0 = get_t0(po)
+    @reset tspan[1] = t0 
+    return ODEProblem(lyo_1d_dae_f, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback)
 end
 
@@ -181,7 +191,7 @@ function compute_T_pseudosteady(Pchl, Rpl, Kvl, Tshl, Ap, Av, hd)
 end
 
 function lyo_1d!(du, u, params, t)
-    Rp, hf0, c_solid, ρ_solution = params[1]
+    Rp, hf0, csolid, ρsolution = params[1]
     Kshf, Av, Ap, = params[2]
     pch, Tsh = params[3] 
     
@@ -192,7 +202,7 @@ function lyo_1d!(du, u, params, t)
     Tp = compute_T_pseudosteady(pch(td), Rp(hd), Kshf(pch(td)), Tsh(td), Ap, Av, hd)
     dmdt = - Ap*(calc_psub(Tp)-pch(td))/Rp(hd)
 
-    dhf_dt = min(0u"cm/s", dmdt/Ap/(ρ_solution - c_solid))
+    dhf_dt = min(0u"cm/s", dmdt/Ap/(ρsolution - csolid))
 
     # Q = uconvert(u"W/m^2", Kshf(pch(td))*(Tsh(td)-Tp))
     # flux = uconvert(u"kg/hr/m^2", -dmdt/Ap)
@@ -201,7 +211,7 @@ function lyo_1d!(du, u, params, t)
 end
 
 function subflux_Tsub(u, params, t)
-    Rp, hf0, c_solid, ρ_solution = params[1]
+    Rp, hf0, csolid, ρsolution = params[1]
     Kshf, Av, Ap, = params[2]
     pch, Tsh = params[3] 
 
@@ -232,9 +242,9 @@ end
 
 function RpEstimator(po::ParamObjPikal, pdf::PrimaryDryFit)
     if length(pdf.Tf_iend) == 1
-        return RpEstimator{false}(po, pdf, LinearInterpolation(pdf.Tfs[1], pdf.t[pdf.Tf_iend[1]]))
+        return RpEstimator{false}(po, pdf, LinearInterpolation(pdf.Tfs[1], pdf.t[begin:pdf.Tf_iend[1]]))
     end
-    Tf_interp = [LinearInterpolation(pdf.Tfs[i], pdf.t[begin:i_end]) for (i, i_end) in enumerate(pdf.Tf_iend)]
+    Tf_interp = [LinearInterpolation(pdf.Tfs[i], pdf.t[begin:i_end], extrapolation=ExtrapolationType.Constant) for (i, i_end) in enumerate(pdf.Tf_iend)]
     return RpEstimator{true}(po, pdf, Tf_interp)
 end
 
@@ -254,7 +264,7 @@ function dae_Rp!(du, u, p, tn)
     Rpg = u[2]*u"cm^2*Torr*hr/g"
 
     (;po, Tf_interp) = p
-    _, hf0, c_solid, ρ_solution = po[1]
+    _, hf0, csolid, ρsolution = po[1]
     Kshf, Av, Ap, = po[2]
     pch, Tsh = po[3] 
 
@@ -264,25 +274,30 @@ function dae_Rp!(du, u, p, tn)
     Q = Kshf(pch(t))*Av*(Tsh(t) - Tf)
     Tsub = Tf - Q/Ap/LyoPronto.k_ice * (hf0-hd)
     md = Q/LyoPronto.ΔH
-    Rp = Ap*(calc_psub(Tsub)-pch(t))/md
-    # Rp < 0u"m/s" && @info "Rp<0" Rp t hd md Q Tf Tsh(t) calc_psub(Tsub)-pch(t)
-    if Q <= 0.0u"W" || Rp <= 0.0u"m/s"
-        #
+    Rp = Ap*(calc_psub(Tsub)-pch(t))/md |> u"cm^2*Torr*hr/g"
+    if Q <= 0.0u"W" || Rp <= 0.0u"m/s" 
         du[1] = du[2] = 0.0
         return
     end
 
-    du[1] = ustrip(u"cm/hr", md/(ρ_solution-c_solid)/Ap)
-    du[2] = u[2] - max(0.0, ustrip(u"cm^2*Torr*hr/g", Rp))
-    # du[2] = u[2] - ustrip(u"cm^2*Torr*hr/g", Rp)
-
-    # @info "check" du Tf Tsh(t) Rp|>u"m/s"
+    du[1] = ustrip(u"cm/hr", md/(ρsolution-csolid)/Ap)
+    du[2] = u[2] - ustrip(u"cm^2*Torr*hr/g", Rp)
     return
 end
 const dae_Rpf = ODEFunction(dae_Rp!, mass_matrix=[1.0 0; 0 0])
 
+function get_t0(re::RpEstimator{false})
+    (; Tf_interp, po) = re
+    if Tf_interp(0u"s") > po.Tsh(0u"s")
+        t0 = find_zero(t -> ustrip(u"K", po.Tsh(t*u"hr") - Tf_interp(t*u"hr")), (0.0, ustrip(u"hr", Tf_interp.t[end])))
+        return t0 * 1.01 # Go slightly after the zero, to ensure stability
+    else
+        return 0.0
+    end
+end
+
 ODEProblem(::RpEstimator{true}) = error("Cannot create ODEProblem for multiple Tf at once. Index into the RpEstimator to choose a Tf series.")
-function ODEProblem(re::RpEstimator{false}; u0=[0.0,0], tspan=(0.0, ustrip(u"hr", re.Tf_interp.t[end])))
+function ODEProblem(re::RpEstimator{false}; u0=[0.0,0], tspan=(get_t0(re), ustrip(u"hr", re.Tf_interp.t[end])))
     return ODEProblem(dae_Rpf, u0, tspan, re; tstops=ustrip.(u"hr", re.Tf_interp.t))
 end
 

@@ -58,12 +58,11 @@ function (rv::RampedVariable{false, T1,T2,T3,T4})(t) where {T1,T2,T3,T4}
     return rv.setpts::T1
 end
 function (rv::RampedVariable{true, T1,T2,T3,T4})(t) where {T1,T2,T3,T4}
-    im = findlast(rv.timestops .<= t)
-    # isnothing(im) && (im = 1)
-    if im == length(rv.timestops)
-        return rv.setpts[end]
-    elseif isnothing(im) # Negative time
+    im = searchsortedfirst(rv.timestops, t) - 1
+    if im == 0 # Negative time
         return rv.setpts[1]
+    elseif im == length(rv.timestops)
+        return rv.setpts[end]
     elseif iseven(im)
         return rv.setpts[im÷2+1]
     else
@@ -175,6 +174,7 @@ struct ConstPhysProp{T}
     val::T
 end
 (cpp::ConstPhysProp)(args...) = cpp.val
+Base.show(io::IO, cpp::ConstPhysProp) = print(io, "ConstPhysProp($(cpp.val))")
 
 # function Base.show(io::IO, pp::PhysProp) 
 #     return print(io, "PhysProp($(rv.setpts[1]))")
@@ -185,10 +185,10 @@ PrimaryDryFit: a type for storing experimental data and indicating how it should
 
 Provided constructors:
 
-    PrimaryDryFit(t, Tfs, Tvws, t_end)
+    PrimaryDryFit(t, Tfs, Tvw, t_end)
     PrimaryDryFit(t, Tfs) = PrimaryDryFit(t, Tfs, missing, missing)
-    PrimaryDryFit(t, Tfs, Tvws) = PrimaryDryFit(t, Tfs, Tvws, missing)
-    PrimaryDryFit(t, Tfs, t_end::Unitful.Time)  = PrimaryDryFit(t, Tfs, missing, t_end)
+    PrimaryDryFit(t, Tfs, Tvw) = PrimaryDryFit(t, Tfs, Tvw, missing)
+    PrimaryDryFit(t, Tfs, t_end::Union{Unitful.Time}, Tuple{Tt, Tt}}) where Tt  = PrimaryDryFit(t, Tfs, missing, t_end)
 
 The use of this struct is determined in large part by the implementation of 
 [`LyoPronto.obj_expT`](@ref). If a given field is not available, set it
@@ -208,17 +208,20 @@ If a single value is given for `Tvw`, then it is taken to be an endpoint, and `T
 
 `t_end` indicates an end of drying, particularly if taken from other measurements
 (e.g. from Pirani-CM convergence). If set to `missing`, it is ignored in the
-objective function.
+objective function. If set to a tuple of two times, then in the objective function any time 
+in that window is not penalized; outside that window, squared error takes over, as for the 
+single time case.
 
 Principal Cases:
 - Conventional: provide only `t, Tfs`
+- Conventional with Pirani ending: provide `t, Tfs, t_end`
 - RF with measured vial wall: provide `t, Tfs, Tvws`, 
 - RF, matching model Tvw to experimental Tf[end] without measured vial wall: provide `t, Tfs, Tvw`
 """
 struct PrimaryDryFit{Tt, TT, Ti, Ttv<:AbstractVector{Tt}, TTv<:AbstractVector{TT}, 
         TTvw<:Union{Missing, TT, Tuple{TTv, Vararg{TTv}}},
         TTvwi<:Union{Missing, Vector{Ti}},
-        Tte<:Union{Missing, Tt}}
+        Tte<:Union{Missing, Tt, Tuple{Tt, Tt}}}
     t::Ttv
     Tfs::Tuple{TTv, Vararg{TTv}}
     Tf_iend::Vector{Ti}# = [length(Tf) for Tf in Tfs]
@@ -243,6 +246,9 @@ function PrimaryDryFit(t, Tfs, Tvws, t_end)
             Tvws = Tuple(Tvws...)
         end
     end
+    if t_end isa Tuple
+        t_end = extrema(t_end)
+    end
     PrimaryDryFit(t, Tfs, [length(Tf) for Tf in Tfs], Tvws, 
     ((ismissing(Tvws) || Tvws isa Number) ? missing : [length(Tvw) for Tvw in Tvws]),
     t_end)
@@ -250,7 +256,7 @@ end
 # Convenience constructors
 PrimaryDryFit(t, Tfs) = PrimaryDryFit(t, Tfs, missing, missing)
 PrimaryDryFit(t, Tfs, Tvws) = PrimaryDryFit(t, Tfs, Tvws, missing)
-PrimaryDryFit(t, Tfs, t_end::Unitful.Time)  = PrimaryDryFit(t, Tfs, missing, t_end)
+PrimaryDryFit(t, Tfs, t_end::Union{Unitful.Time, Tuple{Tt, Tt}}) where Tt  = PrimaryDryFit(t, Tfs, missing, t_end)
 
 function Base.:(==)(p1::PrimaryDryFit, p2::PrimaryDryFit)
     cond1 = p1.t == p2.t
@@ -261,3 +267,12 @@ function Base.:(==)(p1::PrimaryDryFit, p2::PrimaryDryFit)
     cond6 = ismissing(p1.t_end) ? ismissing(p2.t_end) : (p1.t_end == p2.t_end)
     return all([cond1, cond2, cond3, cond4, cond5, cond6])
 end
+
+# Add a little bit of sugar to our transforms
+export ConstWrapTV
+struct ConstWrapTV <: TransformVariables.ScalarTransform end
+TransformVariables.transform(::ConstWrapTV, x) = ConstPhysProp(x)
+TransformVariables.inverse(::ConstWrapTV, x) = x.value
+
+TransformVariables.transform(t::TVScale{ConstPhysProp}, x) = ConstPhysProp(t.scale.value*x)
+TransformVariables.inverse(t::TVScale{ConstPhysProp}, x) = x.value/t.scale.value

@@ -4,8 +4,8 @@ Ap = π*rad_i^2  # cross-sectional area inside the vial
 Av = π*rad_o^2 # vial bottom area
 
 # Formulation parameters
-c_solid = 0.05u"g/mL" # g solute / mL solution
-ρ_solution = 1u"g/mL" # g/mL total solution density
+csolid = 0.05u"g/mL" # g solute / mL solution
+ρsolution = 1u"g/mL" # g/mL total solution density
 R0 = 0.8u"cm^2*Torr*hr/g"
 A1 = 14u"cm*Torr*hr/g"
 A2 = 1u"1/cm"
@@ -27,25 +27,21 @@ Kshf = RpFormFit(KC, KP, KD)
 # Computed parameters based on above
 hf0 = Vfill / Ap
 
-params_bunch = [
-    (Rp, hf0, c_solid, ρ_solution),
+po = ParamObjPikal((
+    (Rp, hf0, csolid, ρsolution),
     (Kshf, Av, Ap),
     (pch, Tsh)
-]
+))
 
 # -------------------
 
-tspan = (0.0, 100.0) # hours
-u0 = [ustrip(u"cm", hf0), 233]
-prob = ODEProblem(lyo_1d_dae_f, u0, tspan, tuple(params_bunch...))
-sol = solve(prob, Rodas4P(autodiff=false), tstops=1/3, callback=LyoPronto.end_drying_callback)
-
+prob = ODEProblem(po)
+sol = solve(prob, Rodas3())
 
 # Results from Python
 maxT = -32.1975
 drytime = 45.8u"hr"
 
-@test_broken sol.t[end]*u"hr" ≈ drytime rtol=0.01
 @test sol.t[end]*u"hr" ≈ drytime rtol=0.1
 @test sol[2,end]-273.15 ≈ maxT atol=0.1
 

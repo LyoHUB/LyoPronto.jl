@@ -4,6 +4,14 @@ export get_vial_radii, get_vial_mass, get_vial_shape, make_outlines
 # Added to "vial_sizes.csv", read in here
 const VIAL_DIMS = CSV.File((@__DIR__) * raw"/vial_sizes.csv")
 
+function select_size(vialsize::String)
+    alldims = filter(x->x.Size == vialsize, VIAL_DIMS)
+    if length(alldims) != 1
+        @error "bad vial size passed" vialsize
+    end
+    alldims = alldims[1] # Extract object corresponding to row of table
+end
+
 @doc raw"""
     get_vial_radii(vialsize::String)
 
@@ -12,11 +20,7 @@ Return inner and outer radius for passed ISO vial size.
 Uses a table provided by Schott, stored internally in a CSV.
 """
 function get_vial_radii(vialsize::String)
-    alldims = [row for row in VIAL_DIMS if row.Size == vialsize]
-    if length(alldims) != 1
-        @error "bad vial size passed" vialsize
-    end
-    alldims = alldims[1] # Extract object corresponding to row of table
+    alldims = select_size(vialsize)
     rad_o = alldims.d1 / 2 * u"mm"
     rad_i = rad_o - alldims.s1 * u"mm"
     return rad_i, rad_o
@@ -30,11 +34,7 @@ Return vial wall thickness for given ISO vial size.
 Uses a table provided by Schott, stored internally in a CSV.
 """
 function get_vial_thickness(vialsize::String)
-    alldims = [row for row in VIAL_DIMS if row.Size == vialsize]
-    if length(alldims) != 1
-        @error "bad vial size passed" vialsize
-    end
-    alldims = alldims[1] # Extract object corresponding to row of table
+    alldims = select_size(vialsize)
     thickness = alldims.s1*u"mm"
     return thickness
 end
@@ -47,26 +47,18 @@ Return vial mass for given ISO vial size.
 Uses a table provided by Schott, stored internally in a CSV.
 """
 function get_vial_mass(vialsize::String)
-    alldims = [row for row in VIAL_DIMS if row.Size == vialsize]
-    if length(alldims) != 1
-        @error "bad vial size passed" vialsize
-    end
-    alldims = alldims[1] # Extract object corresponding to row of table
-    thickness = alldims.mass*u"g"
-    return thickness
+    alldims = select_size(vialsize)
+    mass = alldims.mass*u"g"
+    return mass
 end
 
 @doc raw"""
     get_vial_shape(vialsize::String)
 
-Return a Dict{Symbol, Any} with a slew of vial dimensions, useful for drawing the shape of the vial with [`make_outlines`](@ref).
+Return a Dict{Symbol, } with a slew of vial dimensions, useful for drawing the shape of the vial with [`make_outlines`](@ref).
 """
 function get_vial_shape(vialsize::String)
-    alldims = [row for row in VIAL_DIMS if row.Size == vialsize]
-    if length(alldims) != 1
-        @error "bad vial size passed" vialsize
-    end
-    alldims = alldims[1] # Extract object corresponding to row of table
+    alldims = select_size(vialsize)
     rad_o = alldims.d1 / 2 * u"mm"
     rad_i = rad_o - alldims.s1 * u"mm"
     bot_thick = alldims.s2*u"mm"
@@ -76,7 +68,7 @@ function get_vial_shape(vialsize::String)
     neck_inner = alldims.d4/2*u"mm"
     neck_outer = alldims.d3/2*u"mm"
     neck_curve = alldims.r1*u"mm"
-    dims = Dict{Symbol, Any}()
+    dims = Dict{Symbol, typeof(rad_o)}()
     @pack! dims = rad_i, rad_o, bot_thick, barrel_height, curve_height, full_height, neck_inner, neck_outer, neck_curve
     return dims
 end

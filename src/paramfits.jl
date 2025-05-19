@@ -1,38 +1,231 @@
-export gen_sol_KRp, gen_sol_Rp, gen_sol_rf
-export obj_KRp, obj_Rp, obj_KBB
-export obj_expT, err_expT 
+export gen_sol_pd, obj_pd, gen_nsol_pd, objn_pd
+export KRp_transform_basic, K_transform_basic, Rp_transform_basic
+export KBB_transform_basic
+export obj_expT 
+export err_expT, num_errs, nls_pd
 
-@doc raw"""
-    obj_expT(sol, pdfit; tweight=1, verbose=false)
+"""
+    $(SIGNATURES)
+
+Construct a typical transform for fitting both Kshf and Rp.
+"""
+function KRp_transform_basic(Kshfg, R0g, A1g, A2g)
+    t1 = K_transform_basic(Kshfg)
+    t2 = Rp_transform_basic(R0g, A1g, A2g)
+    return as(merge(t1.transformations, t2.transformations))
+end
+"""
+    $(SIGNATURES)
+
+Construct a typical transform for fitting Rp.
+"""
+function Rp_transform_basic(R0g, A1g, A2g)
+    tr = as((
+        Rp = as((
+            R0 = TVScale(R0g) ∘ TVExp(),
+            A1 = TVScale(A1g) ∘ TVExp(),
+            A2 = TVScale(A2g) ∘ TVExp(),
+            )),
+        ))
+    return tr
+end
+"""
+    $(SIGNATURES)
+
+Construct a typical transform for fitting Kshf (a.k.a. Kv).
+"""
+function K_transform_basic(Kshfg)
+    tr = as((Kshf = ConstWrapTV() ∘ TVScale(Kshfg) ∘ TVExp(),))
+    return tr
+end
+"""
+    $(SIGNATURES)
+Construct a typical transform for fitting Kvwf, Bf, and Bvw (as for a microwave cycle).
+"""
+function KBB_transform_basic(Kvwfg, Bfg, Bvwg)
+    tr = as((Kvwf = TVScale(Kvwfg) ∘ TVExp(), 
+        Bf = TVScale(Bfg) ∘ TVExp(),
+        Bvw = TVScale(Bvwg) ∘ TVExp(),))
+    return tr
+end
+
+
+
+"""
+    $(SIGNATURES)
+
+Simulate primary drying, given a vector of parameter guesses, a mapping `tr` from `fitlog` to named coefficients, and other parameters in `po`.
+
+The equations used are determined by the type of `po`, which (with the magic of dispatch)
+is used to set up an ODE system.
+
+`tr` should be a `TransformTuple` object, from TransformVariables, which maps e.g. a vector of 3
+real numbers to a NamedTuple with `R0, A1, A2` as keys and appropriate Unitful dimensions on the values.
+This small function runs 
+```
+fitprm = transform(tr, fitlog)
+new_params = setproperties(po, fitprm)
+prob = ODEProblem(new_params; tspan=(0.0, 1000.0))
+sol = solve(prob, Rodas4(autodiff=AutoForwardDiff(chunksize=2)); saveat, kwargs...)
+```
+which is wrapped to avoid code duplication.
+
+So, to choose which parameters to fitting, all that is necessary is to provide an appropriate transform `tr`
+and add a method of `setproperties` for the desired parameters.
+Therefore this function can be used for both K-Rp fitting, or just Rp, or just a subset of the 3 Rp coefficients.
+
+If given, `fitdat` is used to set `saveat` for the ODE solution.
+
+Other `kwargs` are passed directly (as is) to the ODE `solve` call.
+"""
+function gen_sol_pd(fitlog, tr, po; saveat=[], kwargs...)
+    fitprm = transform(tr, fitlog)
+    prms = setproperties(po, fitprm)
+    prob = ODEProblem(prms; tspan=(0.0, 1000.0))
+    sol = solve(prob, odealg_chunk2; saveat, kwargs...)
+    return sol
+end
+"$(SIGNATURES)"
+function gen_sol_pd(fitlog, tr, po, fitdat; kwargs...)
+    sol = gen_sol_pd(fitlog, tr, po; saveat=ustrip.(u"hr", fitdat.t), kwargs...)
+    return sol
+end
+
+"""
+    $(SIGNATURES)
+
+Generate multiple solutions at once.
+
+If the transformation `tr` makes something (e.g. NamedTuple) with properties `separate` and 
+`shared`, then one each of `separate` is combined with `shared`, then they are matched up with each
+element of `pos` and `fitdats`. If `pos` is a single object, it is repeated.
+Further, if `tr` also has a field `sep_inds`, then those indices are used to map `separate` 
+to the sets of `pos` and `fitdats`. This is useful for when e.g. 2 sets of `separate` parameters 
+are to be applied across 5 different experiments.
+
+"""
+function gen_nsol_pd(fitlog, tr, pos, fitdats; kwargs...)
+    saveats = [ustrip.(u"hr", fitdat.t) for fitdat in fitdats]
+    return gen_nsol_pd(fitlog, tr, pos; saveats, kwargs...)
+end
+function gen_nsol_pd(fitlog, tr, pos; saveats=fill([], length(pos)), kwargs...)
+    fitprm = transform(tr, fitlog)
+    if pos isa ParamObj # only one param object...
+        pos = repeat([pos], length(fitdats))
+    end
+    if hasproperty(fitprm, :separate) && hasproperty(fitprm, :shared)
+        # if length(fitprm.separate) == 0
+        #     prms =  [setproperties(po, fitprm.shared) for po in pos, fitprm.separate)]
+        sep_inds = hasproperty(fitprm, :sep_inds) ? fitprm.sep_inds : 1:length(fitprm.separate)
+        if length(sep_inds) != length(saveats)
+            error("Length of either the transformed variable or `sep_inds` does not match fitdats.")
+        end
+            # prms =  [setproperties(po, merge(s, fitprm.shared)) for (po, s) in zip(pos, fitprm.separate)]
+            # prms =  [setproperties(po, merge(s, fitprm.shared)) for (po, s) in zip(pos, fitprm.separate)]
+        prms =  [setproperties(po, merge(s, fitprm.shared)) for (po, s) in zip(pos, fitprm.separate[sep_inds])]
+    else
+        prms = [setproperties(po, fitprm) for po in pos]
+    end
+    if length(prms) != length(pos)
+        error("Length of transformed variable and pos do not match.")
+    end
+    # Allow for one shared parameter fit to several experiments at once
+    # prms = setproperties(pos, fitprm)
+    sols = map(prms, saveats) do prm, saveat
+        prob = ODEProblem(prm; tspan=(0.0, 1000.0))
+        soli = solve(prob, odealg_chunk2; saveat, kwargs...)
+    end
+    return sols
+end
+
+# function setproperties(pos::Vector{ParamObj}, patch::NamedTuple)
+#     if hasproperty(patch, :separate) && hasproperty(patch, :shared)
+#         return [setproperties(po, merge(s, patch.shared)) for (po, s) in zip(pos, patch.separate)]
+#     else
+#         return [setproperties(po, patch) for po in pos]
+#     end
+# end
+# function setproperties(pos, patch::NamedTuple{(:separate, :shared)})
+#     if length(pos) != length(patch.separate)
+#         error("Length of pos and patch.separate do not match.")
+#     end
+#     map(pos, patch.separate) do po, s
+#         setproperties(po, merge(s, patch.shared))
+#     end
+#     # return [setproperties(po, merge(s, patch.shared)) for (po, s) in zip(pos, patch.separate)]
+# end
+
+"""
+    $(SIGNATURES)
+
+Calculate the sum of squared error (objective function) for fitting parameters to primary drying data.
+This directly calls [`gen_sol_pd`](@ref), then [`obj_expT`](@ref), so see those docstrings.
+"""
+function obj_pd(fitlog, tpf; tweight=1.0, verbose=false)
+    sol = gen_sol_pd(fitlog, tpf...)
+    return obj_expT(sol, tpf[3]; tweight, verbose)
+end
+
+function objn_pd(fitlog, tpf; tweight=1.0, verbose=false)
+    sols = gen_nsol_pd(fitlog, tpf...)
+    obj = mapreduce(+, sols, tpf[3]) do sol, fitdat
+        obj_expT(sol, fitdat; tweight, verbose)
+    end
+    return obj
+end
+
+"""
+    $(SIGNATURES)
+
+Calculate the sum of squared error (objective function) for fitting parameters to primary drying data.
+This directly calls [`gen_sol_pd`](@ref), then [`obj_expT`](@ref), so see those docstrings.
+"""
+function nls_pd(errs, fitlog, tpf; tweight=1.0, verbose=false)
+    sol = gen_sol_pd(fitlog, tpf...)
+    return err_expT(errs, sol, tpf[3]; tweight, verbose)
+end
+
+"""
+    $(SIGNATURES)
 
 Evaluate an objective function which compares model solution computed by `sol` to experimental data in `pdfit`.
 
-- `sol` is a solution to an appropriate model; see [`gen_sol_conv_dim`](@ref) and [`gen_sol_rf_dim`](@ref) for some helper functions for this.
+- `sol` is a solution to an appropriate model; see [`gen_sol_pd`](@ref) for a helper.
 - `pdfit` is an instance of `PrimaryDryFit`, which contains some information about what to compare.
 - `tweight = 1` gives the weighting (in K^2/hr^2) of the total drying time in the objective, as compared to the temperature error.
+- `Tvw_weight = 1` gives the weighting of Tvw in the objective, as compared to Tf.
 
-Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable in `sol` is assumed to be temperature, as is true for [`gen_sol_rf_dim`](@ref).
+Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable in `sol` is assumed to be temperature, as is true for the lumped capacitance model (see [ParamObjRF`](@ref).
 
 If there are multiple series of `Tf` in `pdfit`, squared error is computed for each separately then summed; likewise for `Tvw`.
 
 I've considered writing several methods and dispatching on `pdfit` somehow, which would be cool and might individually be easier to read. But control flow might be harder to document and explain, and this should work just fine.
 """
-function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5, TTvw, TTvwi, Tte}, ; tweight=1.0, verbose = false) where {TT1, TT2, TT3, TT4, TT5, TTvw, TTvwi, Tte}
-    if sol.retcode !== ReturnCode.Terminated
-        # hf_end = sol[1, end]*u"cm"
+function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit; 
+    tweight=1.0, verbose = false, Tvw_weight=1.0)
+    if sol.retcode !== ReturnCode.Terminated || length(sol.u) <= 1
         verbose && @warn "ODE solve did not reach end of drying. Either parameters are bad, or tspan is not large enough." sol.retcode sol.prob.p.hf0 sol[end]
         return NaN
     end
     tmd = sol.t[end].*u"hr"
     nt = length(sol.t) - 1
-    preinterp = all(sol.t[begin:nt÷2]*u"hr" .≈ pdfit.t[begin:nt÷2]) # If ODE solution has been interpolated already to time points...
+    i_solstart = searchsortedfirst(pdfit.t, sol.t[begin]*u"hr") 
+    # Identify if the solution is pre-interpolated to the time points in pdfit.t
+    preinterp = true
+    for i in 1:nt
+        if ~(sol.t[i]*u"hr" ≈ pdfit.t[i_solstart + i - 1])
+            preinterp = false
+            break
+        end
+    end
+
     # Compute temperature objective for all frozen temperatures
     if preinterp
         Tfmd = sol[2, begin:end-1].*u"K" # Leave off last time point because is end time
     else
-        ftrim = pdfit.t .< tmd
+        ftrim = sol.t[begin]*u"hr" .< pdfit.t .< tmd
         tf_trim = pdfit.t[ftrim]
-        Tfmd = sol(ustrip.(u"hr", tf_trim), idxs=2).*u"K"
+        Tfmd = sol.(ustrip.(u"hr", tf_trim), idxs=2).*u"K"
         # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
         # This bit replaces any subzero values with the previous positive temperature, and notifies that it happened.
         if any(Tfmd .< 0u"K")
@@ -42,366 +235,180 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit{TT1, TT2, TT3, TT4, TT5
         end
     end
     Tfobj = 0.0u"K^2"
-    for (j, iend) in enumerate(pdfit.Tf_iend)
+    for (Tf, iend) in zip(pdfit.Tfs, pdfit.Tf_iend)
         trim = min(iend, length(Tfmd))
-        Tfobj += sum(abs2, (pdfit.Tfs[j][begin:trim] .- Tfmd[begin:trim]))/trim
+        Tfobj += sum(abs2, (Tf[i_solstart:trim] .- Tfmd[begin:trim-i_solstart+1]))/(trim-i_solstart+1)
     end
-    if TTvw == Missing # No vial wall temperatures, encoded in type
-        Tvwobj = 0u"K^2"
-    elseif TTvwi == Missing # Endpoint only temperature, encoded in type
+    if ismissing(pdfit.Tvws) # No vial wall temperatures
+        Tvwobj = 0.0u"K^2"
+    elseif ismissing(pdfit.Tvw_iend) # Only an endpoint temperature provided
         Tvwend = pdfit.Tvws
         Tvwobj = (sol[3, end]*u"K" - uconvert(u"K", Tvwend))^2
     else # Regular case of fitting to at least one full temperature series
         if preinterp
             Tvwmd = sol[3, begin:end-1].*u"K" # Leave off last time point because is end time
         else
-            vwtrim = pdfit.t .< tmd
+            vwtrim = sol.t[begin]*u"hr" .< pdfit.t .< tmd
             tvw_trim = pdfit.t[vwtrim]
-            Tvwmd = sol(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
+            Tvwmd = sol.(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
         end
         # Compute temperature objective for all vial wall temperatures
         Tvwobj = 0.0u"K^2"
-        for (j, iend) in enumerate(pdfit.Tvw_iend)
+        for (Tvw, iend) in zip(pdfit.Tvws, pdfit.Tvw_iend)
             trim = min(iend, length(Tvwmd))
-            Tvwobj += sum(abs2, (pdfit.Tvws[j][begin:trim] .- Tvwmd[begin:trim]))/trim
+            Tvwobj += sum(abs2, (Tvw[i_solstart:trim] .- Tvwmd[begin:trim-i_solstart+1]))/(trim-i_solstart+1)
         end
     end
-    if Tte == Missing # No drying time provided: encoded in type
+    if ismissing(pdfit.t_end) # No drying time provided
         tobj = 0.0u"hr^2"
-    else # Compare drying time
-        tobj = ((pdfit.t_end - tmd))^2
+    elseif pdfit.t_end isa Tuple # See if is inside window and scale appropriately
+        mid_t = (pdfit.t_end[1] + pdfit.t_end[2]) / 2.0
+        if tmd < pdfit.t_end[1]
+            tobj = (mid_t - tmd)^2
+        elseif tmd > pdfit.t_end[2]
+            tobj = (mid_t - tmd)^2
+        else # Inside window, so no error
+            tobj = 0.0u"hr^2"
+        end
+    else # Compare to a single drying time
+        tobj = (pdfit.t_end - tmd)^2
     end
     verbose && @info "loss call" tmd tobj Tfobj Tvwobj 
-    return ustrip(u"K^2", Tfobj + Tvwobj) + tweight*ustrip(u"hr^2", tobj)
+    return ustrip(u"K^2", Tfobj + Tvw_weight*Tvwobj) + tweight*ustrip(u"hr^2", tobj)
 end
 
-function obj_expT(sol, pdfit; verbose=false, kwargs...)
+function obj_expT(sol, pdfit; verbose=false, kwargs...) 
     verbose && @warn "`obj_expT` got passed improper args. Might not be a problem, but check." sol
-    if isnan(sol)
+    # In some cases, inputs are so bad it's not worth an ODE solve, so this method
+    # provides an escape hatch for NaN returns instead of crashing.
+    if isnan(sol) 
         return NaN
     end
     error("Improper call to `obj_expT`.")
 end
 
-@doc raw"""
-    err_expT(sol, pdfit; tweight=1, verbose=true, rf = true)
+function num_errs(pdfit)
+    # Count the number of errors in the PrimaryDryFit object
+    Tvw_len = ismissing(pdfit.Tvws) ? 0 : (ismissing(pdfit.Tvw_iend) ? 1 : sum(pdfit.Tvw_iend))
+    nerr = sum(pdfit.Tf_iend) + Tvw_len + (ismissing(pdfit.t_end) ? 0 : 1)
+    return nerr
+end
+"""
+    $(SIGNATURES)
 
 Evaluate the error between model solution `sol` to experimental data in `pdfit`.
 
-In contrast to `obj_expT()`, this function returns an array of all the errors, which would be squared and summed to produce an objective function.
-
-- `sol` is a solution to an appropriate model; see [`gen_sol_conv_dim`](@ref) and [`gen_sol_rf_dim`](@ref) for some helper functions for this.
+In contrast to `obj_expT()`, this function makes an array of all the errors, which would be squared and summed to produce an objective function.
+- `errs` is a vector of length `num_errs(pdfit)`, which this function fills with the errors.
+-`sol` is a solution to an appropriate model; see [`gen_sol_pd`](@ref) for a helper function.
 - `pdfit` is an instance of `PrimaryDryFit`, which contains some information about what to compare.
 - `tweight = 1` gives the weighting (in K^2/hr^2) of the total drying time in the objective, as compared to the temperature error.
 Each time series, plus the end time, is given equal weight by dividing by its length; error is given in K (but `ustrip`ped).
 
-Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable in `sol` is assumed to be temperature, as is true for [`gen_sol_rf_dim`](@ref).
+Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable in `sol` is assumed to be temperature, as is true for solutions with [`ParamObjRF`](@ref).
 
-If there are multiple series of `Tf` in `pdfit`, squared error is computed for each separately then summed; likewise for `Tvw`.
+If there are multiple series of `Tf` in `pdfit`, error is computed for each separately; likewise for `Tvw`.
 """
-function err_expT(sol, pdfit; tweight=1.0, verbose = false)
-    if sol.retcode !== ReturnCode.Terminated
+function err_expT(errs, sol, pdfit; tweight=1, verbose = false)
+    if length(errs) != num_errs(pdfit)
+        error("Wrong length of provided error vector.")
+    end
+    # errs .= 0.0 # If indexing is handled correctly, this should not be necessary.
+    if sol.retcode !== ReturnCode.Terminated || length(sol.u) <= 1
         verbose && @info "ODE solve failed or incomplete, probably." sol.retcode sol[1, :]
         return NaN
     end
     tmd = sol.t[end].*u"hr"
-    ftrim = pdfit.t .< tmd
-    tf_trim = pdfit.t[ftrim]
-    Tfmd = sol(ustrip.(u"hr", tf_trim), idxs=2).*u"K"
-    # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
-    # This bit replaces any subzero values with the previous positive temperature, and notifies that it happened.
-    if any(Tfmd .< 0u"K")
-        subzero = findall(Vector(Tfmd .< 0u"K"))
-        Tfmd[subzero] .= Tfmd[subzero[1] - 1] 
-        verbose && @info "bad interpolation" subzero Tfmd[subzero]
+    nt = length(sol.t) - 1
+    i_solstart = searchsortedfirst(pdfit.t, sol.t[begin]*u"hr") 
+    # Identify if the solution is pre-interpolated to the time points in pdfit.t
+    preinterp = true
+    for i in 1:nt
+        if ~(sol.t[i]*u"hr" ≈ pdfit.t[i_solstart + i - 1])
+            preinterp = false
+            break
+        end
+    end
+
+    if preinterp
+        Tfmd = sol[2, begin:end-1].*u"K" # Leave off last time point because is end time
+    else
+        ftrim = sol.t[begin]*u"hr" .< pdfit.t .< tmd
+        tf_trim = pdfit.t[ftrim]
+        Tfmd = sol.(ustrip.(u"hr", tf_trim), idxs=2).*u"K"
+        # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
+        # This bit replaces any subzero values with the previous positive temperature, and notifies that it happened.
+        if any(Tfmd .< 0u"K")
+            subzero = findall(Vector(Tfmd .< 0u"K"))
+            Tfmd[subzero] .= Tfmd[subzero[1] - 1] 
+            verbose && @info "bad interpolation" subzero Tfmd[subzero]
+        end
     end
     # Initialize error array with frozen temperatures
     # Compute temperature errors for all frozen temperatures
-    errs = mapreduce(vcat, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
-        trim = 1:min(itf, length(tf_trim))
-        errs = ustrip.(u"K", Tf[trim] .- Tfmd[trim]) ./ sqrt(itf) # Weight errors by number of data points here
-        extra = fill(0.0, itf - length(errs))
-        vcat(errs, extra)
+    # errs = Float64[]
+    last_ind = 0
+    for (Tf, itf) in zip(pdfit.Tfs, pdfit.Tf_iend)
+    # errs = mapreduce(vcat, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
+        trim = min(itf, length(Tfmd))
+        Tferrs = (Tf[i_solstart:trim] .- Tfmd[begin:trim-i_solstart+1])/sqrt(trim-i_solstart+1)
+        errs[last_ind+1:last_ind+i_solstart] .= 0.0
+        errs[last_ind+i_solstart:last_ind+trim] .= ustrip.(u"K", Tferrs)
+        errs[last_ind+trim+1:last_ind+itf] .= 0.0
+        last_ind += itf
     end
 
-    # Concatenate end time to array, if present
-    if !ismissing(pdfit.t_end)
-        t_err = (pdfit.t_end - tmd)
-        push!(errs, ustrip(u"hr", t_err))
-    end
     # If present, vcat vial wall temperatures
     if !ismissing(pdfit.Tvws) # At least one vial wall temperature
         if ismissing(pdfit.Tvw_iend) # Only an endpoint temperature provided
             Tvwend = pdfit.Tvws
             Tvw_err = sol[3, end]*u"K" - uconvert(u"K", Tvwend)
-            push!(errs, ustrip(u"K", Tvw))
+            errs[last_ind+1] = ustrip(u"K", Tvw_err)
+            last_ind += 1
         else # Regular case of fitting to at least one full temperature series
-            vwtrim = pdfit.t .< tmd
-            tvw_trim = pdfit.t[vwtrim]
-            Tvwmd = sol(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
+            if preinterp
+                Tvwmd = sol[3, begin:end-1].*u"K" # Leave off last time point because is end time
+            else
+                vwtrim = sol.t[begin]*u"hr" .< pdfit.t .< tmd
+                tvw_trim = pdfit.t[vwtrim]
+                Tvwmd = sol.(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
+            end
             # Compute temperature objective for all vial wall temperatures
-            Tvwobj = mapreduce(+, pdfit.Tvws, pdfit.Tvw_iend) do Tvw, itvw
-                trim = 1:min(itvw, length(tvw_trim))
-                Tvw_err = Tvw[trim] .- Tvwmd[trim]
-                push!(errs, ustrip(u"K", Tvw_err / sqrt(itvw)))
-                push!(errs, fill(0.0, itvw - length(Tvw_err)))
+            for (Tvw, itvw) in zip(pdfit.Tvws, pdfit.Tvw_iend) 
+                trim = min(itvw, length(Tvwmd))
+                Tvw_errs = (Tvw[i_solstart:trim] .- Tvwmd[begin:trim-i_solstart+1])/sqrt(trim-i_solstart+1)
+                errs[last_ind+1:last_ind+i_solstart] .= 0.0
+                errs[last_ind+i_solstart:last_ind+trim] .= ustrip.(u"K", Tvw_errs)
+                errs[last_ind+trim+1:last_ind+itvw] .= 0.0
+                last_ind += itvw
             end
         end
     end
+
+    # Concatenate end time to array, if present
+    if !ismissing(pdfit.t_end)
+        if pdfit.t_end isa Tuple # See if is inside window and scale appropriately
+            mid_t = (pdfit.t_end[1] + pdfit.t_end[2]) / 2.0
+            if tmd < pdfit.t_end[1]
+                t_err = (mid_t - tmd)
+            elseif tmd > pdfit.t_end[2]
+                t_err = (mid_t - tmd)
+            else # Inside window, so no error
+                t_err = 0.0u"hr^2"
+            end
+        else
+            t_err = (pdfit.t_end - tmd)
+        end
+        errs[last_ind+1] = ustrip(u"hr", t_err*tweight)
+        if last_ind + 1 != length(errs)
+            error("Indexing problems...")
+        end
+    end
     verbose && @info "loss call" tmd size(errs) sum(abs2.(errs))
+    return nothing
+end
+function err_expT(sol::ODESolution, pdfit::PrimaryDryFit; kwargs...)
+    errs = fill(0.0, num_errs(pdfit))
+    err_expT(errs, sol, pdfit; kwargs...)
     return errs
 end
-
-# function genobj_posprm(gen_sol, obj, fitdat; kwargs...)
-#     return (x->(any(x .< 0) && return NaN; obj(gen_sol(x)[1], fitdat; kwargs...)))
-# end
-
-const Rp_base_scl = (1.0u"cm^2*Torr*hr/g", 20.0u"cm*Torr*hr/g", 0.5u"1/cm")
-
-@doc raw"""
-    gen_sol_KRp(KRp_log, po::ParamObjPikal[, fitdat::PrimaryDryFit]; Rp_scl=Rp_base_scl, kwargs...)
-
-Given values of the log of Kv and Rp, and other parameters in `po`, simulate primary drying 
-with the Pikal model.
-
-`KRp_log` has the form `[Kv, R0, A1, A2]`; this function takes an exponential of each, then 
-multiplies by `W/m^2/K` for Kv and by `Rp_scl` for the rest. 
-
-If given, `fitdat` is used to set `saveat` for the ODE solution.
-
-`Rp_scl` defaults to `(1.0u"cm^2*Torr*hr/g", 20.0u"cm*Torr*hr/g", 0.5u"1/cm")`
-
-`kwargs` are passed directly (as is) to the ODE `solve` call.
-"""
-function gen_sol_KRp(KRp_log, po::ParamObjPikal; Rp_scl=Rp_base_scl, kwargs...)
-    new_po = @set po.Kshf = ConstPhysProp(exp(KRp_log[1])*u"W/m^2/K")
-    return gen_sol_Rp(KRp_log[2:4], new_po; Rp_scl=Rp_scl, kwargs...)
-end
-function gen_sol_KRp(KRp_log, po::ParamObjPikal, fitdat::PrimaryDryFit; Rp_scl=Rp_base_scl, kwargs...)
-    new_po = @set po.Kshf = ConstPhysProp(exp(KRp_log[1])*u"W/m^2/K")
-    return gen_sol_Rp(KRp_log[2:4], new_po, fitdat; Rp_scl=Rp_scl, kwargs...)
-end
-
-"""
-    obj_KRp(KRp_log, pf; tweight=1e-4, verbose=false)
-
-Calculate the sum of squared error (objective function) for fitting parameters in the Pikal model.
-
-# Arguments
-- `KRp_log`: The nondimensional logs of Kv and Rp; see [`LyoPronto.gen_sol_KRp`](@ref).
-- `pf`: Tuple of `(p::ParamObjPikal, f::PrimaryDryFit)`
-- `tweight`: (Optional) A weighting factor for the objective function. Default is `1.0`.
-- `verbose`: (Optional) A boolean flag to enable verbose output. Default is `false`.
-"""
-function obj_KRp(KRp_log, pf; tweight=1.0, verbose=false)
-    rtype = eltype(KRp_log)
-    sol = gen_sol_KRp(KRp_log, pf[1], pf[2])
-    return obj_expT(sol, pf[2], tweight=tweight, verbose=verbose)::rtype
-end
-
-# function gen_sol_conv_dim(KRp_prm, otherparams, u0, tspan; kwargs...)
-#     hf0, c_solid, ρ_solution, Av, Ap, pch, Tsh = otherparams
-#     Rp_un = (u"cm^2*Torr*hr/g", u"cm*Torr*hr/g", u"1/cm")
-#     Kshf_g = ConstPhysProp(KRp_prm[1]*u"W/m^2/K")
-#     Rp_g = RpFormFit((KRp_prm[2:4].*Rp_un)...)
-#     new_params = ((Rp_g, hf0, c_solid, ρ_solution), (Kshf_g, Av, Ap),
-#                     (pch, Tsh))
-#     newprob = ODEProblem(new_params; u0=u0, tspan=tspan)
-#     sol = solve(newprob, Rodas4P(); kwargs...)
-#     return sol, new_params
-# end
-@doc raw"""
-    gen_sol_Rp(Rp_log, po::ParamObjPikal; Rp_scl=Rp_base_scl, kwargs...)
-
-Given values of the log of Rp, and other parameters in `po`, simulate primary drying 
-with the Pikal model.
-
-`Rp_log` has the form `[R0, A1, A2]`; this function takes an exponential of each, then 
-multiplies by `Rp_scl`. 
-
-`Rp_scl` defaults to `(1.0u"cm^2*Torr*hr/g", 20.0u"cm*Torr*hr/g", 0.5u"1/cm")`
-
-If given, `fitdat` is used to set `saveat` for the ODE solution.
-
-`kwargs` are passed directly (as is) to the ODE `solve` call.
-"""
-function gen_sol_Rp(Rp_log, po::ParamObjPikal; Rp_scl=Rp_base_scl, kwargs...)
-    new_params = @set po.Rp = RpFormFit((exp.(Rp_log).*Rp_scl)...)
-    newprob = ODEProblem(new_params)
-    sol = solve(newprob, Rodas4P(); kwargs...)
-    return sol
-end
-function gen_sol_Rp(Rp_log, po::ParamObjPikal, fitdat::PrimaryDryFit; Rp_scl=Rp_base_scl, kwargs...)
-    new_params = @set po.Rp = RpFormFit((exp.(Rp_log).*Rp_scl)...)
-    newprob = ODEProblem(new_params)
-    sol = solve(newprob, Rodas4P(); saveat=ustrip.(u"hr", fitdat.t), kwargs...)
-    return sol
-end
-"""
-    obj_Rp(Rp_log, pf; tweight=1.0, verbose=false)
-
-Calculate the sum of squared error (objective function) for fitting parameters in the Pikal model.
-
-# Arguments
-- `Rp_log`: The nondimensional logs of Rp; see [`LyoPronto.gen_sol_Rp`](@ref).
-- `pf`: Tuple of `(p::ParamObjPikal, f::PrimaryDryFit)`
-- `tweight`: (Optional) A weighting factor for the objective function. Default is `1.0`.
-- `verbose`: (Optional) A boolean flag to enable verbose output. Default is `false`.
-"""
-function obj_Rp(Rp_log, pf; tweight=1.0, verbose=false)
-    rtype = eltype(Rp_log)
-    sol = gen_sol_Rp(Rp_log, pf[1], pf[2])
-    return obj_expT(sol, pf[2], tweight=tweight, verbose=verbose)::rtype
-end
-
-
-
-# @doc raw"""
-#     obj_tT_conv(KRp_prm, gen_sol, tTdat; t_end=0.0u"hr", tweight=1, verbose = true)
-
-# Evaluate an objective function which compares model solution with `KRp_prm` to experimental data in `tTdat`.
-
-# Arguments:
-# - `gen_sol` is a function taking `[Kv, R0, A1, A2]` and returning a solution to Pikal model; see [`gen_sol_conv_dim`](@ref LyoPronto.gen_sol_conv_dim).
-# - `tTdat` is experimental temperature series, of the form `(time, Tf)`.
-# - `tweight` gives the weighting (in `K^2/hr^2`) of the end of drying in the objective, as compared to the temperature error.
-# - `t_end` defaults to `missing`, in which case it is excluded from the objective.
-#     If another value is passed, then the model drying time is compared to that value and included in the objective.
-# - `verbose` defaults to `true`, in which case each call to this function prints info on the passed parameters, etc.
-# """
-# function obj_tT_conv(KRp_prm, gen_sol, tTdat; t_end=missing, tweight=1, verbose=true)
-#     if any(KRp_prm .< 0)
-#         return NaN
-#     end
-#     tdat, Tdat = tTdat
-#     sol = gen_sol(KRp_prm)[1]
-#     if sol.u[end][1] > 1e-5
-#         @info "loss call: failed integration" sol
-#         return NaN
-#     end
-#     pdfit = PrimaryDryFit(tdat, (Tdat,), t_end)
-#     verbose && @info "gen_sol" KRp_prm
-#     return obj_expT(sol, pdfit; tweight=tweight, verbose=true)
-# end
-
-const rfprm_base_scale = (1.0u"W/m^2/K", 1e7u"Ω/m^2", 1e7u"Ω/m^2")
-
-@doc raw"""
-    gen_sol_rf(KBB_log, po::ParamObjRF[, fitdat::PrimaryDryFit]; rfprm_scale = rfprm_base_scale, kwargs...)
-
-Solve the lumped-capacitance model for microwave-assisted primary drying with given fit parameters, returning the solution object and the set of parameters passed to `solve`.
-
-- `fitprm` has the form `log.([Kvwf, Bf, Bvw])`; this function takes the exponential, then multiplies by `rfprm_scale`.
-- `rfprm_scale` defaults to `(1.0u"W/m^2/K", 1e7u"Ω/m^2", 1e7u"Ω/m^2")`.
-- `kwargs` is passed directly (as is) to the ODE `solve` call.
-
-"""
-function gen_sol_rf(KBB_log, po::ParamObjRF; rfprm_scale = rfprm_base_scale, kwargs...)
-    newp = deepcopy(po)
-    @reset newp.K_vwf = exp(KBB_log[1])*rfprm_scale[1]
-    @reset newp.B_f = exp(KBB_log[2])*rfprm_scale[2]
-    @reset newp.B_vw = exp(KBB_log[3])*rfprm_scale[3]
-    newprob = ODEProblem(newp)
-    sol = solve(newprob, Rodas3(); kwargs...)
-    return sol
-end
-function gen_sol_rf(KBB_log, po::ParamObjRF, fitdat::PrimaryDryFit; rfprm_scale = rfprm_base_scale, kwargs...)
-    newp = deepcopy(po)
-    @reset newp.K_vwf = exp(KBB_log[1])*rfprm_scale[1]
-    @reset newp.B_f = exp(KBB_log[2])*rfprm_scale[2]
-    @reset newp.B_vw = exp(KBB_log[3])*rfprm_scale[3]
-    newprob = ODEProblem(newp)
-    sol = solve(newprob, Rodas3(); saveat=ustrip.(u"hr", fitdat.t), kwargs...)
-    return sol
-end
-
-"""
-    obj_KBB(KBB_log, pf; tweight=1.0, verbose=false)
-
-Calculate the sum of squared error (objective function) for fitting parameters in the LC3 model.
-
-# Arguments
-- `KBB_log`: The nondimensional logs of `[Kvwf, Bf, Bvw]`; see [`LyoPronto.gen_sol_rf`](@ref).
-- `pf`: Tuple of `(p::ParamObjRF, f::PrimaryDryFit)`
-- `tweight`: (Optional) A weighting factor for the objective function. Default is `1.0`.
-- `verbose`: (Optional) A boolean flag to enable verbose output. Default is `false`.
-"""
-function obj_KBB(KBB_log, pf; tweight=1.0, verbose=false)
-    rtype = eltype(KBB_log)
-    sol = gen_sol_rf(KBB_log, pf[1], pf[2])
-    return obj_expT(sol, pf[2], tweight=tweight, verbose=verbose)::rtype
-end
-
-# @doc raw"""
-#     obj_tTT_rf(fitprm, gen_sol, tTTdat; t_end=0.0u"hr", tweight=1, verbose=true)
-
-# Evaluate an objective function which compares model solution with `fitprm` to experimental data in `tTTdat`.
-
-# - `gen_sol` is a function taking [α, Kvwf, Bf, Bvw] and returning a solution to lumped-capacitance microwave-assisted model; see [`gen_sol_rf_dim`](@ref).
-# - `tTTdat` is experimental temperature series, of the form `(time, Tf, Tvw)`, so with frozen and vial wall temperatures taken at the same time points. 
-#     See also [`obj_tT_rf`](@ref) and [`obj_ttTT_rf`](@ref).
-# - `tweight` gives the weighting (in K^2/hr^2) of the end of drying in the objective, as compared to the temperature error.
-# - `t_end` has a default value of `0.0u"hr"`, which (if left at default) is not included in the objective function.
-# - `t_end` defaults to `missing`, in which case it is excluded from the objective.
-#     If another value is passed, then the model drying time is compared to that value and included in the objective.
-# """
-# function obj_tTT_rf(fitprm, gen_sol, tTTdat; t_end=missing, tweight=1, verbose=true)
-#     if any(fitprm .< 0)
-#         return NaN
-#     end
-#     tloc, Tfdat, Tvwdat = tTTdat
-#     pdfit = PrimaryDryFit(tloc, (Tfdat,), tloc, (Tvwdat,), t_end)
-#     sol = gen_sol(fitprm)[1]
-#     verbose && @info "gen_sol" fitprm 
-#     return obj_expT(sol, pdfit; tweight=tweight, verbose=verbose)
-# end
-
-
-# @doc raw"""
-#     obj_tT_rf(fitprm, gen_sol, tTdat; t_end=0.0u"hr", tweight=1, Tvw_end = 0.0u"K", verbose=true)
-
-# Evaluate an objective function which compares model solution with `fitprm` to experimental data in `tTdat`.
-
-# - `gen_sol` is a function taking `[α, Kvwf, Bf, Bvw]` and returning a solution to lumped-capacitance microwave-assisted model; see [`gen_sol_rf_dim`](@ref).
-# - `tTTdat` is experimental temperature series, of the form `(time, Tf)`, so with frozen temperatures only. 
-#     See also [`obj_tTT_rf`](@ref) and [`obj_ttTT_rf`](@ref).
-# - `Tvw_end` defaults to `missing`, in which case vial wall temperatures are excluded from the objective. 
-#     If another value is passed, then the final model vial wall temperature is compared to that value and included in the objective.
-# - `tweight` gives the weighting (in K^2/hr^2) of the end of drying in the objective, as compared to the temperature error.
-# - `t_end` defaults to `missing`, in which case it is excluded from the objective.
-#     If another value is passed, then the model drying time is compared to that value and included in the objective.
-# """
-# function obj_tT_rf(fitprm, gen_sol, tTdat; t_end=missing, tweight=1, Tvw_end = missing, verbose=true)
-#     if any(fitprm .< 0)
-#         return NaN
-#     end
-#     tloc, Tfdat = tTdat
-#     pdfit = PrimaryDryFit(tloc, (Tfdat,), missing, Tvw_end, t_end)
-#     sol = gen_sol(fitprm)[1]
-#     verbose && @info "gen_sol" fitprm 
-#     return obj_expT(sol, pdfit; tweight=tweight, verbose=verbose)
-# end
-
-# @doc raw"""
-#     obj_ttTT_rf(fitprm, gen_sol, ttTTdat; t_end=missing, tweight=1, verbose=true)
-
-# Evaluate an objective function which compares model solution with `fitprm` to experimental data in `tTdat`.
-
-# - `gen_sol` is a function taking `[α, Kvwf, Bf, Bvw]` and returning a solution to lumped-capacitance microwave-assisted model; see [`gen_sol_rf_dim`](@ref).
-# - `ttTTdat` is experimental temperature series, of the form `(time_Tf, time_vw, Tf, Tvw)`, so with Tf and Tvw having separate time points. 
-#     This is useful if there is an early temperature rise in Tf, but Tvw continues to be reliable, so the model can fit to as much of Tvw as reasonable.
-#     See also [`obj_tTT_rf`](@ref) and [`obj_tT_rf`](@ref).
-# - `tweight` gives the weighting (in K^2/hr^2) of the end of drying in the objective, as compared to the temperature error.
-# - `t_end` defaults to `missing`, in which case it is excluded from the objective.
-#     If another value is passed, then the model drying time is compared to that value and included in the objective.
-# """
-# function obj_ttTT_rf(fitprm, gen_sol, ttTTdat; t_end=missing, tweight=1, verbose=true)
-#     if any(fitprm .< 0)
-#         return NaN
-#     end
-#     tf, tvw, Tfdat, Tvwdat = ttTTdat
-#     pdfit = PrimaryDryingFit(tf, (Tfdat,), tvw, (Tvwdat), t_end)
-#     sol = gen_sol(fitprm)[1]
-#     verbose && @info "gen_sol" fitprm 
-#     return obj_expT(sol, pdfit; tweight=tweight, verbose=verbose)
-# end

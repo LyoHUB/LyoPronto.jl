@@ -123,18 +123,21 @@ exptvwplot
 end
 
 @doc raw"""
-    modconvtplot(sols; labsuffix = ", model")
-    modconvtplot!(sols; labsuffix = ", model")
+    modconvtplot(sols; sampmarks=false, labsuffix = ", model")
+    modconvtplot!(sols; sampmarks=false, labsuffix = ", model")
 
-Plot recipe for one or multiple solutions to the Pikal model, e.g. the output of [`gen_sol_conv_dim`](@ref LyoPronto.gen_sol_conv_dim).
+Plot recipe for one or multiple solutions to the Pikal model, e.g. the output of [`gen_sol_pd`](@ref LyoPronto.gen_sol_pd).
 This adds a series to the plot for each passed solution, with labels defaulting to `"T_{fi}"*labsuffix`.
+
+If `sampmarks` is true, the solution will be interpolated to evenly spaced time points and 
+markers will be added to some of those points.
 """
 modconvtplot
 @doc (@doc modconvtplot) modconvtplot!
 
 
 @userplot ModConvTPlot
-@recipe function f(tpmc::ModConvTPlot; labsuffix = ", model")
+@recipe function f(tpmc::ModConvTPlot; sampmarks=false, labsuffix = ", model")
     sols = tpmc.args
     # pal = palette(:Oranges_4).colors[end:-1:begin+1] # Requires Plots as dependency...
     pal = [
@@ -149,89 +152,144 @@ modconvtplot
         labels = ["\$T_\\mathrm{f$i}\$"*labsuffix for i in 1:length(sols)]
     end
 
-    
-    for (i, sol) in enumerate(sols)
-        t_nd = range(sol.t[begin], sol.t[end-1], length=101)
-        time = t_nd*u"hr"
-        T = sol.(t_nd, idxs=2)*u"K"
-        @series begin
-            seriestype := :samplemarkers
-            step := 20
-            markershape --> :auto
-            seriescolor --> pal[i]
-            label --> labels[i]
-            return time, T
+    if sampmarks 
+        for (i, sol) in enumerate(sols)
+            t_nd = range(sol.t[begin], sol.t[end], length=101)
+            time = t_nd*u"hr"
+            T = sol.(t_nd, idxs=2)*u"K"
+            @series begin
+                seriestype := :samplemarkers
+                step := 20
+                markershape --> :auto
+                seriescolor --> pal[i]
+                label --> labels[i]
+                return time, T
+            end
+        end
+    else
+        for (i, sol) in enumerate(sols)
+            t_nd = sol.t
+            time = t_nd*u"hr"
+            T = sol[2,:]*u"K"
+            @series begin
+                seriescolor --> pal[i]
+                label --> labels[i]
+                return time, T
             end
         end
     end
+end
 
 
-    @doc raw"""
-    modrftplot(sol, labsuffix=", model")
-    modrftplot!(sol, labsuffix=", model")
+"""
+    modrftplot(sol, labsuffix=", model", sampmarks=false, trimend=0)
+    modrftplot!(sol, labsuffix=", model", sampmarks=false, trimend=0)
 
 Plot recipe for one solution to the lumped capacitance model.
+
 This adds two series to the plot, with labels defaulting to `["T_f" "T_{vw}"] .* labsuffix`.
+The optional argument `trimend` controls how many time points to trim from the end
+(which is helpful if temperature shoots up as mf -> 0).
+
+If `sampmarks` is true, the solution will be interpolated to evenly spaced time points and 
+markers will be added to some of those points.
+
 Since this is a recipe, any Plots.jl keyword arguments can be passed to modify the plot.
 """
 modrftplot
 @doc (@doc modrftplot) modrftplot!
 
 @userplot ModRFTPlot
-@recipe function f(tpmr::ModRFTPlot; labsuffix = ", model", evensample=true, trimend=0)
+@recipe function f(tpmr::ModRFTPlot; labsuffix = ", model", sampmarks=false, trimend=0)
     sol = tpmr.args[1]
-    if evensample
+    if sampmarks
         t_nd = range(sol.t[begin], sol.t[end-trimend], length=31)
         step = 6
     else
         t_nd = sol.t[1:end-trimend]
-        step = length(sol.t) ÷ 5
     end
     time = t_nd*u"hr"
     # color = palette(:Oranges_3)[end]
     color = RGB{Float64}(0.902,0.333,0.051)
     # Frozen temperature: tends to have a crazy time point at end
-    @series begin
-        seriestype := :samplemarkers
-        step := step
-        T = sol.(t_nd, idxs=2)*u"K"
-        markershape --> :dtriangle
-        seriescolor --> color
-        label --> "\$T_\\mathrm{f}\$"*labsuffix # Default label
-        time, T
-    end
-    @series begin
-        seriestype := :samplemarkers
-        step := step
-        T = sol.(t_nd, idxs=3)*u"K"
-        markershape --> :utriangle
-        seriescolor --> color
-        label --> "\$T_\\mathrm{vw}\$"*labsuffix # Default label
-        linestyle := :dash
-        time, T
+    if sampmarks
+        @series begin
+            seriestype := :samplemarkers
+            step := step
+            T = sol.(t_nd, idxs=2)*u"K"
+            markershape --> :dtriangle
+            seriescolor --> color
+            label --> "\$T_\\mathrm{f}\$"*labsuffix # Default label
+            time, T
+        end
+        @series begin
+            seriestype := :samplemarkers
+            step := step
+            T = sol.(t_nd, idxs=3)*u"K"
+            markershape --> :utriangle
+            seriescolor --> color
+            label --> "\$T_\\mathrm{vw}\$"*labsuffix # Default label
+            linestyle := :dash
+            time, T
+        end
+    else
+        @series begin
+            T = sol.(t_nd, idxs=2)*u"K"
+            seriescolor --> color
+            label --> "\$T_\\mathrm{f}\$"*labsuffix # Default label
+            time, T
+        end
+        @series begin
+            T = sol.(t_nd, idxs=3)*u"K"
+            seriescolor --> color
+            label --> "\$T_\\mathrm{vw}\$"*labsuffix # Default label
+            linestyle := :dash
+            time, T
+        end
     end
 end
 
 @doc raw"""
     tendplot(t_end)
     tendplot!(t_end)
+    tendplot(t_end1, t_end2)
+    tendplot!(t_end1, t_end2)
 
 Plot recipe that adds a labeled vertical line to the plot at time `t_end`. 
 A default label and styling are applied, but these can be modified by keyword arguments as usual
+If two time points are passed, a light shading is applied between instead of a vertical line.
 """
 tendplot
 @doc (@doc tendplot) tendplot!
 
 @userplot tendPlot
 @recipe function f(tp::tendPlot)
-    t_end = tp.args[1]
-    @series begin
-        seriestype := :vline
-        label --> "\$t_\\mathrm{end}\$"
-        seriescolor --> :gray
-        linestyle --> :dot
-        linewidth --> 3
-        return [ustrip(u"hr", t_end)]
+    if length(tp.args) == 1 && ~(tp.args[1] isa Tuple)
+        t_end = tp.args[1]
+        @series begin
+            seriestype := :vline
+            label --> "\$t_\\mathrm{end}\$"
+            seriescolor --> :gray
+            linestyle --> :dot
+            linewidth --> 3
+            return [ustrip(u"hr", t_end)]
+        end
+    elseif length(tp.args) == 2 || tp.args[1] isa Tuple
+        if tp.args[1] isa Tuple
+            t_end = tp.args[1]
+        else
+            t_end = tp.args[1:2]
+        end
+        @series begin
+            seriestype := :vspan
+            label --> "\$t_\\mathrm{end}\$, range"
+            seriescolor --> :gray
+            seriesalpha --> 0.3
+            linewidth --> 1
+            return [ustrip.(u"hr", t_end)...]
+        end
+    else
+        error("tendPlot requires 1 or 2 arguments")
     end
 end
 
@@ -335,7 +393,7 @@ function qrf_integrate(sol, RF_params)
 
     # So we do a manual Riemann integration on the solution output
     Qcontrib = map(sol.t) do ti
-        lumped_cap_rf_LC3(sol(ti), RF_params, ti)[2]
+        lumped_cap_rf!([0.0, 0.0, 0.0], sol(ti), RF_params, ti, Val(true))
     end
     Qcontrib = hcat(Qcontrib...)
     Qsub = Qcontrib[1,:]
