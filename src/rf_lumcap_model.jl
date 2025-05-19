@@ -1,4 +1,4 @@
-export lumped_cap_rf, lumped_cap_rf_LC3
+export lumped_cap_rf!
 export ParamObjRF
 
 function shapefac(Bi)
@@ -19,17 +19,23 @@ const Bi_samp = 10.0 .^range(-2, 5, length=71)
 const S_samp = shapefac.(Bi_samp)
 const S_interp = LinearInterpolation(S_samp, Bi_samp, extrapolation=ExtrapolationType.Linear)
 
-
-@doc raw"""
-    lumped_cap_rf(u, params, tn)
+"""
+    $(SIGNATURES)
 
 Compute the right-hand-side function for the ODEs making up the lumped-capacitance microwave-assisted model.
 
-Specifically, this is `[dmf/dt, dTf/dt, dTvw/dt]` given `u = [mf, Tf, Tvw]`.
+The optional argument `qret` defaults to `Val(false)`; if set to `Val(true)`, the function returns
+`[Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw]` with `Q_...` as Unitful quantities in watts. 
+The extra results are helpful in investigating the significance of the various heat transfer 
+modes, but are not necessary in the ODE integration.
+
+`du` refers to `[dmf/dt, dTf/dt, dTvw/dt]`, with `u = [mf, Tf, Tvw]`.
 `u` is taken without units but assumed to have the units of `[g, K, K]` (which is internally added).
 `tn` is assumed to be in hours (internally added), so `dudt` is returned with assumed units `[g/hr, K/hr, K/hr]` to be consistent.
 
-The full set of necessary parameters is given in the form of a tuple-of-tuples:
+It is recommended to use the `ParamObjRF` type to hold the parameters, since it allows some
+more convenient access to the parameters, but they can be given in the form of a 
+tuple-of-tuples:
 ```
 params = (   
     (Rp, hf0, cSolid, ρsolution),
@@ -40,6 +46,7 @@ params = (
     (Kvwf, Bf, Bvw, alpha),
 )
 ```
+This tuple-of-tuples structure is also used in an extra constructor for the `ParamObjRF` type.
 
 These should all be Unitful quantities with appropriate dimensions, with some exceptions which are callables returning quantities.
 See [`RpFormFit`](@ref) and [`RampedVariable`](@ref) for convenience types that can help with these cases.
@@ -47,27 +54,11 @@ See [`RpFormFit`](@ref) and [`RampedVariable`](@ref) for convenience types that 
 - `Kshf_f(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
 - `Tsh(t)`, `pch(t)`, `P_per_vial(t)` return shelf temperature, chamber pressure, and microwave power respectively at time `t`.
 
-- `Arad` and `alpha` are used only in the LC2 and LC3 versions of the model, and can be left out.
-
-For implementation details, see [`lumped_cap_rf_LC3`](@ref).
-"""
-function lumped_cap_rf!(du, u, params, tn)
-    lumped_cap_rf_LC3!(du, u, params, tn, Val{false})
-    return nothing
-end
-
-
-@doc raw"""
-    lumped_cap_rf_LC3(u, params, tn)
-
-This does the work for [`lumped_cap_rf!`](@ref), but returns `dudt,  [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw]` with `Q_...` as Unitful quantities in watts. 
-The extra results are helpful in investigating the significance of the various heat transfer modes,
-but are not necessary in the ODE integration.
-
+- `Arad` and `alpha` are used only in prior versions of the model, and can be left out.
+This is my updated version of the model.
 LC3: Q_shw evaluated with Kshf; shape factor included; α=0
-My preferred version.
 """
-function lumped_cap_rf_LC3!(du, u, params, tn, qret = Val{false})
+function lumped_cap_rf!(du, u, params, tn, qret = Val(false))
     # Unpack all the parameters
     Rp, hf0, csolid, ρsolution = params[1]
     Kshf_f, Av, Ap, = params[2]
@@ -117,7 +108,7 @@ function lumped_cap_rf_LC3!(du, u, params, tn, qret = Val{false})
     du[2] = ustrip(u"K/hr", dT_f)
     du[3] = ustrip(u"K/hr", dT_vw)
     # Strip units from derivatives; return all heat transfer terms
-    if qret == Val{true}
+    if qret isa Val{true}
         return uconvert.(u"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw])
     else
         return nothing
@@ -135,6 +126,11 @@ end
 # )
 # ```
 
+"""
+    $(TYPEDEF)
+
+The `ParamObjRF` type is a container for the parameters used in the RF model.
+"""
 struct ParamObjRF{T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, 
                 T11, T12, T13, T14, T15, T16, T17, T18, T19,
                 T20, T21, T22} <: ParamObj
