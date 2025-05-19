@@ -65,8 +65,10 @@ tendplot!(t_end) # Use a custom recipe provided by LyoPronto for plotting t_end
 savefig("pirani.svg"); #md
 # ![](pirani.svg) #md
 
-# Plot the temperature data, with another plot recipe
-# To check that everything looks right, plot the temperatures, taking advantage of a recipe from this package, as well as the `L"[latex]"` macro from `LaTeXStrings`. We can also exploit the `@df` macro from `StatsPlots` to make this really smooth.
+# ## Plot the temperature data, with another plot recipe
+# To check that everything looks right, plot the temperatures, taking advantage of a recipe 
+# from this package, as well as the `L"[latex]"` macro from `LaTeXStrings`. We can also 
+# exploit the `@df` macro from `StatsPlots` to make this really smooth.
 @df pd_data exptfplot(:t, :T1, :T2, :T3)
 @df pd_data plot!(:t, :Tsh, label=L"T_{sh}", c=:black)
 savefig("exptemps.svg"); #md
