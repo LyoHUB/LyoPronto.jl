@@ -78,16 +78,17 @@ If given, `fitdat` is used to set `saveat` for the ODE solution.
 
 Other `kwargs` are passed directly (as is) to the ODE `solve` call.
 """
-function gen_sol_pd(fitlog, tr, po; saveat=[], kwargs...)
+function gen_sol_pd(fitlog, tr, po; saveat=[], badprms=nothing, kwargs...)
     fitprm = transform(tr, fitlog)
     prms = setproperties(po, fitprm)
+    !isnothing(badprms) && badprms(prms) && return NaN
     prob = ODEProblem(prms; tspan=(0.0, 1000.0))
     sol = solve(prob, odealg_chunk2; saveat, kwargs...)
     return sol
 end
 "$(SIGNATURES)"
-function gen_sol_pd(fitlog, tr, po, fitdat; kwargs...)
-    sol = gen_sol_pd(fitlog, tr, po; saveat=ustrip.(u"hr", fitdat.t), kwargs...)
+function gen_sol_pd(fitlog, tr, po, fitdat; badprms=nothing, kwargs...)
+    sol = gen_sol_pd(fitlog, tr, po; saveat=ustrip.(u"hr", fitdat.t), badprms, kwargs...)
     return sol
 end
 
@@ -104,11 +105,11 @@ to the sets of `pos` and `fitdats`. This is useful for when e.g. 2 sets of `sepa
 are to be applied across 5 different experiments.
 
 """
-function gen_nsol_pd(fitlog, tr, pos, fitdats; kwargs...)
+function gen_nsol_pd(fitlog, tr, pos, fitdats; badprms=nothing, kwargs...)
     saveats = [ustrip.(u"hr", fitdat.t) for fitdat in fitdats]
-    return gen_nsol_pd(fitlog, tr, pos; saveats, kwargs...)
+    return gen_nsol_pd(fitlog, tr, pos; saveats, badprms, kwargs...)
 end
-function gen_nsol_pd(fitlog, tr, pos; saveats=fill([], length(pos)), kwargs...)
+function gen_nsol_pd(fitlog, tr, pos; saveats=fill([], length(pos)), badprms=nothing, kwargs...)
     fitprm = transform(tr, fitlog)
     if pos isa ParamObj # only one param object...
         pos = repeat([pos], length(fitdats))
@@ -129,8 +130,14 @@ function gen_nsol_pd(fitlog, tr, pos; saveats=fill([], length(pos)), kwargs...)
     if length(prms) != length(pos)
         error("Length of transformed variable and pos do not match.")
     end
-    # Allow for one shared parameter fit to several experiments at once
-    # prms = setproperties(pos, fitprm)
+    # for p in prms
+    #     if !isnothing(badprms) && badprms(p)
+    #         prms[p] = NaN
+    #     end
+    # end
+    if !isnothing(badprms) && any([badprms(p) for p in prms])
+       return NaN 
+    end
     sols = map(prms, saveats) do prm, saveat
         prob = ODEProblem(prm; tspan=(0.0, 1000.0))
         soli = solve(prob, odealg_chunk2; saveat, kwargs...)
@@ -161,13 +168,13 @@ end
 Calculate the sum of squared error (objective function) for fitting parameters to primary drying data.
 This directly calls [`gen_sol_pd`](@ref), then [`obj_expT`](@ref), so see those docstrings.
 """
-function obj_pd(fitlog, tpf; tweight=1.0, verbose=false)
-    sol = gen_sol_pd(fitlog, tpf...)
+function obj_pd(fitlog, tpf; tweight=1.0, badprms=nothing, verbose=false)
+    sol = gen_sol_pd(fitlog, tpf...; badprms)
     return obj_expT(sol, tpf[3]; tweight, verbose)
 end
 
-function objn_pd(fitlog, tpf; tweight=1.0, verbose=false)
-    sols = gen_nsol_pd(fitlog, tpf...)
+function objn_pd(fitlog, tpf; tweight=1.0, badprms=nothing, verbose=false)
+    sols = gen_nsol_pd(fitlog, tpf...; badprms)
     obj = mapreduce(+, sols, tpf[3]) do sol, fitdat
         obj_expT(sol, fitdat; tweight, verbose)
     end
