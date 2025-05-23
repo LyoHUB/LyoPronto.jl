@@ -219,11 +219,12 @@ Principal Cases:
 - RF, matching model Tvw to experimental Tf[end] without measured vial wall: provide `t, Tfs, Tvw`
 """
 struct PrimaryDryFit{Tt, TT, Ti, Ttv<:AbstractVector{Tt}, TTv<:AbstractVector{TT}, 
+        TTf<:Tuple{TTv, Vararg{TTv}},
         TTvw<:Union{Missing, TT, Tuple{TTv, Vararg{TTv}}},
         TTvwi<:Union{Missing, Vector{Ti}},
         Tte<:Union{Missing, Tt, Tuple{Tt, Tt}}}
     t::Ttv
-    Tfs::Tuple{TTv, Vararg{TTv}}
+    Tfs::TTf
     Tf_iend::Vector{Ti}# = [length(Tf) for Tf in Tfs]
     Tvws::TTvw# = missing
     Tvw_iend::TTvwi# = (ismissing(Tvws) ? missing : [length(Tvw) for Tvw in Tvws])
