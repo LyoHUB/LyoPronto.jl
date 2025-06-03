@@ -29,9 +29,14 @@ See [`lyo_1d_dae_f`](@ref) for the wrapped version, which is more fully document
 """
 function lyo_1d_dae!(du, u, params, t)
 
-    (; Rp, hf0, csolid, ρsolution,
-      Kshf, Av, Ap, pch, Tsh) = params
-    # Deliberately ignore other parameters that may be used for RF model
+    if params isa ParamObj
+        (; Rp, hf0, csolid, ρsolution,
+        Kshf, Av, Ap, pch, Tsh) = params
+    else
+        Rp, hf0, csolid, ρsolution = params[1]
+        Kshf, Av, Ap = params[2]
+        pch, Tsh = params[3]
+    end
     
     td = t*u"hr" # Dimensional time
     hf = u[1]*u"cm"
@@ -70,13 +75,13 @@ The implementation is in [`lyo_1d_dae!`](@ref)
 The initial conditions `u0 = [h_f, Tf]` should be unitless, but are internally assigned to be in `[cm, K]`.
 The unitless time is taken to be in hours, so derivatives are given in unitless `[cm/hr, K/hr]`.
 
-`params` has the form:
+`params` is a `ParamObjPikal`, which can be constructed with the following form (helping with readability):
 ```
-params = (
+params = ParamObjPikal((
     (Rp, hf0, csolid, ρsolution),
     (Kshf, Av, Ap),
     (pch, Tsh) ,
-)
+))
 ```
 where those listed following are callables returning `Quantity`s, and the rest are `Quantity`s.
 See [`RpFormFit`](@ref LyoPronto.RpFormFit) and [`RampedVariable`](@ref LyoPronto.RampedVariable) for convenience types that can help with the callables.
@@ -94,17 +99,24 @@ const lyo_1d_dae_f = ODEFunction{true, SciMLBase.AutoSpecialize}(lyo_1d_dae!, ma
 #     (pch, Tsh) ,
 # )
 # ```
-struct ParamObjPikal{T1, T2, T3, T4, T5, T6, T7, T8, T9} <: ParamObj
-    Rp::T1
-    hf0::T2
-    csolid::T3
-    ρsolution::T4
-    Kshf::T5
-    Av::T6
-    Ap::T7 
-    pch::T8
-    Tsh::T9
+@concrete terse struct ParamObjPikal <: ParamObj
+    Rp
+    hf0
+    csolid
+    ρsolution
+    Kshf
+    Av
+    Ap
+    pch
+    Tsh
 end
+
+@doc """
+    $(TYPEDEF)
+
+The `ParamObjPikal` type is a container for the parameters used in the Pikal model.
+"""
+ParamObjPikal
 
 # This constructor takes the legacy tuple of tuples form I used and unpacks it
 function ParamObjPikal(tuptup) 
@@ -130,12 +142,6 @@ function Base.getindex(p::ParamObjPikal, i::Int)
 end
 Base.size(::ParamObjPikal) = (3,)
 Base.length(::ParamObjPikal) = 3
-function Base.show(io::IO, po::ParamObjPikal)
-    str = "ParamObjPikal( ($(po.Rp), $(po.hf0), $(po.csolid), $(po.ρsolution)),
-           ($(po.Kshf), $(po.Av), $(po.Ap)),
-           ($(po.pch), $(po.Tsh)) )"
-    return print(io, str)
-end
 
 function calc_u0(po::ParamObjPikal)
     # return ustrip(u"cm", u"K"),[po.hf0, po.Tsh(0u"s")])

@@ -1,6 +1,11 @@
 export RpFormFit, RampedVariable, ConstPhysProp, PrimaryDryFit
 
-"""
+@concrete terse struct RpFormFit
+    R0
+    A1
+    A2
+end
+@doc """
 A convenience type for dealing with the common functional form given to Rp and Kv.
 
 An object `Rp = RpFormFit(A, B, C)` can be called as `Rp(x)`, which simply computes `A + B*x/(1 + C*x)`.
@@ -8,21 +13,20 @@ Likewise, `Kv = RpFormFit(Kc, Kp, Kd)` can be called as `Kv(p)` to get `Kc + Kp*
 
 Be careful to pass dimensionally consistent values.
 """
-struct RpFormFit{T1, T2, T3}
-    R0::T1
-    A1::T2
-    A2::T3
-end
+RpFormFit
 
 function (ff::RpFormFit)(x)
     return (ff.R0 + ff.A1*x/(1+ustrip(NoUnits, ff.A2*x)))
 end
 
-function Base.show(io::IO, rp::RpFormFit) 
-    return print(io, "RpFormFit($(rp.R0), $(rp.A1), $(rp.A2))")
+@concrete terse struct RampedVariable{vary}
+    setpts
+    ramprates
+    holds
+    timestops
 end
 
-"""
+@doc """
 A convenience type for computing temperatures, pressures, etc. with multiple setpoints in sequence,
 and linear interpolation according to a fixed ramp rate between set points
 
@@ -46,18 +50,13 @@ and will return the value at that time point along the ramp process.
 
 A plot recipe is also provided for this type, e.g. `plot(rv; tmax=10u"hr")` where `tmax` indicates where to stop drawing the last setpoint hold.
 """
-struct RampedVariable{vary, T1, T2, T3, T4}
-    setpts::T1
-    ramprates::T2
-    holds::T3
-    timestops::T4
-end
+RampedVariable
 
 # get_dimensions(::Type{Quantity{T,D,U}}) where {T, D, U} = D
-function (rv::RampedVariable{false, T1,T2,T3,T4})(t) where {T1,T2,T3,T4}
-    return rv.setpts::T1
+function (rv::RampedVariable{false})(t)
+    return rv.setpts
 end
-function (rv::RampedVariable{true, T1,T2,T3,T4})(t) where {T1,T2,T3,T4}
+function (rv::RampedVariable{true})(t)
     im = searchsortedfirst(rv.timestops, t) - 1
     if im == 0 # Negative time
         return rv.setpts[1]
@@ -73,7 +72,7 @@ end
 
 
 function RampedVariable(hold)
-    RampedVariable{false, typeof(hold), Nothing, Nothing, Nothing}(hold, nothing, nothing, nothing)
+    RampedVariable{false}(hold, nothing, nothing, nothing)
 end
 
 function RampedVariable(setpts, ramprate)
@@ -89,7 +88,7 @@ function RampedVariable(setpts, ramprate)
     end
     timestops = fill(0.0*setpts[1]/ramprate[1], 2)
     timestops[2] = timestops[1] + (setpts[2]-setpts[1])/ramprate
-    RampedVariable{true, typeof(setpts), Vector{typeof(ramprate)}, Nothing, typeof(timestops)}(setpts, [ramprate], nothing, timestops)
+    RampedVariable{true}(setpts, [ramprate], nothing, timestops)
 end
 
 function RampedVariable(setpts, ramprates, holds)
@@ -115,11 +114,9 @@ function RampedVariable(setpts, ramprates, holds)
             timestops[2i+2] = timestops[2i+1] + (timestops[2i+1]-timestops[2i+2])
         end
     end
-    RampedVariable{true, typeof(setpts), typeof(ramprates), typeof(holds), typeof(timestops)}(setpts, ramprates, holds, timestops)
+    RampedVariable{true}(setpts, ramprates, holds, timestops)
 end
-RampedVariable(setpts, ramprates::Nothing, holds::Nothing, timestops::Nothing) = RampedVariable{false, typeof(setpts), Nothing, Nothing, Nothing}(setpts, ramprates, holds, timestops)
-RampedVariable(setpts, ramprates, holds::Nothing, timestops) = RampedVariable{true, typeof(setpts), typeof(ramprates), Nothing, typeof(timestops)}(setpts, ramprates, holds, timestops)
-RampedVariable(setpts, ramprates, holds, timestops) = RampedVariable{true, typeof(setpts), typeof(ramprates), typeof(holds), typeof(timestops)}(setpts, ramprates, holds, timestops)
+
 function Base.:(+)(rv::RampedVariable{b, T1,T2,T3,T4}, x) where {b, T1,T2,T3,T4}
     return @set rv.setpts .+= x
 end
@@ -137,11 +134,11 @@ function Base.hash(rv::RampedVariable, h::UInt)
     hash(rv.setpts, hash(rv.ramprates, hash(rv.holds, hash(rv.timestops, hash(:RampedVariable, h)))))
 end
 
-function Base.show(io::IO, rv::RampedVariable{false, T1,T2,T3,T4}) where {T1,T2,T3,T4}
+function Base.show(io::IO, rv::RampedVariable{false}) 
     return print(io, "RampedVariable($(rv.setpts))")
 end
     
-function Base.show(io::IO, rv::RampedVariable{true, T1,T2,T3,T4}) where {T1,T2,T3,T4}
+function Base.show(io::IO, rv::RampedVariable{true})
     if length(rv.setpts) == 2
         return print(io, "RampedVariable($(rv.setpts), $(rv.ramprates[1]))")
     else 
@@ -170,8 +167,8 @@ function PhysProp(x, args...)
     PhysProp{typeof(x), func_T, func_p, func_f}(x)
 end
 
-struct ConstPhysProp{T}
-    val::T
+@concrete terse struct ConstPhysProp
+    val
 end
 (cpp::ConstPhysProp)(args...) = cpp.val
 Base.show(io::IO, cpp::ConstPhysProp) = print(io, "ConstPhysProp($(cpp.val))")
