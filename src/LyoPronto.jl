@@ -16,6 +16,7 @@ using SpecialFunctions: besselj0, besselj1
 using DataInterpolations
 using Roots
 using Accessors
+using ConcreteStructs
 using ADTypes: AutoForwardDiff
 @reexport import ConstructionBase: setproperties
 using DocStringExtensions
@@ -36,7 +37,7 @@ include("get_vial_dims.jl")
 include("physical_properties.jl")
 # using .Dielectric
 
-include("precompilation.jl")
+# include("precompilation.jl")
 
 # If on 1.11 or later, mark stuff as public that isn't exported
 VERSION >= v"1.11" && include("public.jl")

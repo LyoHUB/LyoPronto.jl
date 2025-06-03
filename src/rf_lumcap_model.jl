@@ -60,12 +60,21 @@ LC3: Q_shw evaluated with Kshf; shape factor included; α=0
 """
 function lumped_cap_rf!(du, u, params, tn, qret = Val(false))
     # Unpack all the parameters
-    Rp, hf0, csolid, ρsolution = params[1]
-    Kshf_f, Av, Ap, = params[2]
-    pch, Tsh, P_per_vial = params[3] 
-    mf0, cpf, mv, cpv = params[4]
-    f_RF, eppf, eppvw = params[5]
-    Kvwf, Bf, Bvw = params[6]
+    if params isa ParamObjRF
+        (;Rp, hf0, csolid, ρsolution,
+        Kshf, Av, Ap,
+        pch, Tsh, P_per_vial, 
+        mf0, cpf, mv, cpv,
+        f_RF, eppf, eppvw,
+        Kvwf, Bf, Bvw) = params
+    else
+        Rp, hf0, csolid, ρsolution = params[1]
+        Kshf, Av, Ap, = params[2]
+        pch, Tsh, P_per_vial = params[3] 
+        mf0, cpf, mv, cpv = params[4]
+        f_RF, eppf, eppvw = params[5]
+        Kvwf, Bf, Bvw = params[6]
+    end
     # Dimensionalize the state variables
     t = tn*u"hr" 
     m_f = u[1]*u"g"
@@ -80,9 +89,9 @@ function lumped_cap_rf!(du, u, params, tn, qret = Val(false))
     h_f = m_f/mf0 * hf0 
     h_d = hf0 - h_f
     # Heat transfer from shelf
-    Kshf = Kshf_f(pch(t))
-    Q_shf = Kshf*Ap*(Tsh(t)-T_f) 
-    Q_shw = Kshf*(Av-Ap)*(Tsh(t)-T_vw)
+    Kshft = Kshf(pch(t))
+    Q_shf = Kshft*Ap*(Tsh(t)-T_f) 
+    Q_shw = Kshft*(Av-Ap)*(Tsh(t)-T_vw)
     # Evaluate mass flow; positive means drying is progressing. Not forced to be positive
     mflow = Ap/Rp(h_d)*(calc_psub(T_f) - pch(t)) # g/s
     Q_sub = mflow*ΔHsub # Sublimation
@@ -126,37 +135,37 @@ end
 # )
 # ```
 
-"""
+@concrete terse struct ParamObjRF <: ParamObj
+    Rp
+    hf0
+    csolid
+    ρsolution
+    Kshf
+    Av
+    Ap
+    pch
+    Tsh
+    P_per_vial
+    mf0
+    cpf
+    mv
+    cpv
+    Arad
+    f_RF
+    eppf
+    eppvw
+    Kvwf
+    Bf
+    Bvw
+    alpha
+end
+
+@doc """
     $(TYPEDEF)
 
 The `ParamObjRF` type is a container for the parameters used in the RF model.
 """
-struct ParamObjRF{T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, 
-                T11, T12, T13, T14, T15, T16, T17, T18, T19,
-                T20, T21, T22} <: ParamObj
-    Rp::T1
-    hf0::T2
-    csolid::T3
-    ρsolution::T4
-    Kshf::T5
-    Av::T6
-    Ap::T7
-    pch::T8
-    Tsh::T9
-    P_per_vial::T10
-    mf0::T11
-    cpf::T12
-    mv::T13
-    cpv::T14
-    Arad::T15
-    f_RF::T16
-    eppf::T17
-    eppvw::T18
-    Kvwf::T19
-    Bf::T20
-    Bvw::T21
-    alpha::T22
-end
+ParamObjRF
 
 function ParamObjRF(tuptup) 
     if (length(tuptup[4]) == 4 && length(tuptup[6]) == 3)
@@ -174,19 +183,6 @@ function ParamObjRF(tuptup)
     end
 end
 Base.size(po::ParamObjRF) = (6,)
-
-function Base.show(io::IO, po::ParamObjRF) 
-    return print(io, "ParamObjRF($(po.Rp), $(po.hf0), $(po.csolid), $(po.ρsolution), $(po.Kshf), $(po.Av), $(po.Ap), $(po.pch), $(po.Tsh), $(po.P_per_vial), $(po.mf0), $(po.cpf), $(po.mv), $(po.cpv), $(po.Arad), $(po.f_RF), $(po.eppf), $(po.eppvw), $(po.Kvwf), $(po.Bf), $(po.Bvw), $(po.alpha))")
-end
-function Base.show(io::IO, ::MIME"text/plain", po::ParamObjRF)
-    names = fieldnames(ParamObjRF)
-    str = "ParamObjRF(\n"
-    for nm in names
-        str *= "$nm = $(getfield(po, nm))\n"
-    end
-    str *= ")"
-    return print(io, str)
-end
 
 function Base.getindex(po::ParamObjRF, i)
     if i == 1
