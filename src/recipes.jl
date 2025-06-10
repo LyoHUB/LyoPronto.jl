@@ -264,7 +264,9 @@ tendplot
 
 @userplot tendPlot
 @recipe function f(tp::tendPlot)
-    if length(tp.args) == 1 && ~(tp.args[1] isa Tuple)
+    if ismissing(tp.args[1])
+        return nothing
+    elseif length(tp.args) == 1 && ~(tp.args[1] isa Tuple)
         t_end = tp.args[1]
         @series begin
             seriestype := :vline
