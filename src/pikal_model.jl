@@ -270,9 +270,9 @@ function dae_Rp!(du, u, p, tn)
     Rpg = u[2]*u"cm^2*Torr*hr/g"
 
     (;po, Tf_interp) = p
-    _, hf0, csolid, ρsolution = po[1]
-    Kshf, Av, Ap, = po[2]
-    pch, Tsh = po[3] 
+    (;hf0, csolid, ρsolution, 
+    Kshf, Av, Ap, 
+    pch, Tsh) = po
 
     Tf = Tf_interp(t)
 
@@ -281,7 +281,7 @@ function dae_Rp!(du, u, p, tn)
     Tsub = Tf - Q/Ap/LyoPronto.k_ice * (hf0-hd)
     md = Q/LyoPronto.ΔH
     Rp = Ap*(calc_psub(Tsub)-pch(t))/md |> u"cm^2*Torr*hr/g"
-    if Q <= 0.0u"W" || Rp <= 0.0u"m/s" 
+    if Q <= 0.0u"W" || Rp <= 0.0u"m/s" || isnan(Rp)
         du[1] = du[2] = 0.0
         return
     end
@@ -290,12 +290,19 @@ function dae_Rp!(du, u, p, tn)
     du[2] = u[2] - ustrip(u"cm^2*Torr*hr/g", Rp)
     return
 end
-const dae_Rpf = ODEFunction(dae_Rp!, mass_matrix=[1.0 0; 0 0])
+const dae_Rpf = ODEFunction(dae_Rp!, mass_matrix=Diagonal([1.0, 0]))
 
 function get_t0(re::RpEstimator{false})
     (; Tf_interp, po) = re
-    if Tf_interp(0u"s") > po.Tsh(0u"s")
-        t0 = find_zero(t -> ustrip(u"K", po.Tsh(t*u"hr") - Tf_interp(t*u"hr")), (0.0, ustrip(u"hr", Tf_interp.t[end])))
+    if calc_psub(Tf_interp(0u"hr")) < po.pch(0u"hr")
+        t0 = find_zero((0.0, ustrip(u"hr", Tf_interp.t[end]))) do t
+            Tf = Tf_interp(t*u"hr")
+            Tsh = po.Tsh(t*u"hr")
+            pch = po.pch(t*u"hr")
+            Q = po.Kshf(pch)*po.Av*(Tsh - Tf)
+            Tsub = Tf - Q/po.Ap/LyoPronto.k_ice*po.hf0
+            ustrip(u"Pa", calc_psub(Tsub)-pch)
+        end
         return t0 * 1.01 # Go slightly after the zero, to ensure stability
     else
         return 0.0
