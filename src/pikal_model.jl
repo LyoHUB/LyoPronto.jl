@@ -294,8 +294,9 @@ const dae_Rpf = ODEFunction(dae_Rp!, mass_matrix=Diagonal([1.0, 0]))
 
 function get_t0(re::RpEstimator{false})
     (; Tf_interp, po) = re
+    t0 = 0.0
     if calc_psub(Tf_interp(0u"hr")) < po.pch(0u"hr")
-        t0 = find_zero((0.0, ustrip(u"hr", Tf_interp.t[end]))) do t
+        t0_psub = find_zero((0.0, ustrip(u"hr", Tf_interp.t[end]))) do t
             Tf = Tf_interp(t*u"hr")
             Tsh = po.Tsh(t*u"hr")
             pch = po.pch(t*u"hr")
@@ -303,10 +304,15 @@ function get_t0(re::RpEstimator{false})
             Tsub = Tf - Q/po.Ap/LyoPronto.k_ice*po.hf0
             ustrip(u"Pa", calc_psub(Tsub)-pch)
         end
-        return t0 * 1.01 # Go slightly after the zero, to ensure stability
-    else
-        return 0.0
+        t0 = max(t0, t0_psub*1.01)
     end
+    if Tf_interp(0u"hr") > po.Tsh(0u"hr")
+        t0_q = find_zero(0.0) do t
+            ustrip(u"K", Tf_interp(t*u"hr") - po.Tsh(t*u"hr"))
+        end
+        t0 = max(t0, t0_q*1.01)
+    end
+    return t0
 end
 
 ODEProblem(::RpEstimator{true}) = error("Cannot create ODEProblem for multiple Tf at once. Index into the RpEstimator to choose a Tf series.")
