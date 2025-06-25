@@ -307,7 +307,7 @@ function get_t0(re::RpEstimator{false})
         t0 = max(t0, t0_psub*1.01)
     end
     if Tf_interp(0u"hr") > po.Tsh(0u"hr")
-        t0_q = find_zero(0.0) do t
+        t0_q = find_zero((0.0, ustrip(u"hr", Tf_interp.t[end]))) do t
             ustrip(u"K", Tf_interp(t*u"hr") - po.Tsh(t*u"hr"))
         end
         t0 = max(t0, t0_q*1.01)
