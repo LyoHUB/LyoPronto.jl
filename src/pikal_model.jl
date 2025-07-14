@@ -1,4 +1,4 @@
-export lyo_1d!, lyo_1d_dae_f, subflux_Tsub, calc_psub
+export lyo_1d_dae_f, calc_psub
 export end_drying_callback
 export ParamObjPikal
 export calc_u0, get_tstops
@@ -165,7 +165,7 @@ end
 function get_t0(Tsh, pch)
     if calc_psub(Tsh(0u"s")) < pch(0u"s")
         t0 = find_zero(t -> ustrip(u"Pa", calc_psub(Tsh(t*u"hr")) - pch(t*u"hr")), (0.0, ustrip(u"hr", Tsh.timestops[end])))
-        return t0 * 1.001 # Go jslightly after the zero, to ensure stability
+        return t0 * 1.001 # Go slightly after the zero, to ensure stability
     else
         return 0.0
     end
@@ -178,63 +178,6 @@ function ODEProblem(po::ParamObjPikal; u0=calc_u0(po), tspan=(0.0, 1000.0))
     @reset tspan[1] = t0 
     return ODEProblem(lyo_1d_dae_f, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback)
-end
-
-# -------------------------------------------
-# Alternative approach, a la original LyoPRONTO
-# Embed the nonlinear solve inside the function call for a plain ODE formulation.
-
-function compute_T_pseudosteady(Pchl, Rpl, Kvl, Tshl, Ap, Av, hd)
-    function nl_func(Tp_nd)
-        Tp = Tp_nd*u"K"
-        Qs = Av*Kvl*(Tshl - Tp)
-        Tsub = Tp - Qs/Ap/k_ice*hd
-        dmdt = - max(Ap*(calc_psub(Tsub)-Pchl)/Rpl, 0u"kg/s")
-        Qsub = dmdt*ΔHsub
-        return ustrip(u"W", Qsub + Qs)
-    end
-    Tp = find_zero(nl_func, 250) *u"K"
-end
-
-function lyo_1d!(du, u, params, t)
-    Rp, hf0, csolid, ρsolution = params[1]
-    Kshf, Av, Ap, = params[2]
-    pch, Tsh = params[3] 
-    
-    td = t*u"hr" # Dimensional time
-    hf = u[1]*u"cm"
-    hd = hf0 - hf
-
-    Tp = compute_T_pseudosteady(pch(td), Rp(hd), Kshf(pch(td)), Tsh(td), Ap, Av, hd)
-    dmdt = - Ap*(calc_psub(Tp)-pch(td))/Rp(hd)
-
-    dhf_dt = min(0u"cm/s", dmdt/Ap/(ρsolution - csolid))
-
-    # Q = uconvert(u"W/m^2", Kshf(pch(td))*(Tsh(td)-Tp))
-    # flux = uconvert(u"kg/hr/m^2", -dmdt/Ap)
-
-    du[1] = min(0, ustrip(u"cm/hr", dhf_dt))
-end
-
-function subflux_Tsub(u, params, t)
-    Rp, hf0, csolid, ρsolution = params[1]
-    Kshf, Av, Ap, = params[2]
-    pch, Tsh = params[3] 
-
-    td = t*u"hr" # Dimensional time
-    hf = u[1]*u"cm"
-    Tf = u[2]*u"K"
-
-    hd = hf0 - hf
-    Qshf = Av*Kshf(pch(td))*(Tsh(td) - Tf)
-    Tsub = Tf - Qshf/k_ice/Ap*hf
-    dmdt = - max(Ap*(calc_psub(Tsub)-pch(td))/Rp(hd), 0u"kg/s")
-    # Qsub = dmdt*ΔHsub
-    return dmdt, Tsub
-end
-
-function subflux_Tsub(sol::T, t) where T<:ODESolution
-    subflux_Tsub(sol(t), sol.p, t)
 end
 
 # -----------------
