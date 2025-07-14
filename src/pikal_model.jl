@@ -1,4 +1,4 @@
-export lyo_1d!, lyo_1d_dae_f, subflux_Tsub, calc_psub
+export lyo_1d_dae_f, calc_psub
 export end_drying_callback
 export ParamObjPikal
 export calc_u0, get_tstops
@@ -165,7 +165,7 @@ end
 function get_t0(Tsh, pch)
     if calc_psub(Tsh(0u"s")) < pch(0u"s")
         t0 = find_zero(t -> ustrip(u"Pa", calc_psub(Tsh(t*u"hr")) - pch(t*u"hr")), (0.0, ustrip(u"hr", Tsh.timestops[end])))
-        return t0 * 1.001 # Go jslightly after the zero, to ensure stability
+        return t0 * 1.001 # Go slightly after the zero, to ensure stability
     else
         return 0.0
     end
@@ -178,63 +178,6 @@ function ODEProblem(po::ParamObjPikal; u0=calc_u0(po), tspan=(0.0, 1000.0))
     @reset tspan[1] = t0 
     return ODEProblem(lyo_1d_dae_f, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback)
-end
-
-# -------------------------------------------
-# Alternative approach, a la original LyoPRONTO
-# Embed the nonlinear solve inside the function call for a plain ODE formulation.
-
-function compute_T_pseudosteady(Pchl, Rpl, Kvl, Tshl, Ap, Av, hd)
-    function nl_func(Tp_nd)
-        Tp = Tp_nd*u"K"
-        Qs = Av*Kvl*(Tshl - Tp)
-        Tsub = Tp - Qs/Ap/k_ice*hd
-        dmdt = - max(Ap*(calc_psub(Tsub)-Pchl)/Rpl, 0u"kg/s")
-        Qsub = dmdt*ΔHsub
-        return ustrip(u"W", Qsub + Qs)
-    end
-    Tp = find_zero(nl_func, 250) *u"K"
-end
-
-function lyo_1d!(du, u, params, t)
-    Rp, hf0, csolid, ρsolution = params[1]
-    Kshf, Av, Ap, = params[2]
-    pch, Tsh = params[3] 
-    
-    td = t*u"hr" # Dimensional time
-    hf = u[1]*u"cm"
-    hd = hf0 - hf
-
-    Tp = compute_T_pseudosteady(pch(td), Rp(hd), Kshf(pch(td)), Tsh(td), Ap, Av, hd)
-    dmdt = - Ap*(calc_psub(Tp)-pch(td))/Rp(hd)
-
-    dhf_dt = min(0u"cm/s", dmdt/Ap/(ρsolution - csolid))
-
-    # Q = uconvert(u"W/m^2", Kshf(pch(td))*(Tsh(td)-Tp))
-    # flux = uconvert(u"kg/hr/m^2", -dmdt/Ap)
-
-    du[1] = min(0, ustrip(u"cm/hr", dhf_dt))
-end
-
-function subflux_Tsub(u, params, t)
-    Rp, hf0, csolid, ρsolution = params[1]
-    Kshf, Av, Ap, = params[2]
-    pch, Tsh = params[3] 
-
-    td = t*u"hr" # Dimensional time
-    hf = u[1]*u"cm"
-    Tf = u[2]*u"K"
-
-    hd = hf0 - hf
-    Qshf = Av*Kshf(pch(td))*(Tsh(td) - Tf)
-    Tsub = Tf - Qshf/k_ice/Ap*hf
-    dmdt = - max(Ap*(calc_psub(Tsub)-pch(td))/Rp(hd), 0u"kg/s")
-    # Qsub = dmdt*ΔHsub
-    return dmdt, Tsub
-end
-
-function subflux_Tsub(sol::T, t) where T<:ODESolution
-    subflux_Tsub(sol(t), sol.p, t)
 end
 
 # -----------------
@@ -270,9 +213,9 @@ function dae_Rp!(du, u, p, tn)
     Rpg = u[2]*u"cm^2*Torr*hr/g"
 
     (;po, Tf_interp) = p
-    _, hf0, csolid, ρsolution = po[1]
-    Kshf, Av, Ap, = po[2]
-    pch, Tsh = po[3] 
+    (;hf0, csolid, ρsolution, 
+    Kshf, Av, Ap, 
+    pch, Tsh) = po
 
     Tf = Tf_interp(t)
 
@@ -281,7 +224,7 @@ function dae_Rp!(du, u, p, tn)
     Tsub = Tf - Q/Ap/LyoPronto.k_ice * (hf0-hd)
     md = Q/LyoPronto.ΔH
     Rp = Ap*(calc_psub(Tsub)-pch(t))/md |> u"cm^2*Torr*hr/g"
-    if Q <= 0.0u"W" || Rp <= 0.0u"m/s" 
+    if Q <= 0.0u"W" || Rp <= 0.0u"m/s" || isnan(Rp)
         du[1] = du[2] = 0.0
         return
     end
@@ -290,16 +233,29 @@ function dae_Rp!(du, u, p, tn)
     du[2] = u[2] - ustrip(u"cm^2*Torr*hr/g", Rp)
     return
 end
-const dae_Rpf = ODEFunction(dae_Rp!, mass_matrix=[1.0 0; 0 0])
+const dae_Rpf = ODEFunction(dae_Rp!, mass_matrix=Diagonal([1.0, 0]))
 
 function get_t0(re::RpEstimator{false})
     (; Tf_interp, po) = re
-    if Tf_interp(0u"s") > po.Tsh(0u"s")
-        t0 = find_zero(t -> ustrip(u"K", po.Tsh(t*u"hr") - Tf_interp(t*u"hr")), (0.0, ustrip(u"hr", Tf_interp.t[end])))
-        return t0 * 1.01 # Go slightly after the zero, to ensure stability
-    else
-        return 0.0
+    t0 = 0.0
+    if calc_psub(Tf_interp(0u"hr")) < po.pch(0u"hr")
+        t0_psub = find_zero((0.0, ustrip(u"hr", Tf_interp.t[end]))) do t
+            Tf = Tf_interp(t*u"hr")
+            Tsh = po.Tsh(t*u"hr")
+            pch = po.pch(t*u"hr")
+            Q = po.Kshf(pch)*po.Av*(Tsh - Tf)
+            Tsub = Tf - Q/po.Ap/LyoPronto.k_ice*po.hf0
+            ustrip(u"Pa", calc_psub(Tsub)-pch)
+        end
+        t0 = max(t0, t0_psub*1.01)
     end
+    if Tf_interp(0u"hr") > po.Tsh(0u"hr")
+        t0_q = find_zero((0.0, ustrip(u"hr", Tf_interp.t[end]))) do t
+            ustrip(u"K", Tf_interp(t*u"hr") - po.Tsh(t*u"hr"))
+        end
+        t0 = max(t0, t0_q*1.01)
+    end
+    return t0
 end
 
 ODEProblem(::RpEstimator{true}) = error("Cannot create ODEProblem for multiple Tf at once. Index into the RpEstimator to choose a Tf series.")

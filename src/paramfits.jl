@@ -49,8 +49,6 @@ function KBB_transform_basic(Kvwfg, Bfg, Bvwg)
     return tr
 end
 
-
-
 """
     $(SIGNATURES)
 
@@ -115,14 +113,10 @@ function gen_nsol_pd(fitlog, tr, pos; saveats=fill([], length(pos)), badprms=not
         pos = repeat([pos], length(fitdats))
     end
     if hasproperty(fitprm, :separate) && hasproperty(fitprm, :shared)
-        # if length(fitprm.separate) == 0
-        #     prms =  [setproperties(po, fitprm.shared) for po in pos, fitprm.separate)]
-        sep_inds = hasproperty(fitprm, :sep_inds) ? fitprm.sep_inds : 1:length(fitprm.separate)
+        sep_inds = get(fitprm, :sep_inds, 1:length(fitprm.separate))
         if length(sep_inds) != length(saveats)
             error("Length of either the transformed variable or `sep_inds` does not match fitdats.")
         end
-            # prms =  [setproperties(po, merge(s, fitprm.shared)) for (po, s) in zip(pos, fitprm.separate)]
-            # prms =  [setproperties(po, merge(s, fitprm.shared)) for (po, s) in zip(pos, fitprm.separate)]
         prms =  [setproperties(po, merge(s, fitprm.shared)) for (po, s) in zip(pos, fitprm.separate[sep_inds])]
     else
         prms = [setproperties(po, fitprm) for po in pos]
@@ -130,37 +124,15 @@ function gen_nsol_pd(fitlog, tr, pos; saveats=fill([], length(pos)), badprms=not
     if length(prms) != length(pos)
         error("Length of transformed variable and pos do not match.")
     end
-    # for p in prms
-    #     if !isnothing(badprms) && badprms(p)
-    #         prms[p] = NaN
-    #     end
-    # end
     if !isnothing(badprms) && any([badprms(p) for p in prms])
        return NaN 
     end
     sols = map(prms, saveats) do prm, saveat
         prob = ODEProblem(prm; tspan=(0.0, 1000.0))
-        soli = solve(prob, odealg_chunk2; saveat, kwargs...)
+        return solve(prob, odealg_chunk2; saveat, kwargs...)
     end
     return sols
 end
-
-# function setproperties(pos::Vector{ParamObj}, patch::NamedTuple)
-#     if hasproperty(patch, :separate) && hasproperty(patch, :shared)
-#         return [setproperties(po, merge(s, patch.shared)) for (po, s) in zip(pos, patch.separate)]
-#     else
-#         return [setproperties(po, patch) for po in pos]
-#     end
-# end
-# function setproperties(pos, patch::NamedTuple{(:separate, :shared)})
-#     if length(pos) != length(patch.separate)
-#         error("Length of pos and patch.separate do not match.")
-#     end
-#     map(pos, patch.separate) do po, s
-#         setproperties(po, merge(s, patch.shared))
-#     end
-#     # return [setproperties(po, merge(s, patch.shared)) for (po, s) in zip(pos, patch.separate)]
-# end
 
 """
     $(SIGNATURES)
@@ -168,15 +140,15 @@ end
 Calculate the sum of squared error (objective function) for fitting parameters to primary drying data.
 This directly calls [`gen_sol_pd`](@ref), then [`obj_expT`](@ref), so see those docstrings.
 """
-function obj_pd(fitlog, tpf; tweight=1.0, badprms=nothing, verbose=false)
+function obj_pd(fitlog, tpf; tweight=1.0, Tvw_weight=1.0, badprms=nothing, verbose=false)
     sol = gen_sol_pd(fitlog, tpf...; badprms)
-    return obj_expT(sol, tpf[3]; tweight, verbose)
+    return obj_expT(sol, tpf[3]; tweight, Tvw_weight, verbose)
 end
 
-function objn_pd(fitlog, tpf; tweight=1.0, badprms=nothing, verbose=false)
+function objn_pd(fitlog, tpf; tweight=1.0, Tvw_weight=1.0, badprms=nothing, verbose=false)
     sols = gen_nsol_pd(fitlog, tpf...; badprms)
     obj = mapreduce(+, sols, tpf[3]) do sol, fitdat
-        obj_expT(sol, fitdat; tweight, verbose)
+        obj_expT(sol, fitdat; tweight, Tvw_weight, verbose)
     end
     return obj
 end
