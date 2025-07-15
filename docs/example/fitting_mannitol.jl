@@ -51,16 +51,11 @@ pd_data.t .-= pd_data.t[1]
 
 # ## Identify one definition of end of primary drying with Savitzky-Golay filter
 
-## Filter: window width of 91, cubic polynomial, second derivative 
-pir_der2 = savitzky_golay(pd_data.pirani, 91, 3, deriv=2, rate=1/u"minute").y
-## The end of drying: where the second derivative is maximized, ignoring the start of drying
-## Typically lands between the onset and offset of Pirani drop
-t_end = pd_data.t[argmax(pir_der2[1u"hr" .< pd_data.t .< 50u"hr" ])] + 1u"hr"
+t_end = identify_pd_end(pd_data.t, pd_data.pirani, :der2)
 
 # Plots provides a very convenient macro `@df` which inserts table columns into a function call,
-# which is very handy for plotting.
-@df pd_data plot(:t, :pirani, label="Pirani")
-@df pd_data plot!(:t, :cm, label="CM")
+# which is very handy for plotting. Here this is combined with a recipe for plotting the pressure:
+@df pd_data exppplot(:t, :pirani, :cm, ("Pirani", "CM"))
 tendplot!(t_end) # Use a custom recipe provided by LyoPronto for plotting t_end
 savefig("pirani.svg"); #md
 # ![](pirani.svg) #md
@@ -73,6 +68,13 @@ savefig("pirani.svg"); #md
 @df pd_data plot!(:t, :Tsh, label=L"T_{sh}", c=:black)
 savefig("exptemps.svg"); #md
 # ![](exptemps.svg) #md
+
+# ## Plot all cycle data at once with a slick recipe
+
+twinx(plot())
+cycledataplot!(procdata, (:T1, :T2, :T3), :Tsh, (:pirani, :cm))
+savefig("fullcycle.svg"); #md
+# ![](fullcycle.svg) #md
 
 # Based on an examination of the temperature data, we want to go only up to the "temperature 
 # rise" commonly observed in lyophilization near (but not at) the end of drying. 
