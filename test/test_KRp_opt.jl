@@ -17,10 +17,7 @@ Rp = RpFormFit(R0, A1, A2)
 # Cycle parameters
 Vfill = 3u"mL" # ml
 pch = RampedVariable(70u"mTorr")
-T_shelf_0 = (273.15 -15 )u"K" # shelf temperature in K
-T_shelf_final = (273.15 +10 )u"K"  # shelf temperature in K
-ramp_rate = 0.5 *u"K/minute" # ramp rate deg/min
-Tsh = RampedVariable([T_shelf_0, T_shelf_final], [ramp_rate], [])
+Tsh = RampedVariable([-15u"°C", 10u"°C"].|>u"K", 0.5u"K/minute")
 KC = 2.75e-4u"cal/s/K/cm^2"
 KP = 8.93e-4u"cal/s/K/cm^2/Torr"
 KD = 0.46u"1/Torr"
