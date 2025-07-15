@@ -419,3 +419,92 @@ function qrf_integrate(sol, RF_params)
                 "QRFf"=>qinteg[4],
                 "QRFvw"=>qinteg[5])
 end
+
+"""
+    pressurenames(name)
+
+Attempt to catch common names or shorthands for Pirani and capacitance manometer, then give back a nice label.
+"""
+function pressurenames(name::String)
+    if ~isnothing(match(r"[pP]ir", name))
+        return "\$p_\\mathrm{ch}, \\mathrm{Pirani}\$"
+    elseif !isnothing(match(r"[cC][mM]|[cC]ap", name)) 
+        return "\$p_\\mathrm{ch}, \\mathrm{CM}\$"
+    else
+        return "\$p_\\mathrm{ch}\$"
+    end
+end
+pressurenames(name) = pressurenames(string(name))
+
+"""
+    exppplot(t, p1, [p2, ...,], (name1, [name2, ...]))
+    exppplot!(t, p1, [p2, ...,], (name1, [name2, ...]))
+
+Plot recipe for plotting pressures of a lyophilization cycle.
+"""
+exppplot
+@doc (@doc exppplot) exppplot!
+
+@userplot ExpPPlot
+@recipe function f(epp::ExpPPlot)
+    t, ps..., names = epp.args
+    defaultlabels = [pressurenames(name) for name in names]
+    for (i, p) in enumerate(ps)
+        @series begin
+            seriestype --> :samplemarkers
+            step --> length(p) ÷ 10
+            ylabel --> "Pressure"
+            label --> defaultlabels[i]
+            return t, p
+        end
+    end
+end
+
+"""
+    cycledataplot(tablelike, (Tname1, ...), Tsh_name, (p_name1, ...))
+    cycledataplot!(tablelike, (Tname1, ...), Tsh_name, (p_name1, ...))
+
+Plot recipe for plotting both temperatures and pressures of a lyophilization cycle.
+
+This requires at least two subplots, one for temperature and one for pressure.
+Either call `twinx(plot())` then `cycledataplot!(...)`, or give a layout like 
+`cycledataplot(..., layout=(2,1))`"
+"""
+cycledataplot
+@doc (@doc cycledataplot) cycledataplot!
+
+@userplot CycleDataPlot
+@recipe function f(cdp::CycleDataPlot; pcolor=:black, tendkind=:onoff)
+
+    dat, Ts, Tsh, ps = cdp.args
+    unitformat --> :square
+    if !isnothing(Tsh)
+        @series begin
+            lw --> 2
+            subplot := 1
+            seriescolor --> :black
+            label --> "\$T_\\mathrm{sh}\$"
+            dat.t, getproperty(dat, Tsh)
+        end
+    end
+    @series begin
+        subplot := 1
+        ylabel --> "Temperature"
+        xlabel --> "Time"
+        ygrid --> true
+        lw --> 2
+        ExpTfPlot((dat.t, map(x->getproperty(dat, x), Ts)...))
+    end
+    if length(plotattributes[:plot_object].subplots) < 2
+        @warn "CycleDataPlot requires at least two subplots, one for temperature and one for pressure.
+        Either call `twinx(plot())` then `cycledataplot!(...)`, 
+        or give a layout like `cycledataplot(..., layout=(2,1))`"
+    end
+    subplot := 2
+    foreground_color_axis --> pcolor
+    bordercolor --> pcolor
+    seriescolor --> pcolor
+    @series begin
+        ExpPPlot((dat.t, map(x->getproperty(dat, x), ps)..., ps))
+    end
+end

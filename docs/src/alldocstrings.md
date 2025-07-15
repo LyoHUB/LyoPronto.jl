@@ -12,7 +12,7 @@ Pages = ["structs.jl"]
 ## Parameter Fitting
 ```@autodocs
 Modules = [LyoPronto]
-Pages = ["paramfits.jl"]
+Pages = ["paramfits.jl", "cycle_time.jl"]
 ```
 
 ## Plot Recipes

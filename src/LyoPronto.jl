@@ -14,6 +14,7 @@ using UnPack
 using PrecompileTools
 using SpecialFunctions: besselj0, besselj1
 using DataInterpolations
+using SavitzkyGolay
 using Roots
 using Accessors
 using ConcreteStructs
@@ -33,6 +34,7 @@ include("rf_lumcap_model.jl")
 include("pikal_model.jl")
 include("paramfits.jl")
 include("recipes.jl")
+include("cycle_time.jl")
 include("get_vial_dims.jl")
 include("physical_properties.jl")
 # using .Dielectric
