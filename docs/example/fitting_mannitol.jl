@@ -15,18 +15,14 @@ using LineSearches
 using Plots
 using StatsPlots: @df
 using LaTeXStrings
-# SavitzkyGolay is a lightweight package for a well-known smoothing algorithm.
-using SavitzkyGolay
 
 # # Read in process data
 
 ## Data start at 8th row of CSV file.
 ## This needs to point to the right file, which for documentation is kinda wonky
-procdata = CSV.read(joinpath(@__DIR__, "..", "..", "example", "2024-06-04-10_MFD_AH.csv"), Table, header=8)
+procdata_raw = CSV.read(joinpath(@__DIR__, "..", "..", "example", "2024-06-04-10_MFD_AH.csv"), Table, header=8)
 ## MicroFD, used for this experiment, has a column indicating primary drying
-pd_raw = filter(row->row.Phase == 4, procdata)
-## Count time from the beginning of experiment
-t = uconvert.(u"hr", pd_raw.CycleTime .- pd_raw.CycleTime[1])
+t = uconvert.(u"hr", procdata_raw.CycleTime .- procdata_raw.CycleTime[1])
 ## At midnight, timestamps revert to zero, so catch that case
 for i in eachindex(t)[begin+1:end]
     if t[i] < t[i-1]
@@ -35,19 +31,23 @@ for i in eachindex(t)[begin+1:end]
 end
 
 ## Rename the columns we will use, and add units
-pd_data = map(pd_raw) do row
+procdata = map(procdata_raw) do row
     ## In the anonymous `do` function, `row` is a row of the table.
     ## Return a new row as a NamedTuple
     (pirani = row.VacPirani * u"mTorr",
      cm = row.VacCPM * u"mTorr",
      T1 = row.TP1 * u"°C",
      T2 = row.TP2 * u"°C",
-     T3 = row.TP4 * u"°C", # Quirk of this experimental run: T3 slot was empty
+     T3 = row.TP4 * u"°C", # Quirk of this experimental run: TP3 slot was empty
      Tsh = row.ShelfSetPT * u"°C",
+     phase = row.Phase
     )
 end
-pd_data = Table(pd_data, (;t)) # Append time to table
+procdata = Table(procdata, (;t)) # Append time to table
 
+## Count time from the beginning of experiment
+pd_data = filter(row->row.phase == 4, procdata)
+pd_data.t .-= pd_data.t[1]
 
 # ## Identify one definition of end of primary drying with Savitzky-Golay filter
 
