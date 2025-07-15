@@ -18,7 +18,7 @@ using Accessors
 # All of the below recipes are implemented with the Plots.jl recipe system.
 
 # One feature is that each of these functions has a version that produces a new plot and one that modifies an existing plot
-# which differ by a bang: `exptfplot(...)` produces a new plot, while `exptfplot!(...) adds to an existing plot.
+# which differ by a bang: `exptfplot(...)` produces a new plot, while `exptfplot!(...)` adds to an existing plot.
 
 # Another is that you can pass any Plots keyword arguments to any of the plot calls, such as
 # to override the default colors or labels provided by the recipes.
@@ -35,6 +35,8 @@ for i in eachindex(t)[begin+1:end]
         t[i:end] .+= 24u"hr"
     end
 end
+## Some of the dispatches don't like if time is not a float
+t = float.(t)
 
 ## Rename the columns we will use, and add units
 procdata = map(procdata_raw) do row
@@ -71,32 +73,35 @@ pch = RampedVariable(100u"mTorr")
 # Plots provides a very convenient macro `@df` which inserts table columns into a function call,
 # which is very handy for plotting. We will use this liberally.
 
-# ## Pressure plotting
+# ## Pressure plotting and end of drying
 @df pd_data exppplot(:t, :pirani, :cm, ("Pirani", "CM"))
-tendplot!(t_end) # Use a custom recipe provided by LyoPronto for plotting t_end
-savefig("recipe_pressure.svg"); #md
+tendplot!(t_end) 
+savefig("recipe_pressure.svg"); #md #hide
 # ![](recipe_pressure.svg) #md
 
 @df pd_data exppplot(:t, :cm, :pirani, ("cap", "pir"))
-savefig("recipe_pressure_alt.svg"); #md
+tendplot!(t_end[1]) 
+savefig("recipe_pressure_alt.svg"); #md #hide
 # ![](recipe_pressure_alt.svg) #md
 
 # ## Temperature plotting
-@df pd_data exptfplot(:t, :T1, :T2)
-@df pd_data exptvwplot!(:t, :T3)
-savefig("recipe_temp.svg"); #md
+@df procdata exptfplot(:t, :T1, :T2)
+@df procdata exptvwplot!(:t, :T3)
+savefig("recipe_temp.svg"); #md #hide
 # ![](recipe_temp.svg) #md
 
-@df pd_data exptfplot(:t, :T1, :T2, lab_suffix=" prod")
-@df pd_data exptvwplot!(:t, :T3, lab_suffix = " vial", trim = 30)
-savefig("recipe_temp_alt.svg"); #md
+@df pd_data exptfplot(:t, :T1, :T2, labsuffix = " prod")
+@df pd_data exptvwplot!(:t, :T3, labsuffix = " vial", trim = 30)
+savefig("recipe_temp_alt.svg"); #md #hide
 # ![](recipe_temp_alt.svg) #md
 
 # ## Plot all cycle data at once with a slick recipe
 
-twinx(plot())
+twinx(plot(xunit=u"hr",))
 cycledataplot!(procdata, (:T1, :T2, :T3), :Tsh, (:pirani, :cm), pcolor=:green)
-savefig("recipe_tp.svg"); #md
+plot!(subplot=1, legend=:left)
+plot!(subplot=2, ylim=(0, 200), legend=:bottomright)
+savefig("recipe_tp.svg"); #md #hide
 # ![](recipe_tp.svg) #md
 
 # If you want more granular control, you can expand this into its component pieces:
@@ -104,16 +109,17 @@ savefig("recipe_tp.svg"); #md
 ## set up plot
 twinx(plot())
 ## plot data 
-@df pd_data plot!(:t, :Tsh, color=:black, label=L"T_\mathrm{sh}", lw=2, subplot=1)
-@df pd_data exptfplot!(:t, :T1, :T2, :T3, lw=2, subplot=1)
+@df procdata plot!(:t, :Tsh, color=:black, label=L"T_\mathrm{sh}", lw=2, subplot=1)
+@df procdata exptfplot!(:t, :T1, :T2, :T3, lw=2, subplot=1)
 ## style the axes
-plot!(subplot=1, xlabel="Time", ylabel="Temperature", ygrid=true)
+plot!(subplot=1, xlabel="Time", ylabel="Temperature", ygrid=true, legend=:left)
 ## plot on secondary axis
-@df pd_data exppplot!(:t, :pch_pir, :pch_cm, ("Pirani", "CM"), c=:green, subplot=2)
+@df procdata exppplot!(:t, :pirani, :cm, ("Pirani", "CM"), c=:green, subplot=2)
 ## style second axis
 plot!(subplot=2, ylabel="Pressure", foreground_color_axis=:green, bordercolor=:green, 
     seriescolor=:green)
-savefig("tp_recipe_comps.svg"); #md
+plot!(subplot=2, ylim=(0, 200), legend=:bottomright)
+savefig("tp_recipe_comps.svg"); #md #hide
 # ![](tp_recipe_comps.svg) #md
 
 # # Fitting Object Recipes
@@ -126,7 +132,7 @@ fitdat_all = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 13u"hr"],
                                     :T3[:t .< 16u"hr"]),
                                     t_end)
 plot(fitdat_all)
-savefig("recipe_pdfit.svg"); #md
+savefig("recipe_pdfit.svg"); #md #hide
 # ![](recipe_pdfit.svg) #md
 
 
@@ -137,14 +143,14 @@ fitdat_vw = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 13u"hr"],
                                     :T2[:t .< 13u"hr"]), 
                                     :T3[:t .< 16u"hr"],)
 plot(fitdat_vw)
-savefig("recipe_pdfitvw.svg"); #md
+savefig("recipe_pdfitvw.svg"); #md #hide
 # ![](recipe_pdfitvw.svg) #md
 
 # In lack of a better place, it is also worth mentioning that `RampedVariable` structs have
 # a plotting recipe as well. Since the end time isn't specified by the struct, specify it
 # in the plot recipe.
 plot(Tsh, tmax=5u"hr")
-savefig("recipe_rv.svg"); #md
+savefig("recipe_rv.svg"); #md #hide
 # ![](recipe_rv.svg) #md
 
 plot(pch)
@@ -154,7 +160,7 @@ plot(pch)
 
 ## Vial geometry
 ## Ran with a 10mL vial, not strictly a 10R but with similar dimensions
-Ap, Av = @. π*get_vial_radii("10R")^2
+Ap, Av = π.*get_vial_radii("10R") .^ 2
 
 ## Formulation parameters
 csolid = 0.05u"g/mL" # g solute / mL solution
@@ -180,22 +186,22 @@ po = ParamObjPikal([
 ]);
 
 prob = ODEProblem(po)
-sol_conv = solve(prob, Rodas3())
+sol_conv = solve(prob, Rodas3());
 
 ## Make some alternate versions for showing in plots
 po_alt1 = @set po.Kshf.val = 16u"W/m^2/K"
 po_alt2 = @set po.Kshf.val = 10u"W/m^2/K"
 sol_calt1 = solve(ODEProblem(po_alt1), Rodas3())
-sol_calt2 = solve(ODEProblem(po_alt2), Rodas3())
+sol_calt2 = solve(ODEProblem(po_alt2), Rodas3());
 
 # ## Microwave-assisted lyophilization
 
 # A few more physical properties and fit parameters need to be provided:
 
-cp_f = LyoPronto.cp_ice
-cp_v = LyoPronto.cp_gl
-m_v = get_vial_mass("10R")
-m_f0 = Vfill * ρ_solution
+cpf = LyoPronto.cp_ice
+cpv = LyoPronto.cp_gl
+mv = get_vial_mass("10R")
+mf0 = Vfill * ρsolution
 ## Microwave field-related parameters
 f_RF = 8u"GHz"
 epp_f = LyoPronto.ϵppf
@@ -208,32 +214,32 @@ Kvwf = 2.4u"W/K/m^2"
 P_per_vial = RampedVariable(10u"W"/17 * 0.54) # actual input power / vial
 
 po_rf = ParamObjRF((
-    (Rp, h_f0, c_solid, ρ_solution),
-    (K_shf_f, A_v, A_p),
+    (Rp, hf0, csolid, ρsolution),
+    (Kshf, Av, Ap),
     (pch, Tsh, P_per_vial),
-    (m_f0, cp_f, m_v, cp_v),
+    (mf0, cpf, mv, cpv),
     (f_RF, epp_f, epp_w),
     (Kvwf, Bf, Bvw),
 ))
 
 prob = ODEProblem(po_rf)
-sol_rf = solve(prob, Rodas3())
+sol_rf = solve(prob, Rodas3());
 
 # # Plot Recipes for Solution Objects
 
 # For conventional drying, we only need to plot temperatures of the frozen layer:
 modconvtplot(sol_conv)
-savefig("recipe_pikal.svg"); #md
+savefig("recipe_pikal.svg"); #md #hide
 # ![](recipe_pikal.svg) #md
 
 # We can show multiple solutions at once:
 modconvtplot(sol_conv, sol_calt1, sol_calt2)
-savefig("recipe_multipikal.svg")
+savefig("recipe_multipikal.svg") #hide
 # ![](recipe_multipikal.svg) #md
 
 # For microwave-assisted drying, we also need to plot vial wall temperatures:
 modrftplot(sol_rf)
-savefig("recipe_rf.svg"); #md
+savefig("recipe_rf.svg"); #md #hide
 # ![](recipe_rf.svg) #md
 
 

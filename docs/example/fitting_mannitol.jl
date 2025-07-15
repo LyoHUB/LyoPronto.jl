@@ -57,7 +57,7 @@ t_end = identify_pd_end(pd_data.t, pd_data.pirani, :der2)
 # which is very handy for plotting. Here this is combined with a recipe for plotting the pressure:
 @df pd_data exppplot(:t, :pirani, :cm, ("Pirani", "CM"))
 tendplot!(t_end) # Use a custom recipe provided by LyoPronto for plotting t_end
-savefig("pirani.svg"); #md
+savefig("pirani.svg"); #md #hide
 # ![](pirani.svg) #md
 
 # ## Plot the temperature data, with another plot recipe
@@ -66,14 +66,14 @@ savefig("pirani.svg"); #md
 # exploit the `@df` macro from `StatsPlots` to make this really smooth.
 @df pd_data exptfplot(:t, :T1, :T2, :T3)
 @df pd_data plot!(:t, :Tsh, label=L"T_{sh}", c=:black)
-savefig("exptemps.svg"); #md
+savefig("exptemps.svg"); #md #hide
 # ![](exptemps.svg) #md
 
 # ## Plot all cycle data at once with a slick recipe
 
 twinx(plot())
 cycledataplot!(procdata, (:T1, :T2, :T3), :Tsh, (:pirani, :cm))
-savefig("fullcycle.svg"); #md
+savefig("fullcycle.svg"); #md #hide
 # ![](fullcycle.svg) #md
 
 # Based on an examination of the temperature data, we want to go only up to the "temperature 
@@ -87,7 +87,7 @@ fitdat_all = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 13u"hr"],
                                     t_end)
 ## There is a plot recipe for this fit object
 plot(fitdat_all)
-savefig("pdfit.svg"); #md
+savefig("pdfit.svg"); #md #hide
 # ![](pdfit.svg) #md
 
 # By passing all three temperature series to `PrimaryDryFit`, this will compare model output to all three temperature series at once. 
@@ -143,7 +143,7 @@ prob = ODEProblem(po)
 sol = solve(prob, Rodas3())
 @df pd_data exptfplot(:t, :T1, :T2, :T3)
 modconvtplot!(sol, label=L"$T_p$, model")
-savefig("modelpre.svg"); #md
+savefig("modelpre.svg"); #md #hide
 # ![](modelpre.svg) #md
 
 # # Fit model parameters to match data
@@ -185,7 +185,7 @@ sol_opt = gen_sol_pd(opt.u, pass...)
 @df pd_data exptfplot(:t, :T1, :T2, :T3)
 ## And compare to the model output:
 modconvtplot!(sol_opt)
-savefig("modelopt.svg"); #md
+savefig("modelopt.svg"); #md #hide
 # ![](modelopt.svg) #md
 
 # And to get out our fit values, we apply the transform to the values our optimizer found.
