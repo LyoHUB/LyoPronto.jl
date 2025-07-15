@@ -237,25 +237,24 @@ const dae_Rpf = ODEFunction(dae_Rp!, mass_matrix=Diagonal([1.0, 0]))
 
 function get_t0(re::RpEstimator{false})
     (; Tf_interp, po) = re
-    t0 = 0.0
-    if calc_psub(Tf_interp(0u"hr")) < po.pch(0u"hr")
-        t0_psub = find_zero((0.0, ustrip(u"hr", Tf_interp.t[end]))) do t
-            Tf = Tf_interp(t*u"hr")
-            Tsh = po.Tsh(t*u"hr")
-            pch = po.pch(t*u"hr")
-            Q = po.Kshf(pch)*po.Av*(Tsh - Tf)
-            Tsub = Tf - Q/po.Ap/LyoPronto.k_ice*po.hf0
-            ustrip(u"Pa", calc_psub(Tsub)-pch)
+    tr = Tf_interp.t
+    t0 = tr[1]
+    for i in 1:(length(tr)÷20) # check first 5% of data points
+        t = tr[i]
+        Tf = Tf_interp(t)
+        Tsh = po.Tsh(t)
+        pch = po.pch(t)
+        Q = po.Kshf(pch)*po.Av*(Tsh - Tf)
+        if Q < 0u"W" # Negative heat transfer
+            t0 = tr[i+1]
+            continue
         end
-        t0 = max(t0, t0_psub*1.01)
-    end
-    if Tf_interp(0u"hr") > po.Tsh(0u"hr")
-        t0_q = find_zero((0.0, ustrip(u"hr", Tf_interp.t[end]))) do t
-            ustrip(u"K", Tf_interp(t*u"hr") - po.Tsh(t*u"hr"))
+        Tsub = Tf - Q/po.Ap/LyoPronto.k_ice*po.hf0
+        if calc_psub(Tsub)-pch < 0u"Pa" # Negative mass transfer
+            t0 = tr[i+1]
         end
-        t0 = max(t0, t0_q*1.01)
     end
-    return t0
+    return ustrip(u"hr", t0)
 end
 
 ODEProblem(::RpEstimator{true}) = error("Cannot create ODEProblem for multiple Tf at once. Index into the RpEstimator to choose a Tf series.")
