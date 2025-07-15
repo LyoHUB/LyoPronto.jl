@@ -75,6 +75,22 @@ end
 
 end
 
+@testset "End of primary drying" begin
+    synth_t = range(0.0u"hr", 100u"hr", length=101)
+    synthetic_p = @. 20.0u"Pa" - 20.0u"Pa"*tanh((synth_t - 60u"hr")/5u"hr")
+    @test 50u"hr" < identify_pd_end(synth_t, synthetic_p, :der2) < 100u"hr"
+    on, off = identify_pd_end(synth_t, synthetic_p, :onoff)
+    @test 40u"hr" < on < 80u"hr" 
+    @test 40u"hr" < off < 80u"hr"
+    struct Testtp
+        t
+        pch_pir
+    end
+    @test 50u"hr" < identify_pd_end(Testtp(synth_t, synthetic_p), :der2) < 100u"hr"
+    d = Dict(:t=>synth_t, :pch_pir=>synthetic_p)
+    @test 50u"hr" < identify_pd_end(d, :der2) < 100u"hr"
+end
+
 
 @testset "Simulation test against Python results: sucrose conventional" begin
     include("test_sucrose.jl")
