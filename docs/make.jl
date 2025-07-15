@@ -6,6 +6,7 @@ using Literate
 @info "Using Literate to generate example"
 Literate.markdown((@__DIR__)*"/example/fitting_mannitol.jl", (@__DIR__)*"/src/generated", documenter=true)
 Literate.markdown((@__DIR__)*"/example/all_recipes.jl", (@__DIR__)*"/src/generated", documenter=true)
+Literate.markdown((@__DIR__)*"/example/utilities.jl", (@__DIR__)*"/src/generated", documenter=true)
 
 @info "Building Documentation"
 makedocs(;
@@ -16,6 +17,7 @@ makedocs(;
     pages = [
         "Home" => "index.md",
         "Example, conventional lyo" => "generated/fitting_mannitol.md",
+        "Other tools" => "generated/utilities.md",
         "Plot recipes" => "generated/all_recipes.md",
         "Reference" => "alldocstrings.md",
     ],

@@ -146,7 +146,7 @@ modconvtplot!(sol, label=L"$T_p$, model")
 savefig("modelpre.svg"); #md #hide
 # ![](modelpre.svg) #md
 
-# # Fit model parameters to match data
+# # [Fit model parameters to match data](@id example_fit)
 # Optimization algorithms are happiest when they can run across all real numbers.
 # So we use TransformVariables.jl to map all reals to positive values of our parameters, with sensible scales.
 # The `TVExp` transform maps all real numbers to positive values, and the `TVScale` transform scales the value to a more reasonable range.
