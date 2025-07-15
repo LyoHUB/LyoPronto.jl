@@ -89,6 +89,7 @@ fitdat_all = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 13u"hr"],
 plot(fitdat_all)
 savefig("pdfit.svg"); #md
 # ![](pdfit.svg) #md
+
 # By passing all three temperature series to `PrimaryDryFit`, this will compare model output to all three temperature series at once. 
 
 
@@ -135,7 +136,9 @@ po = ParamObjPikal([
     (pch, Tsh)
 ]);
 
-# As a sanity check, run the model to see that temperatures are in the right ballpark
+# As a sanity check, run the model to see that temperatures are in the right ballpark.
+# Plot it with a recipe that attaches correct units.
+
 prob = ODEProblem(po)
 sol = solve(prob, Rodas3())
 @df pd_data exptfplot(:t, :T1, :T2, :T3)
@@ -185,5 +188,5 @@ modconvtplot!(sol_opt)
 savefig("modelopt.svg"); #md
 # ![](modelopt.svg) #md
 
-# And to get out our fit values, use the transform on the values our optimizer gives
+# And to get out our fit values, we apply the transform to the values our optimizer found.
 po_opt = transform(trans_KRp, opt.u)
