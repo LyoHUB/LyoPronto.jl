@@ -239,7 +239,7 @@ function get_t0(re::RpEstimator{false})
     (; Tf_interp, po) = re
     tr = Tf_interp.t
     t0 = tr[1]
-    for i in 1:(length(tr)÷20) # check first 5% of data points
+    for i in 1:(length(tr)÷2) # check first half of data points
         t = tr[i]
         Tf = Tf_interp(t)
         Tsh = po.Tsh(t)
@@ -250,7 +250,7 @@ function get_t0(re::RpEstimator{false})
             continue
         end
         Tsub = Tf - Q/po.Ap/LyoPronto.k_ice*po.hf0
-        if calc_psub(Tsub)-pch < 0u"Pa" # Negative mass transfer
+        if calc_psub(Tsub) < pch # Negative mass transfer
             t0 = tr[i+1]
         end
     end
