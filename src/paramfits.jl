@@ -2,7 +2,7 @@ export gen_sol_pd, obj_pd, gen_nsol_pd, objn_pd
 export KRp_transform_basic, K_transform_basic, Rp_transform_basic
 export KBB_transform_basic
 export obj_expT 
-export err_expT, num_errs, nls_pd
+export err_expT, num_errs, nls_pd, nls_pd!
 
 """
     $(SIGNATURES)
@@ -156,12 +156,22 @@ end
 """
     $(SIGNATURES)
 
-Calculate the sum of squared error (objective function) for fitting parameters to primary drying data.
-This directly calls [`gen_sol_pd`](@ref), then [`obj_expT`](@ref), so see those docstrings.
+Calculate the errors for fitting parameters to primary drying data.
+This directly calls [`gen_sol_pd`](@ref), then [`err_expT!`](@ref), so see those docstrings.
 """
-function nls_pd(errs, fitlog, tpf; tweight=1.0, verbose=false)
+function nls_pd!(errs, fitlog, tpf; tweight=1.0, verbose=false)
     sol = gen_sol_pd(fitlog, tpf...)
-    return err_expT(errs, sol, tpf[3]; tweight, verbose)
+    return err_expT!(errs, sol, tpf[3]; tweight, verbose)
+end
+"""
+    $(SIGNATURES)
+
+Calculate the errors for fitting parameters to primary drying data.
+This directly calls [`gen_sol_pd`](@ref), then [`err_expT`](@ref), so see those docstrings.
+"""
+function nls_pd(fitlog, tpf; tweight=1.0, verbose=false)
+    sol = gen_sol_pd(fitlog, tpf...)
+    return err_expT(sol, tpf[3]; tweight, verbose)
 end
 
 """
@@ -275,9 +285,12 @@ end
 """
     $(SIGNATURES)
 
-Evaluate the error between model solution `sol` to experimental data in `pdfit`.
+Evaluate the error between model solution `sol` and experimental data in `pdfit`.
 
-In contrast to `obj_expT()`, this function makes an array of all the errors, which would be squared and summed to produce an objective function.
+The in-place version `err_expT!` fills the `errs` vector with the errors, while the non-in-place version returns a new vector of errors.
+The distinction is important because the in-place version has to do bookkeeping about which data points can actually be compared.
+
+In contrast to `obj_expT()`, this function makes an array of all the errors, which is suited for least squares algorithms.
 - `errs` is a vector of length `num_errs(pdfit)`, which this function fills with the errors.
 -`sol` is a solution to an appropriate model; see [`gen_sol_pd`](@ref) for a helper function.
 - `pdfit` is an instance of `PrimaryDryFit`, which contains some information about what to compare.
@@ -288,14 +301,15 @@ Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == 
 
 If there are multiple series of `Tf` in `pdfit`, error is computed for each separately; likewise for `Tvw`.
 """
-function err_expT(errs, sol, pdfit; tweight=1, verbose = false)
+function err_expT!(errs, sol::ODESolution, pdfit; tweight=1, verbose = false)
     if length(errs) != num_errs(pdfit)
-        error("Wrong length of provided error vector.")
+        error("Wrong length of cached residual vector.")
     end
     # errs .= 0.0 # If indexing is handled correctly, this should not be necessary.
-    if sol.retcode !== ReturnCode.Terminated || length(sol.u) <= 1
+    if sol.retcode != ReturnCode.Terminated || length(sol.u) <= 2
         verbose && @info "ODE solve failed or incomplete, probably." sol.retcode sol[1, :]
-        return NaN
+        errs .= NaN
+        return
     end
     tmd = sol.t[end].*u"hr"
     nt = length(sol.t) - 1
@@ -386,8 +400,88 @@ function err_expT(errs, sol, pdfit; tweight=1, verbose = false)
     verbose && @info "loss call" tmd size(errs) sum(abs2.(errs))
     return nothing
 end
-function err_expT(sol::ODESolution, pdfit::PrimaryDryFit; kwargs...)
-    errs = fill(0.0, num_errs(pdfit))
-    err_expT(errs, sol, pdfit; kwargs...)
+err_expT!(errs, sol::Float64, pdfit; kwargs...) = isnan(sol) ? errs .= NaN : error("Unexpected state")
+
+function err_expT(sol, pdfit; tweight=1, verbose = false)
+    if sol.retcode !== ReturnCode.Terminated || length(sol.u) <= 1
+        verbose && @info "ODE solve failed or incomplete, probably." sol.retcode sol[1, :]
+        return NaN
+    end
+    tmd = sol.t[end].*u"hr"
+    nt = length(sol.t) - 1
+    i_solstart = searchsortedfirst(pdfit.t, sol.t[begin]*u"hr") 
+    # Identify if the solution is pre-interpolated to the time points in pdfit.t
+    preinterp = true
+    for i in 1:nt
+        if ~(sol.t[i]*u"hr" ≈ pdfit.t[i_solstart + i - 1])
+            preinterp = false
+            break
+        end
+    end
+
+    if preinterp
+        Tfmd = sol[2, begin:end-1].*u"K" # Leave off last time point because is end time
+    else
+        ftrim = sol.t[begin]*u"hr" .< pdfit.t .< tmd
+        tf_trim = pdfit.t[ftrim]
+        Tfmd = sol.(ustrip.(u"hr", tf_trim), idxs=2).*u"K"
+        # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
+        # This bit replaces any subzero values with the previous positive temperature, and notifies that it happened.
+        if any(Tfmd .< 0u"K")
+            subzero = findall(Vector(Tfmd .< 0u"K"))
+            Tfmd[subzero] .= Tfmd[subzero[1] - 1] 
+            verbose && @info "bad interpolation" subzero Tfmd[subzero]
+        end
+    end
+    # Compute temperature errors for all frozen temperatures
+    # for (Tf, itf) in zip(pdfit.Tfs, pdfit.Tf_iend)
+    errs = mapreduce(vcat, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
+        trim = min(itf, length(Tfmd))
+        # TODO: check if the normalizing /sqrt(n) is necessary
+        Tferrs = (Tf[i_solstart:trim] .- Tfmd[begin:trim-i_solstart+1])#/sqrt(trim-i_solstart+1)
+        # append!(errs, ustrip.(u"K", Tferrs))
+        return ustrip.(u"K", Tferrs)
+    end
+
+    # If present, vcat vial wall temperatures
+    if !ismissing(pdfit.Tvws) # At least one vial wall temperature
+        if ismissing(pdfit.Tvw_iend) # Only an endpoint temperature provided
+            Tvwend = pdfit.Tvws
+            Tvw_err = sol[3, end]*u"K" - uconvert(u"K", Tvwend)
+            push!(errs, ustrip(u"K", Tvw_err))
+        else # Regular case of fitting to at least one full temperature series
+            if preinterp
+                Tvwmd = sol[3, begin:end-1].*u"K" # Leave off last time point because is end time
+            else
+                vwtrim = sol.t[begin]*u"hr" .< pdfit.t .< tmd
+                tvw_trim = pdfit.t[vwtrim]
+                Tvwmd = sol.(ustrip.(u"hr", tvw_trim), idxs=3).*u"K"# .- 273.15
+            end
+            # Compute temperature objective for all vial wall temperatures
+            for (Tvw, itvw) in zip(pdfit.Tvws, pdfit.Tvw_iend) 
+                trim = min(itvw, length(Tvwmd))
+                Tvw_errs = (Tvw[i_solstart:trim] .- Tvwmd[begin:trim-i_solstart+1])/sqrt(trim-i_solstart+1)
+                append!(errs, ustrip.(u"K", Tvw_errs))
+            end
+        end
+    end
+
+    # Concatenate end time to array, if present
+    if !ismissing(pdfit.t_end)
+        if pdfit.t_end isa Tuple # See if is inside window and scale appropriately
+            mid_t = (pdfit.t_end[1] + pdfit.t_end[2]) / 2.0
+            if tmd < pdfit.t_end[1]
+                t_err = (mid_t - tmd)
+            elseif tmd > pdfit.t_end[2]
+                t_err = (mid_t - tmd)
+            else # Inside window, so no error
+                t_err = 0.0u"hr^2"
+            end
+        else
+            t_err = (pdfit.t_end - tmd)
+        end
+        push!(errs, ustrip(u"hr", t_err*tweight))
+    end
+    verbose && @info "loss call" tmd size(errs) sum(abs2.(errs))
     return errs
 end
