@@ -3,6 +3,7 @@ export qrf_integrate
 # This is a plot recipe used to add markers only every so often along the series.
 # e.g. if you have 100 data points but only want 10 markers, this will help.
 # This is used inside many of the below plot recipes.
+# Borrowed with some modification from https://github.com/JuliaPlots/Plots.jl/issues/2523#issuecomment-607090470
 @recipe function f(::Type{Val{:samplemarkers}}, x, y, z; step = 10, offset=1)
     n = length(y)
     sx, sy = x[offset:step:n], y[offset:step:n]
