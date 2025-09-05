@@ -11,6 +11,8 @@ using TypedTables, CSV
 # LineSearches gives a little more granular control over solver algorithms for Optim.
 using Optimization, OptimizationOptimJL
 using LineSearches
+# Or, instead of using a scalar optimization package, we can use a least-squares solver.
+using NonlinearSolve
 # Plots is a frontend for several plotting packages, and its companion package StatsPlots has a very nice macro I like. 
 using Plots
 using StatsPlots: @df
@@ -174,14 +176,32 @@ obj = OptimizationFunction(obj_pd, AutoForwardDiff())
 optalg = LBFGS(linesearch=LineSearches.BackTracking())
 opt = solve(OptimizationProblem(obj, pg, pass), optalg)
 
+# This works, but by using a scalar objective function, we throw away part of the 
+# problem structure--we have a least-squares problem, so the first derivative of the 
+# objective is essentially used to reconstruct the residuals that we could just be passing
+# directly. To reformulate this, we can use a `NonlinearLeastSquaresProblem`.
+
+# To avoid allocating a residual vector every time, we use an inplace function that needs
+# to know how many residuals there are. The [`num_errs`](@ref LyoPronto.num_errs) function
+# looks at a [`PrimaryDryFit`](@ref LyoPronto.PrimaryDryFit) and counts the number of data 
+# points that can be used by `obj_pd` or `nls_pd!`.
+
+nls_eqs = NonlinearFunction{true}(nls_pd!, resid_prototype=zeros(num_errs(fitdat_all)))
+## After that, problem setup looks similar to the optimization approach
+nlsprob = NonlinearLeastSquaresProblem(nls_eqs, pg, pass)
+nls = solve(nlsprob, LevenbergMarquardt())
+
 # We should graph the results to see that they make sense.
 sol_opt = gen_sol_pd(opt.u, pass...)
+sol_nls = gen_sol_pd(nls.u, pass...)
 ## Plot recipe for several temperature series:
 @df pd_data exptfplot(:t, :T1, :T2, :T3)
 ## And compare to the model output:
-modconvtplot!(sol_opt)
+modconvtplot!(sol_opt, labsuffix=", optimizer")
+modconvtplot!(sol_nls, labsuffix=", least-squares")
 savefig("modelopt.svg"); #md
 # ![](modelopt.svg) #md
 
 # And to get out our fit values, use the transform on the values our optimizer gives
 po_opt = transform(trans_KRp, opt.u)
+po_nls = transform(trans_KRp, nls.u)
