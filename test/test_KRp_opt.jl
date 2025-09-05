@@ -76,7 +76,7 @@ end
     sol = @inferred gen_sol_pd(pg, tr, po)
     @test sol != base_sol
     pass = (tr, po, pdfit)
-    nls = NonlinearFunction{true}(nls_pd, resid_prototype=zeros(num_errs(pdfit)))
+    nls = NonlinearFunction{true}(nls_pd!, resid_prototype=zeros(num_errs(pdfit)))
     opt = solve(NonlinearLeastSquaresProblem(nls, pg, pass), GaussNewton(), reltol=1e-10, abstol=1e-10)
     vals = transform(tr, opt.u)
     @test vals.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.1
