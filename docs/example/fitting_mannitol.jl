@@ -205,6 +205,7 @@ sol_nls = gen_sol_pd(nls.u, pass...)
 modconvtplot!(sol_opt, labsuffix=", optimizer")
 modconvtplot!(sol_nls, labsuffix=", least-squares")
 savefig("modelopt.svg"); #md #hide
+
 # ![](modelopt.svg) #md
 
 # And to get out our fit values, we apply the transform to the values our optimizer found.
