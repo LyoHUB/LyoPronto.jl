@@ -32,8 +32,8 @@ export qrf_integrate
 end
 
 @doc raw"""
-    exptfplot(time, T1, [T2, ...]; labsuffix=", exp.")
-    exptfplot!(time, T1, [T2, ...]; labsuffix=", exp.")
+    exptfplot(time, T1, [T2, ...]; nmarks=10, labsuffix=", exp.")
+    exptfplot!(time, T1, [T2, ...]; nmarks=10, labsuffix=", exp.")
 
 Plot recipe for one or more experimentally measured product temperatures, all at same times.
 This recipe adds one series for each passed temperature series, with labels defaulting to `"T_{fi}"*labsuffix`.
@@ -42,9 +42,9 @@ exptfplot
 @doc (@doc exptfplot) exptfplot!
 
 @userplot ExpTfPlot
-@recipe function f(tpe::ExpTfPlot; labsuffix = ", exp.")
+@recipe function f(tpe::ExpTfPlot; nmarks=10, sampmarks=false, labsuffix = ", exp.")
     time, Ts... = tpe.args
-    step = size(time, 1) ÷ 10
+    step = size(time, 1) ÷ nmarks
     n = size(Ts, 1)
     # pal = palette(:Blues_5,)[end:-1:begin] # Requires Plots for palette, so hard-code this default
     pal = [RGB{Float64}(0.031,0.318,0.612), 
@@ -60,25 +60,27 @@ exptfplot
     end
     for (i, T) in enumerate(Ts)
         @series begin
-            seriestype := :samplemarkers
-            step := step
-            offset := step÷n *(i-1) + 1
             markershape --> markers[i]
             label --> labels[i]
             seriescolor --> pal[i]
-            if T == :dummy
-                return [Inf], [Inf]
+            if sampmarks
+                seriestype := :samplemarkers
+                step := step
+                offset := step÷n *(i-1) + 1
+                return time, T
             else
+                seriestype --> :scatter
+                offset = step÷n *(i-1) + 1
                 minlen = min(length(time), length(T))
-                return time[1:minlen], T[1:minlen]
+                return time[offset:step:minlen], T[offset:step:minlen]
             end
         end
     end
 end
 
 @doc raw"""
-    exptvwplot(time, T1, [T2, ...]; trim)
-    exptvwplot!(time, T1, [T2, ...]; trim)
+    exptvwplot(time, T1, [T2, ...]; trim=10, nmarks=10, labsuffix=", exp.")
+    exptvwplot!(time, T1, [T2, ...]; trim=10, nmarks=10, labsuffix=", exp.")
 
 Plot recipe for a set of experimentally measured vial wall temperatures.
 This recipe adds one series for each passed temperature series, with labels defaulting to `"T_{vwi}"*labsuffix`.
@@ -89,17 +91,16 @@ exptvwplot
 @doc (@doc exptvwplot) exptvwplot!
 
 @userplot ExpTvwPlot
-@recipe function f(tpev::ExpTvwPlot; trim=10, labsuffix=", exp.")
+@recipe function f(tpev::ExpTvwPlot; nmarks=30, sampmarks=false, trim=1, labsuffix=", exp.")
     time, Ts... = tpev.args
-    time_trim = time[begin:trim:end]
-    step = size(time_trim, 1) ÷ (10)
     n = size(Ts, 1)
     # color = palette(:Blues_5)[end]
     pal = [RGB{Float64}(0.031,0.318,0.612), 
            RGB{Float64}(0.192,0.51,0.741), 
            RGB{Float64}(0.42,0.682,0.839), 
            RGB{Float64}(0.741,0.843,0.906)]
-    markers = (:pentagon, :ltriangle, :rtriangle, :heptagon)
+    # markers = (:pentagon, :ltriangle, :rtriangle, :heptagon)
+    markers = (:circle, :square, :diamond, :hexagon)
     
     if length(Ts) == 1
         labels = ["\$T_\\mathrm{vw}\$"*labsuffix]
@@ -107,17 +108,29 @@ exptvwplot
         labels = ["\$T_\\mathrm{vw$i}\$"*labsuffix for i in 1:n]
     end
     for (i, T) in enumerate(Ts)
-        T_trim = T[begin:trim:end]
-        minlen = min(length(time_trim), length(T_trim))
         @series begin
-            seriestype := :samplemarkers
-            step := step
-            offset := step÷n *(i-1) + 1
-            linestyle --> :dash
             markershape --> markers[i]
             label --> labels[i]
             seriescolor --> pal[i]
-            return time_trim[1:minlen], T_trim[1:minlen]
+            markercolor --> :white
+            markerstrokecolor --> pal[i]
+            markerstrokewidth --> 1.5
+            if sampmarks
+                linestyle --> :dash
+                time_trim = time[begin:trim:end]
+                T_trim = T[begin:trim:end]
+                seriestype := :samplemarkers
+                step = size(time_trim, 1) ÷ nmarks
+                step := step
+                offset := step÷n *(i-1) + 1
+                return time_trim, T_trim
+            else
+                minlen = min(length(time), length(T))
+                seriestype --> :scatter
+                step = size(time, 1) ÷ nmarks
+                offset = step÷n *(i-1) + 1
+                return time[offset:step:minlen], T[offset:step:minlen]
+            end
         end
     end
     
@@ -227,8 +240,10 @@ modrftplot
             seriestype := :samplemarkers
             step := step
             T = sol.(t_nd, idxs=3)*u"K"
-            markershape --> :utriangle
+            markershape --> :dtriangle
             seriescolor --> color
+            markercolor --> :white
+            markerstrokecolor --> color
             label --> "\$T_\\mathrm{vw}\$"*labsuffix # Default label
             linestyle := :dash
             time, T
