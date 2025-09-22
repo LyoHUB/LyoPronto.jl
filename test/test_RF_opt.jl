@@ -68,7 +68,7 @@ pass = (tr, po, pdfit)
 end
 
 @testset "Least squares" begin
-    lsq = NonlinearFunction{true}(nls_pd!, residual_prototype=zeros(num_errs(pdfit)))
+    lsq = NonlinearFunction{true}(nls_pd!, resid_prototype=zeros(num_errs(pdfit)))
     opt = @inferred solve(NonlinearProblem(lsq, pg, pass), LevenbergMarquardt())
     vals = transform(tr, opt.u)
     @test vals.Kvwf ≈ Kvwf rtol=0.1
