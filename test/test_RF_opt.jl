@@ -56,12 +56,25 @@ sol = @inferred gen_sol_pd(pg, tr, po)
 @test sol != base_sol
 pass = (tr, po, pdfit)
 # err = @inferred obj_pd(pg, pass)
-err = @inferred obj_pd(pg, pass)
-obj = OptimizationFunction(obj_pd, AutoForwardDiff(chunksize=3))
-opt = solve(OptimizationProblem(obj, pg, pass), optalg;)
-vals = transform(tr, opt.u)
-@test vals.Kvwf ≈ Kvwf rtol=0.1
-@test vals.Bf ≈ Bf rtol=0.5
-@test vals.Bvw ≈ Bvw rtol=0.1
+
+@testset "Optimization" begin
+    err = @inferred obj_pd(pg, pass)
+    obj = OptimizationFunction(obj_pd, AutoForwardDiff(chunksize=3))
+    opt = solve(OptimizationProblem(obj, pg, pass), optalg;)
+    vals = transform(tr, opt.u)
+    @test vals.Kvwf ≈ Kvwf rtol=0.1
+    @test vals.Bf ≈ Bf rtol=0.5
+    @test vals.Bvw ≈ Bvw rtol=0.1
+end
+
+@testset "Least squares" begin
+    lsq = NonlinearFunction{true}(nls_pd!, residual_prototype=zeros(num_errs(pdfit)))
+    opt = @inferred solve(NonlinearProblem(lsq, pg, pass), LevenbergMarquardt())
+    vals = transform(tr, opt.u)
+    @test vals.Kvwf ≈ Kvwf rtol=0.1
+    @test vals.Bf ≈ Bf rtol=0.5
+    @test vals.Bvw ≈ Bvw rtol=0.1
+end
+
 
 

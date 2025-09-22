@@ -45,14 +45,16 @@ const sampmarks_line_doc = """
 
 """
 
-@doc raw"""
+"""
     exptfplot(time, T1, [T2, ...]; nmarks=0, labsuffix=", exp.")
     exptfplot!(time, T1, [T2, ...]; nmarks=0, labsuffix=", exp.")
 
 Plot recipe for one or more experimentally measured product temperatures, all at same times.
 This recipe adds one series for each passed temperature series, with labels defaulting to `"T_{fi}"*labsuffix`.
 
-""" * nmarks_doc * sampmarks_marker_doc
+$nmarks_doc 
+$sampmarks_marker_doc
+""" 
 exptfplot
 @doc (@doc exptfplot) exptfplot!
 
@@ -95,7 +97,7 @@ end
 
 
 
-@doc raw"""
+"""
     exptvwplot(time, T1, [T2, ...]; skip=1, nmarks=0, labsuffix=", exp.")
     exptvwplot!(time, T1, [T2, ...]; skip=1, nmarks=0, labsuffix=", exp.")
 
@@ -103,7 +105,10 @@ Plot recipe for a set of experimentally measured vial wall temperatures.
 This recipe adds one series for each passed temperature series, with labels defaulting to `"T_{vwi}"*labsuffix`.
 `skip` is an integer, indicating how many points to skip at a time, so that 
 the dotted line looks dotted even with noisy data.
-""" * nmarks_doc * sampmarks_marker_doc
+
+$nmarks_doc
+$sampmarks_marker_doc
+"""
 exptvwplot
 @doc (@doc exptvwplot) exptvwplot!
 
@@ -153,13 +158,15 @@ exptvwplot
     
 end
 
-@doc raw"""
+"""
     modconvtplot(sols; sampmarks=false, labsuffix = ", model")
     modconvtplot!(sols; sampmarks=false, labsuffix = ", model")
 
 Plot recipe for one or multiple solutions to the Pikal model, e.g. the output of [`gen_sol_pd`](@ref LyoPronto.gen_sol_pd).
 This adds a series to the plot for each passed solution, with labels defaulting to `"T_{fi}"*labsuffix`.
-""" * sampmarks_line_doc
+
+$sampmarks_line_doc
+""" 
 modconvtplot
 @doc (@doc modconvtplot) modconvtplot!
 
@@ -208,7 +215,6 @@ modconvtplot
     end
 end
 
-
 """
     modrftplot(sol, labsuffix=", model", sampmarks=false, trimend=0)
     modrftplot!(sol, labsuffix=", model", sampmarks=false, trimend=0)
@@ -220,7 +226,9 @@ The optional argument `trimend` controls how many time points to trim from the e
 (which is helpful if temperature shoots up as mf -> 0).
 
 Since this is a recipe, any Plots.jl keyword arguments can be passed to modify the plot.
-""" * sampmarks_line_doc
+
+$sampmarks_line_doc
+"""
 modrftplot
 @doc (@doc modrftplot) modrftplot!
 
