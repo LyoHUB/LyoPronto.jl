@@ -276,21 +276,28 @@ function obj_expT(sol, pdfit; verbose=false, kwargs...)
     error("Improper call to `obj_expT`.")
 end
 
+"""
+    $(SIGNATURES)
+
+Compute the number of data points available in `pdfit` for comparison to model solution.
+
+This is useful for caching a residual vector for least-squares fitting, e.g. with [`err_expT!`](@ref) and [`nls_pd!`](@ref).
+"""
 function num_errs(pdfit)
     # Count the number of errors in the PrimaryDryFit object
     Tvw_len = ismissing(pdfit.Tvws) ? 0 : (ismissing(pdfit.Tvw_iend) ? 1 : sum(pdfit.Tvw_iend))
     nerr = sum(pdfit.Tf_iend) + Tvw_len + (ismissing(pdfit.t_end) ? 0 : 1)
     return nerr
 end
-"""
-    $(SIGNATURES)
 
+const errexpT_doc = """
 Evaluate the error between model solution `sol` and experimental data in `pdfit`.
 
-The in-place version `err_expT!` fills the `errs` vector with the errors, while the non-in-place version returns a new vector of errors.
-The distinction is important because the in-place version has to do bookkeeping about which data points can actually be compared.
+The in-place version `err_expT!` fills the `errs` vector with the errors, while the non-in-place version `err_expT` returns a new vector of errors.
+In-place `err_expT!` thus doesn't allocate, but requires `errs` to have length `num_errs(pdfit)`.
 
-In contrast to `obj_expT()`, this function makes an array of all the errors, which is suited for least squares algorithms.
+In contrast to `obj_expT()`, which sums all the squared residuals, this function fills the passed array
+`errs` with each separate residual, which is suited for least squares algorithms.
 - `errs` is a vector of length `num_errs(pdfit)`, which this function fills with the errors.
 -`sol` is a solution to an appropriate model; see [`gen_sol_pd`](@ref) for a helper function.
 - `pdfit` is an instance of `PrimaryDryFit`, which contains some information about what to compare.
@@ -300,6 +307,12 @@ Each time series, plus the end time, is given equal weight by dividing by its le
 Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable in `sol` is assumed to be temperature, as is true for solutions with [`ParamObjRF`](@ref).
 
 If there are multiple series of `Tf` in `pdfit`, error is computed for each separately; likewise for `Tvw`.
+"""
+
+"""
+    $(SIGNATURES)
+
+$errexpT_doc
 """
 function err_expT!(errs, sol::ODESolution, pdfit; tweight=1, verbose = false)
     if length(errs) != num_errs(pdfit)
@@ -387,7 +400,7 @@ function err_expT!(errs, sol::ODESolution, pdfit; tweight=1, verbose = false)
             elseif tmd > pdfit.t_end[2]
                 t_err = (mid_t - tmd)
             else # Inside window, so no error
-                t_err = 0.0u"hr^2"
+                t_err = 0.0u"hr"
             end
         else
             t_err = (pdfit.t_end - tmd)
@@ -402,6 +415,11 @@ function err_expT!(errs, sol::ODESolution, pdfit; tweight=1, verbose = false)
 end
 err_expT!(errs, sol::Float64, pdfit; kwargs...) = isnan(sol) ? errs .= NaN : error("Unexpected state")
 
+"""
+    $(SIGNATURES)
+
+$errexpT_doc
+"""
 function err_expT(sol, pdfit; tweight=1, verbose = false)
     if sol.retcode !== ReturnCode.Terminated || length(sol.u) <= 1
         verbose && @info "ODE solve failed or incomplete, probably." sol.retcode sol[1, :]
