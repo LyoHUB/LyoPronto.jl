@@ -51,7 +51,7 @@ t_end = t[end]
 pdfit = PrimaryDryFit(t, Tf, Tvw, t_end)
 
 tr = KBB_transform_basic(Kvwf*0.5, Bf*0.5, 0.5*Bvw)
-pg = fill(0.1, 3)
+pg = fill(1.0, 3)
 sol = @inferred gen_sol_pd(pg, tr, po)
 @test sol != base_sol
 pass = (tr, po, pdfit)
