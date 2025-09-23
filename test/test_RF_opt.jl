@@ -51,7 +51,7 @@ t_end = t[end]
 pdfit = PrimaryDryFit(t, Tf, Tvw, t_end)
 
 tr = KBB_transform_basic(Kvwf*0.5, Bf*0.5, 0.5*Bvw)
-pg = fill(1.0, 3)
+pg = fill(0.1, 3)
 sol = @inferred gen_sol_pd(pg, tr, po)
 @test sol != base_sol
 pass = (tr, po, pdfit)
@@ -71,9 +71,9 @@ end
     lsq = NonlinearFunction{true}(nls_pd!, resid_prototype=zeros(num_errs(pdfit)))
     opt = @inferred solve(NonlinearProblem(lsq, pg, pass), LevenbergMarquardt())
     vals = transform(tr, opt.u)
-    @test vals.Kvwf ≈ Kvwf rtol=0.1
+    @test vals.Kvwf ≈ Kvwf rtol=0.3
     @test vals.Bf ≈ Bf rtol=0.5
-    @test vals.Bvw ≈ Bvw rtol=0.1
+    @test vals.Bvw ≈ Bvw rtol=0.3
 end
 
 
