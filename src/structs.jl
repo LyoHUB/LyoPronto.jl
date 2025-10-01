@@ -116,19 +116,6 @@ function RampedVariable(setpts, ramprates, holds)
     RampedVariable{true}(setpts, ramprates, holds, timestops)
 end
 
-function Base.:(+)(rv::RampedVariable{b, T1,T2,T3,T4}, x) where {b, T1,T2,T3,T4}
-    return @set rv.setpts .+= x
-end
-function Base.:(+)(x, rv::RampedVariable)
-    return rv + x
-end
-function Base.:(-)(rv::RampedVariable{b, T1,T2,T3,T4}, x) where {b, T1,T2,T3,T4}
-    return @set rv.setpts .-= x
-end
-function Base.:(-)(x, rv::RampedVariable)
-    return @set rv.setpts = x .- rv.setpts
-end
-
 function Base.hash(rv::RampedVariable, h::UInt)
     hash(rv.setpts, hash(rv.ramprates, hash(rv.holds, hash(rv.timestops, hash(:RampedVariable, h)))))
 end
