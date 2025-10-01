@@ -1,4 +1,3 @@
-export RpFormFit, RampedVariable, ConstPhysProp, PrimaryDryFit
 
 @concrete terse struct RpFormFit
     R0
@@ -267,7 +266,6 @@ function Base.:(==)(p1::PrimaryDryFit, p2::PrimaryDryFit)
 end
 
 # Add a little bit of sugar to our transforms
-export ConstWrapTV
 struct ConstWrapTV <: TransformVariables.ScalarTransform end
 TransformVariables.transform(::ConstWrapTV, x) = ConstPhysProp(x)
 TransformVariables.inverse(::ConstWrapTV, x) = x.value

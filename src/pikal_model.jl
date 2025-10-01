@@ -1,8 +1,3 @@
-export lyo_1d_dae_f, calc_psub
-export end_drying_callback
-export ParamObjPikal
-export calc_u0, get_tstops
-export RpEstimator, calc_hRp_T
 
 @doc raw"""
     end_cond(u, t, integ)

@@ -1,4 +1,3 @@
-export qrf_integrate
 
 # This is a plot recipe used to add markers only every so often along the series.
 # e.g. if you have 100 data points but only want 10 markers, this will help.
