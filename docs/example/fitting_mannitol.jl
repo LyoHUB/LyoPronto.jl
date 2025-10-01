@@ -85,7 +85,7 @@ savefig("fullcycle.svg"); #md #hide
 # object. To be clear, no fitting happens yet: this object just wraps the data up for fitting.
 fitdat_all = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 13u"hr"],
                                     :T2[:t .< 13u"hr"],
-                                    :T3[:t .< 16u"hr"]),
+                                    :T3[:t .< 16u"hr"]);
                                     t_end)
 ## There is a plot recipe for this fit object
 plot(fitdat_all)

@@ -6,6 +6,7 @@ import OrdinaryDiffEqRosenbrock: ODEProblem
 @reexport using OrdinaryDiffEqNonlinearSolve
 @reexport using DiffEqCallbacks
 @reexport using Unitful: @u_str, ustrip
+import Unitful
 using TransformVariables
 using RecipesBase
 using ColorTypes: RGB

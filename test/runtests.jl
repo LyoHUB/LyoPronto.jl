@@ -50,22 +50,22 @@ end
     T2_iend = [length(T2)]
     # First, check that all constructors work as desired
     master1 = PrimaryDryFit(t1, (T1a, T1b), T1_iend, (T2,), T2_iend, t_end)
-    @test PrimaryDryFit(t1, (T1a, T1b), T2, t_end) == master1
+    @test PrimaryDryFit(t1, (T1a, T1b); Tvws=T2, t_end) == master1
     master2 = PrimaryDryFit(t1, (T1a, T1b), T1_iend, (T2,), T2_iend, missing)
-    @test PrimaryDryFit(t1, (T1a, T1b), T2,) == master2
+    @test PrimaryDryFit(t1, (T1a, T1b); Tvws=T2,) == master2
     master3 = PrimaryDryFit(t1, (T1a, T1b), T1_iend, T2[end], missing, missing)
-    @test PrimaryDryFit(t1, (T1a, T1b), T2[end]) == master3
+    @test PrimaryDryFit(t1, (T1a, T1b); Tvws=T2[end]) == master3
     master4 = PrimaryDryFit(t1, (T1a, T1b), T1_iend, T2[end], missing, t_end)
     @test PrimaryDryFit(t1, (T1a, T1b), T2[end], t_end) == master4
     master5 = PrimaryDryFit(t1, (T1a, T1b), T1_iend, missing, missing, t_end)
-    @test PrimaryDryFit(t1, (T1a, T1b), t_end) == master5
+    @test PrimaryDryFit(t1, (T1a, T1b); t_end) == master5
     master6 = PrimaryDryFit(t1, (T1a,), [length(T1a)], missing, missing, missing)
     @test PrimaryDryFit(t1, (T1a,)) == master6
     @test PrimaryDryFit(t1, T1a) == master6
 
     # Check that wrong constructions error
-    @test_throws MethodError PrimaryDryFit(T1a, t_end)
-    @test_throws MethodError PrimaryDryFit(t1, t_end)
+    @test_throws ArgumentError PrimaryDryFit(T1a, t_end)
+    @test_throws ArgumentError PrimaryDryFit(t1, t_end)
     @test_throws MethodError PrimaryDryFit(t1, T1a, T2, T1b, t_end)
 
     # Check that i_end has correct length

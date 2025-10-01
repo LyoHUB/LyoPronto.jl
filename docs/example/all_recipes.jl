@@ -129,7 +129,7 @@ savefig("tp_recipe_comps.svg"); #md #hide
 # This object has a plot recipe, useful for examining what you are feeding to the fit:
 fitdat_all = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 13u"hr"],
                                     :T2[:t .< 13u"hr"],
-                                    :T3[:t .< 16u"hr"]),
+                                    :T3[:t .< 16u"hr"]);
                                     t_end)
 plot(fitdat_all)
 savefig("recipe_pdfit.svg"); #md #hide
