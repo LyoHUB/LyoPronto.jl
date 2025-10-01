@@ -49,7 +49,7 @@ pd_data = filter(row->row.phase == 4, procdata)
 tstart_pd = pd_data.t[1]
 pd_data.t .-= pd_data.t[1]
 
-t_end = identify_pd_end(pd_data.t, pd_data.pirani, :onoff)
+t_end = identify_pd_end(pd_data.t, pd_data.pirani, Val(:onoff))
 
 # # Example models
 # ## Conventional lyophilization

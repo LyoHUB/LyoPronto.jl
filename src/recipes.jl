@@ -506,7 +506,7 @@ cycledataplot
 @doc (@doc cycledataplot) cycledataplot!
 
 @userplot CycleDataPlot
-@recipe function f(cdp::CycleDataPlot; pcolor=:black, tendkind=:onoff)
+@recipe function f(cdp::CycleDataPlot; pcolor=:black, tendkind=Val(:onoff))
 
     dat, Ts, Tsh, ps = cdp.args
     unitformat --> :square

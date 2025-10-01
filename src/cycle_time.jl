@@ -43,7 +43,7 @@ function identify_pd_end(t, pch_pir, kind; window_width=91, tmin=0u"hr", tmax=In
         t_offset = (p_min - p_mid)/dp_mid + t_mid
         return (t_onset, t_offset)
     else
-        error("Unknown kind $kind. Use :der2 or :onoff")
+        error("Unknown kind $kind. Use Val(:der2) or Val(:onoff)")
     end
 end
 function identify_pd_end(data, kind; window_width=91, tmin=0u"hr", tmax=Inf*u"hr")

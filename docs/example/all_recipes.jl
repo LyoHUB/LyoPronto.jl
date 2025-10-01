@@ -58,7 +58,7 @@ pd_data = filter(row->row.phase == 4, procdata)
 tstart_pd = pd_data.t[1]
 pd_data.t .-= pd_data.t[1]
 
-t_end = identify_pd_end(pd_data.t, pd_data.pirani, :onoff)
+t_end = identify_pd_end(pd_data.t, pd_data.pirani, Val(:onoff))
 
 T_shelf_0 = -40.0u"°C" |> u"K" # initial shelf temperature, in Kelvin for math reasons
 T_shelf_final = -10.0u"°C" |> u"K" # final shelf temperature
