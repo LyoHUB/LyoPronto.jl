@@ -1,7 +1,10 @@
-# LyoPRONTO.jl
+# LyoPronto.jl
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://LyoHUB.github.io/LyoPronto.jl/dev)
 
-This package is a Julia reimplementation of some core functionality of [LyoPRONTO](https://github.com/LyoHUB/LyoPronto), an open source Python package.
+This package is a Julia complement to [LyoPRONTO](https://github.com/LyoHUB/LyoPronto), an open source Python package.
+It has some overlapping functionality with LyoPRONTO, especially simulation of primary drying for conventional lyophilization.
+LyoPRONTO (the Python version) also has functionality for generating a design space, estimating time to freeze, and picking optimal drying conditions.
+On the other hand, this package has much more advanced utilities for fitting empirical parameters (such as $R_p$ and $K_v$) to experimental data. 
 
 ## Installation
 
