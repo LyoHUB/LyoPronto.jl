@@ -24,11 +24,12 @@ minimum values of pressure. Those intersects are taken as onset and offset.
 For the second derivative, identify the maximum of the second derivative.
 """
 function identify_pd_end(t, pch_pir, kind; window_width=91, tmin=0u"hr", tmax=Inf*u"hr")
-    if kind isa Val{:der2}
+    kind isa Symbol && @warn "Passing kind as Symbol is deprecated; use Val(:$kind) instead"
+    if kind isa Val{:der2} || kind == :der2
         pch_pir_der2 = savitzky_golay(pch_pir, window_width, 3, deriv=2).y
         t_end = t[argmax(pch_pir_der2[tmin .< t .< tmax])] + tmin
         return t_end
-    elseif kind isa Val{:onoff}
+    elseif kind isa Val{:onoff} || kind == :onoff
         pch_pir_sm = savitzky_golay(pch_pir, window_width, 3, deriv=0).y
         dt = sum(diff(t)) / (length(t)-1)
         pch_pir_der1 = savitzky_golay(pch_pir, window_width, 3, deriv=1, rate=1/dt).y
