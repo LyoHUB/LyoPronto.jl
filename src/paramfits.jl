@@ -2,7 +2,7 @@ export gen_sol_pd, obj_pd, gen_nsol_pd, objn_pd
 export KRp_transform_basic, K_transform_basic, Rp_transform_basic
 export KBB_transform_basic
 export obj_expT 
-export err_expT, num_errs, nls_pd, nls_pd!
+export err_expT, err_expT!, num_errs, nls_pd, nls_pd!
 
 """
     $(SIGNATURES)
@@ -455,8 +455,7 @@ function err_expT(sol, pdfit; tweight=1, verbose = false)
     # for (Tf, itf) in zip(pdfit.Tfs, pdfit.Tf_iend)
     errs = mapreduce(vcat, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
         trim = min(itf, length(Tfmd))
-        # TODO: check if the normalizing /sqrt(n) is necessary
-        Tferrs = (Tf[i_solstart:trim] .- Tfmd[begin:trim-i_solstart+1])#/sqrt(trim-i_solstart+1)
+        Tferrs = (Tf[i_solstart:trim] .- Tfmd[begin:trim-i_solstart+1])/sqrt(trim-i_solstart+1)
         # append!(errs, ustrip.(u"K", Tferrs))
         return ustrip.(u"K", Tferrs)
     end
@@ -493,7 +492,7 @@ function err_expT(sol, pdfit; tweight=1, verbose = false)
             elseif tmd > pdfit.t_end[2]
                 t_err = (mid_t - tmd)
             else # Inside window, so no error
-                t_err = 0.0u"hr^2"
+                t_err = 0.0u"hr"
             end
         else
             t_err = (pdfit.t_end - tmd)
