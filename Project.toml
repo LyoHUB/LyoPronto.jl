@@ -23,7 +23,6 @@ Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 SavitzkyGolay = "c4bf5708-b6a6-4fbe-bcd0-6850ed671584"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 TransformVariables = "84d833dd-6860-57f9-a1a7-6da5db126cff"
-UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
