@@ -5,8 +5,8 @@ using Reexport
 import OrdinaryDiffEqRosenbrock: ODEProblem
 @reexport using OrdinaryDiffEqNonlinearSolve
 @reexport using DiffEqCallbacks
-@reexport using Unitful
-@reexport using TransformVariables
+@reexport using Unitful: @u_str, ustrip
+using TransformVariables
 using RecipesBase
 using ColorTypes: RGB
 using CSV
