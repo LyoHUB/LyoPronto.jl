@@ -89,9 +89,9 @@ end
         t
         pch_pir
     end
-    @test 50u"hr" < identify_pd_end(Testtp(synth_t, synthetic_p), :der2) < 100u"hr"
+    @test 50u"hr" < identify_pd_end(Testtp(synth_t, synthetic_p), Val(:der2)) < 100u"hr"
     d = Dict(:t=>synth_t, :pch_pir=>synthetic_p)
-    @test 50u"hr" < identify_pd_end(d, :der2) < 100u"hr"
+    @test 50u"hr" < identify_pd_end(d, Val(:der2)) < 100u"hr"
 end
 
 
