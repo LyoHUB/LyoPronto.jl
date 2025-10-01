@@ -5,7 +5,7 @@ using Reexport
 import OrdinaryDiffEqRosenbrock: ODEProblem
 @reexport using OrdinaryDiffEqNonlinearSolve
 @reexport using DiffEqCallbacks
-@reexport using Unitful: @u_str, ustrip
+@reexport using Unitful: @u_str, ustrip, uconvert, NoUnits
 import Unitful
 using TransformVariables
 using RecipesBase
