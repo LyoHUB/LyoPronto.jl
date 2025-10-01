@@ -17,7 +17,7 @@ From Feistel and Wagner, 2006
 """
 const ΔHsub = 2838.0u"kJ/kg"
 const ΔH = ΔHsub
-const θsub = ΔHsub*Mw/Unitful.R |> u"K"
+const θsub = ΔHsub*Mw/u"R" |> u"K"
 
 """
 Thermal conductivity of ice
