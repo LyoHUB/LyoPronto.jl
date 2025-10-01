@@ -1,4 +1,3 @@
-export get_vial_radii, get_vial_mass, get_vial_shape, make_outlines
 # Get dimensions from here: https://www.schott.com/en-us/products/vials/-/media/project/onex/products/v/vials/application-variants/schott-brochure-schott-vials-english-20092017.pdf
 
 # Added to "vial_sizes.csv", read in here

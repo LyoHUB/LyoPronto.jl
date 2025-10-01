@@ -59,6 +59,8 @@ export ConstWrapTV
 export qrf_integrate
 # End of primary drying
 export identify_pd_end
+# Vial dimensions
+export get_vial_radii, get_vial_mass, get_vial_shape, make_outlines
 
 
 # include("precompilation.jl")
