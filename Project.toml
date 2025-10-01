@@ -28,6 +28,7 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 [compat]
 ADTypes = "1.14"
 Accessors = "0.1"
+Aqua = "0.8"
 CSV = "0.10"
 ColorTypes = "0.11.2, 0.12"
 ConcreteStructs = "0.2.3"
@@ -49,6 +50,7 @@ TransformVariables = "0.8.17"
 Unitful = "1.20"
 
 [extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 DataInterpolations = "82cc6244-b520-54b8-b5a6-8a565e85f1d0"
 LineSearches = "d3d80556-e9d4-5f37-9878-2ab0fcc64255"
 NonlinearSolve = "8913a72c-1f9b-4ce2-8d82-65094dcecaec"
@@ -61,4 +63,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 
 [targets]
-test = ["Test", "TypedTables", "SavitzkyGolay", "Optim", "Optimization", "OptimizationOptimJL", "LineSearches", "NonlinearSolve"]
+test = ["Test", "Aqua", "TypedTables", "SavitzkyGolay", "Optim", "Optimization", "OptimizationOptimJL", "LineSearches", "NonlinearSolve"]
