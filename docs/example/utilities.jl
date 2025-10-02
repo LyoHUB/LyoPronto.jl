@@ -157,10 +157,10 @@ hRps = [calc_hRp_T(po, fitdat_all; i) for i in 1:3]
 # of temperature measurements. To plot this against a temperature fit as in the other 
 # tutorial here, we can do the following:
 
-pl = plot(xlabel="h_d", ylabel="R_p", xunit=u"cm", yunit=u"cm^2*Torr*hr/g")
+pl = plot(xlabel="h_d", ylabel="R_p", unitformat=latexify, xunit=u"cm", yunit=u"cm^2*Torr*hr/g")
 for (i, hRp) in enumerate(hRps)
     plot!(hRp[1], hRp[2], label="T$i")
 end
 ## For comparison, plot Rp as computed from fit in the other example
 l = range(0u"cm", hf0, length=100)
-plot!(l, Rp.(l), unitformat=latexify, label="Direct fit to \$T(t)\$")
+plot!(l, Rp.(l), label="Direct fit to \$T(t)\$")
