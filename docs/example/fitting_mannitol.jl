@@ -55,7 +55,7 @@ pd_data.t .-= pd_data.t[1]
 
 # ## Identify one definition of end of primary drying with Savitzky-Golay filter
 
-t_end = identify_pd_end(pd_data.t, pd_data.pirani, :der2)
+t_end = identify_pd_end(pd_data.t, pd_data.pirani, Val(:der2))
 
 # Plots provides a very convenient macro `@df` which inserts table columns into a function call,
 # which is very handy for plotting. Here this is combined with a recipe for plotting the pressure:

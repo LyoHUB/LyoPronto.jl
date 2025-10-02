@@ -140,8 +140,8 @@ savefig("recipe_pdfit.svg"); #md #hide
 # the optimizer to take drying time into account we could provide and plot it as such.
 ## Note that we pass T1 and T2 in a tuple as frozen temperatures, then T3 as a next argument
 fitdat_vw = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 13u"hr"],
-                                    :T2[:t .< 13u"hr"]), 
-                                    :T3[:t .< 16u"hr"],)
+                                    :T2[:t .< 13u"hr"]); 
+                                    Tvws=:T3[:t .< 16u"hr"],)
 plot(fitdat_vw)
 savefig("recipe_pdfitvw.svg"); #md #hide
 # ![](recipe_pdfitvw.svg) #md
