@@ -83,7 +83,7 @@ exptfplot
                 seriestype := :samplemarkers
                 step := step
                 offset := step÷n *(i-1) + 1
-                return time, T
+                return time[eachindex(T)], T
             else
                 seriestype --> :scatter
                 offset = step÷n *(i-1) + 1
@@ -481,6 +481,7 @@ exppplot
 @recipe function f(epp::ExpPPlot)
     t, ps..., names = epp.args
     defaultlabels = [pressurenames(name) for name in names]
+    markershape --> [:utriangle :dtriangle]
     for (i, p) in enumerate(ps)
         @series begin
             seriestype --> :samplemarkers

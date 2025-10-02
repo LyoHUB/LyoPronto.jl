@@ -7,7 +7,7 @@ using LyoPronto
 # but you can use others in their place.
 # TypedTables provides a lightweight table structure, not as broadly flexible as a DataFrame but great for our needs
 using TypedTables, CSV
-# TransformVariables provides tools for mapping 
+# TransformVariables provides tools for mapping optimization parameters to sensible ranges.
 using TransformVariables
 # Optimization provides a common interface to a variety of optimization packages, including Optim.
 # LineSearches gives a little more granular control over solver algorithms for Optim.
@@ -68,7 +68,7 @@ savefig("pirani.svg"); #md #hide
 # To check that everything looks right, plot the temperatures, taking advantage of a recipe 
 # from this package, as well as the `L"[latex]"` macro from `LaTeXStrings`. We can also 
 # exploit the `@df` macro from `StatsPlots` to make this really smooth.
-@df pd_data exptfplot(:t, :T1, :T2, :T3)
+@df pd_data exptfplot(:t, :T1, :T2, :T3, nmarks=40)
 @df pd_data plot!(:t, :Tsh, label=L"T_{sh}", c=:black)
 savefig("exptemps.svg"); #md #hide
 # ![](exptemps.svg) #md
@@ -76,7 +76,7 @@ savefig("exptemps.svg"); #md #hide
 # ## Plot all cycle data at once with a slick recipe
 
 twinx(plot())
-cycledataplot!(procdata, (:T1, :T2, :T3), :Tsh, (:pirani, :cm))
+cycledataplot!(procdata, (:T1, :T2, :T3), :Tsh, (:pirani, :cm), pcolor=:green, nmarks=40)
 savefig("fullcycle.svg"); #md #hide
 # ![](fullcycle.svg) #md
 
@@ -90,7 +90,7 @@ fitdat_all = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 13u"hr"],
                                     :T3[:t .< 16u"hr"]);
                                     t_end)
 ## There is a plot recipe for this fit object
-plot(fitdat_all)
+plot(fitdat_all, nmarks=30)
 savefig("pdfit.svg"); #md #hide
 # ![](pdfit.svg) #md
 
@@ -145,7 +145,7 @@ po = ParamObjPikal([
 
 prob = ODEProblem(po)
 sol = solve(prob, Rodas3())
-@df pd_data exptfplot(:t, :T1, :T2, :T3)
+@df pd_data exptfplot(:t, :T1, :T2, :T3, nmarks=20)
 modconvtplot!(sol, label=L"$T_p$, model")
 savefig("modelpre.svg"); #md #hide
 # ![](modelpre.svg) #md
@@ -171,7 +171,8 @@ trans_Rp = Rp_transform_basic(R0, A1, A2)
 # With this transform, we can set up the optimization problem.
 # A good first step is to make sure the guess value is reasonable.
 # In this case, I think that we should get good results with a zero guess
-pg = fill(0.0, 4) # 4 parameters to optimize
+pg = fill(0.1, 4) # 4 parameters to optimize
+pg = [1.0, 0.1, 0.1, 0.1] # 4 parameters to optimize
 ## Not plotted since will produce the same as above, but this computes a solution
 @time LyoPronto.gen_sol_pd(pg, trans_KRp, po)
 
@@ -181,7 +182,7 @@ pass = (trans_KRp, po, fitdat_all)
 obj = OptimizationFunction(obj_pd, AutoForwardDiff())
 ## Solve the optimization problem
 optalg = LBFGS(linesearch=LineSearches.BackTracking())
-opt = solve(OptimizationProblem(obj, pg, pass), optalg)
+@time opt = solve(OptimizationProblem(obj, pg, pass), optalg)
 
 # This works, but by using a scalar objective function, we throw away part of the 
 # problem structure--we have a least-squares problem, so the first derivative of the 
@@ -196,20 +197,26 @@ opt = solve(OptimizationProblem(obj, pg, pass), optalg)
 nls_eqs = NonlinearFunction{true}(nls_pd!, resid_prototype=zeros(num_errs(fitdat_all)))
 ## After that, problem setup looks similar to the optimization approach
 nlsprob = NonlinearLeastSquaresProblem(nls_eqs, pg, pass)
-nls = solve(nlsprob, LevenbergMarquardt())
+@time nls = solve(nlsprob, LevenbergMarquardt())
 
 # We should graph the results to see that they make sense.
 sol_opt = gen_sol_pd(opt.u, pass...)
 sol_nls = gen_sol_pd(nls.u, pass...)
 ## Plot recipe for several temperature series:
-@df pd_data exptfplot(:t, :T1, :T2, :T3)
+@df pd_data exptfplot(:t, :T1, :T2, :T3, nmarks=30, ylabel="Temperature", xlabel="Time")
 ## And compare to the model output:
 modconvtplot!(sol_opt, labsuffix=", optimizer")
-modconvtplot!(sol_nls, labsuffix=", least-squares")
+modconvtplot!(sol_nls, labsuffix=", least-squares", c=:purple)
 savefig("modelopt.svg"); #md #hide
 
 # ![](modelopt.svg) #md
 
-# And to get out our fit values, we apply the transform to the values our optimizer found.
+# And to get out our fit values, we can apply the transform to the values our optimizer found.
+# Note that the direct least squares approach solves the same problem, but may not reach an 
+# identical local minimum because the algorithms take different paths.
 po_opt = transform(trans_KRp, opt.u)
 po_nls = transform(trans_KRp, nls.u)
+
+# To check goodness of fit, we can look at the objective being used for optimization.
+# This objective is a normalized sum of squared error, so smaller is better.
+[obj_expT(sol, fitdat_all) for sol in (sol_opt, sol_nls)] 

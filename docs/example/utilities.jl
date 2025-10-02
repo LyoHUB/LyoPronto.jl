@@ -13,6 +13,9 @@ using StatsPlots: @df
 using LaTeXStrings
 # For dealing with parameter structs and making copies, Accessors provides the @set and @reset macros
 using Accessors
+# For helping make some nice plot labels
+using Latexify: latexify, set_default
+set_default(labelformat=:square) # Sets a Latexify default
 
 # # Example Process Data
 
@@ -139,7 +142,7 @@ plot!(Tsh3, lw=3, label="2 ramps")
 fitdat_all = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 15u"hr"],
                                     :T2[:t .< 13u"hr"],
                                     :T3[:t .< 16u"hr"]),)
-plot(fitdat_all)
+plot(fitdat_all, nmarks=30, sampmarks=true)
 
 # Note that in this plot, T1 rises after 13 hours--I have deliberately included that
 # to show what this will do in $R_p(h_d)$ space.
@@ -160,4 +163,4 @@ for (i, hRp) in enumerate(hRps)
 end
 ## For comparison, plot Rp as computed from fit in the other example
 l = range(0u"cm", hf0, length=100)
-plot!(l, Rp.(l), label="Direct fit to \$T(t)\$")
+plot!(l, Rp.(l), unitformat=latexify, label="Direct fit to \$T(t)\$")
