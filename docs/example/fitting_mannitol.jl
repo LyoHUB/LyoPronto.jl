@@ -7,6 +7,8 @@ using LyoPronto
 # but you can use others in their place.
 # TypedTables provides a lightweight table structure, not as broadly flexible as a DataFrame but great for our needs
 using TypedTables, CSV
+# TransformVariables provides tools for mapping 
+using TransformVariables
 # Optimization provides a common interface to a variety of optimization packages, including Optim.
 # LineSearches gives a little more granular control over solver algorithms for Optim.
 using Optimization, OptimizationOptimJL
