@@ -158,17 +158,15 @@ end
 (cpp::ConstPhysProp)(args...) = cpp.val
 Base.show(io::IO, cpp::ConstPhysProp) = print(io, "ConstPhysProp($(cpp.val))")
 
-# function Base.show(io::IO, pp::PhysProp) 
-#     return print(io, "PhysProp($(rv.setpts[1]))")
-# end
 
+# It would be nice to use ConcreteStructs here, but it struggles with my constructor.
 struct PrimaryDryFit{T1, T2, T3, T4, T5, T6}
-    t
-    Tfs
-    Tf_iend# = [length(Tf) for Tf in Tfs]
-    Tvws# = missing
-    Tvw_iend# = (ismissing(Tvws) ? missing : [length(Tvw) for Tvw in Tvws])
-    t_end# = missing
+    t::T1
+    Tfs::T2
+    Tf_iend::T3# = [length(Tf) for Tf in Tfs]
+    Tvws::T4# = missing
+    Tvw_iend::T5# = (ismissing(Tvws) ? missing : [length(Tvw) for Tvw in Tvws])
+    t_end::T6# = missing
     function PrimaryDryFit(t, Tfs, Tf_iend, Tvws, Tvw_iend, t_end)
         if !(t isa AbstractVector) || ~(first(t) isa Unitful.Time)
             throw(ArgumentError("t should be a vector of time points with units of time"))
