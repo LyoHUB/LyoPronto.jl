@@ -1,7 +1,7 @@
 name = "LyoPronto"
 uuid = "86014da0-a5b3-40a4-ad76-3e66dfc3e269"
 authors = ["Isaac Wheeler <ickaser@gmail.com>"]
-version = "0.2.2"
+version = "0.3.0"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
