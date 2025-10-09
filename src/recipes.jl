@@ -372,9 +372,9 @@ end
 @recipe function f(asp::AreaStackPlot)
     x, ys... = asp.args
     yprev = zeros(eltype(ys[1]), size(ys[1], 1))
-    ymat = hcat(yprev, ys...)
+    ymat = hcat(yprev, reverse(ys)...)
     ys_cum = cumsum(ymat, dims=2)
-    for i in axes(ys_cum, 2)[begin:end-1]
+    for i in axes(ys_cum, 2)[end-1:-1:1]
         @series begin
             fillrange := ys_cum[:,i]
             linealpha --> 0
