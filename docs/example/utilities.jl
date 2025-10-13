@@ -13,6 +13,9 @@ using StatsPlots: @df
 using LaTeXStrings
 # For dealing with parameter structs and making copies, Accessors provides the @set and @reset macros
 using Accessors
+# For helping make some nice plot labels
+using Latexify: latexify, set_default
+set_default(labelformat=:square) # Sets a Latexify default
 
 # # Example Process Data
 
@@ -49,7 +52,7 @@ pd_data = filter(row->row.phase == 4, procdata)
 tstart_pd = pd_data.t[1]
 pd_data.t .-= pd_data.t[1]
 
-t_end = identify_pd_end(pd_data.t, pd_data.pirani, :onoff)
+t_end = identify_pd_end(pd_data.t, pd_data.pirani, Val(:onoff))
 
 # # Example models
 # ## Conventional lyophilization
@@ -139,7 +142,7 @@ plot!(Tsh3, lw=3, label="2 ramps")
 fitdat_all = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 15u"hr"],
                                     :T2[:t .< 13u"hr"],
                                     :T3[:t .< 16u"hr"]),)
-plot(fitdat_all)
+plot(fitdat_all, nmarks=30, sampmarks=true)
 
 # Note that in this plot, T1 rises after 13 hours--I have deliberately included that
 # to show what this will do in $R_p(h_d)$ space.
@@ -154,7 +157,7 @@ hRps = [calc_hRp_T(po, fitdat_all; i) for i in 1:3]
 # of temperature measurements. To plot this against a temperature fit as in the other 
 # tutorial here, we can do the following:
 
-pl = plot(xlabel="h_d", ylabel="R_p", xunit=u"cm", yunit=u"cm^2*Torr*hr/g")
+pl = plot(xlabel="h_d", ylabel="R_p", unitformat=latexify, xunit=u"cm", yunit=u"cm^2*Torr*hr/g")
 for (i, hRp) in enumerate(hRps)
     plot!(hRp[1], hRp[2], label="T$i")
 end

@@ -1,8 +1,3 @@
-export lyo_1d_dae_f, calc_psub
-export end_drying_callback
-export ParamObjPikal
-export calc_u0, get_tstops
-export RpEstimator, calc_hRp_T
 
 @doc raw"""
     end_cond(u, t, integ)
@@ -239,7 +234,7 @@ function get_t0(re::RpEstimator{false})
     (; Tf_interp, po) = re
     tr = Tf_interp.t
     t0 = tr[1]
-    for i in 1:(length(tr)÷20) # check first 5% of data points
+    for i in 1:(length(tr)÷2) # check first half of data points
         t = tr[i]
         Tf = Tf_interp(t)
         Tsh = po.Tsh(t)
@@ -250,7 +245,7 @@ function get_t0(re::RpEstimator{false})
             continue
         end
         Tsub = Tf - Q/po.Ap/LyoPronto.k_ice*po.hf0
-        if calc_psub(Tsub)-pch < 0u"Pa" # Negative mass transfer
+        if calc_psub(Tsub) < pch # Negative mass transfer
             t0 = tr[i+1]
         end
     end
@@ -275,7 +270,7 @@ function calc_hRp_T(po::ParamObjPikal, pdf::PrimaryDryFit; i=nothing)
         !isnothing(i) && @warn "Index passed but not needed" i 
         prob = ODEProblem(re)
     end
-    sol = solve(prob, Rosenbrock23(), saveat=ustrip.(u"hr", pdf.t))
+    sol = solve(prob, odealg_chunk2, saveat=ustrip.(u"hr", pdf.t))
     hd, Rp = sol[1,:]*u"cm", sol[2,:]*u"cm^2*Torr*hr/g"
     # If there are multiple zeros at the start, trim them off
     hdi = findlast(hd .== 0.0u"cm")

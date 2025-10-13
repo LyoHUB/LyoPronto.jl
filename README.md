@@ -1,7 +1,10 @@
-# LyoPRONTO.jl
+# LyoPronto.jl
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://LyoHUB.github.io/LyoPronto.jl/dev)
 
-This package is a Julia reimplementation of some core functionality of [LyoPRONTO](https://github.com/LyoHUB/LyoPronto), an open source Python package.
+This package is a Julia complement to [LyoPRONTO](https://github.com/LyoHUB/LyoPronto), an open source Python package.
+It has some overlapping functionality with LyoPRONTO, especially simulation of primary drying for conventional lyophilization.
+LyoPRONTO (the Python version) also has functionality for generating a design space, estimating time to freeze, and picking optimal drying conditions.
+On the other hand, this package has much more advanced utilities for fitting empirical parameters (such as $R_p$ and $K_v$) to experimental data. 
 
 ## Installation
 
@@ -20,7 +23,7 @@ In an attempt to adhere to Julia community conventions, this package will use [s
 
 ## Authors
 
-Written by Isaac S. Wheeler, a PhD student at Purdue University.
+Written by Isaac S. Wheeler, a PhD student at Purdue University, advised by Prof. Vivek Narsimhan and Prof. Alina Alexeenko. 
 This work was supported in part by funding for NIIMBL project PC4.1-307 .
 
 ## License
@@ -30,10 +33,7 @@ None yet. My intentions are to use the MIT license once this has been published 
 # Example usage
 
 ```julia
-using Optimization, OptimizationOptimJL
-using LineSearches
-using NonlinearSolve
-optalg = LBFGS(linesearch=LineSearches.BackTracking())
+using LyoPronto
 
 # Vial information
 Ap, Av = @. π*get_vial_radii("6R")^2  # cross-sectional area inside the vial
@@ -45,9 +45,9 @@ Kshf = RpFormFit(KC, KP, KD)
 # Formulation parameters
 csolid = 0.06u"g/mL" # g solute / mL solution
 ρsolution = 1u"g/mL" # g/mL total solution density
-R0 = 0.8u"cm^2*Torr*hr/g"
-A1 = 14.0u"cm*Torr*hr/g"
-A2 = 1.0u"1/cm"
+R0 = 0.8u"cm^2*Torr*hr/g" # Guess
+A1 = 14.0u"cm*Torr*hr/g" # Guess
+A2 = 1.0u"1/cm" # Guess
 Rp = RpFormFit(R0, A1, A2)
 
 # Cycle parameters
@@ -63,6 +63,10 @@ po = ParamObjPikal((
     (pch, Tsh)
 ))
 
+prob = ODEProblem(po)
+sol = solve(prob, Rosenbrock23())
 
-
+modconvtplot(sol)
 ```
+
+To go beyond one solution to the realm of fitting solutions to experiment, see the docs.

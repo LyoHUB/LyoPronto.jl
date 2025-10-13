@@ -58,7 +58,7 @@ pd_data = filter(row->row.phase == 4, procdata)
 tstart_pd = pd_data.t[1]
 pd_data.t .-= pd_data.t[1]
 
-t_end = identify_pd_end(pd_data.t, pd_data.pirani, :onoff)
+t_end = identify_pd_end(pd_data.t, pd_data.pirani, Val(:onoff))
 
 T_shelf_0 = -40.0u"°C" |> u"K" # initial shelf temperature, in Kelvin for math reasons
 T_shelf_final = -10.0u"°C" |> u"K" # final shelf temperature
@@ -85,20 +85,20 @@ savefig("recipe_pressure_alt.svg"); #md #hide
 # ![](recipe_pressure_alt.svg) #md
 
 # ## Temperature plotting
-@df procdata exptfplot(:t, :T1, :T2)
-@df procdata exptvwplot!(:t, :T3)
+@df procdata exptfplot(:t, :T1, :T2, nmarks=40, sampmarks=true, linealpha=0.2)
+@df procdata exptvwplot!(:t, :T3, nmarks=30, sampmarks=true, linealpha=0.2)
 savefig("recipe_temp.svg"); #md #hide
 # ![](recipe_temp.svg) #md
 
 @df pd_data exptfplot(:t, :T1, :T2, labsuffix = " prod")
-@df pd_data exptvwplot!(:t, :T3, labsuffix = " vial", trim = 30)
+@df pd_data exptvwplot!(:t, :T3, labsuffix = " vial")
 savefig("recipe_temp_alt.svg"); #md #hide
 # ![](recipe_temp_alt.svg) #md
 
 # ## Plot all cycle data at once with a slick recipe
 
 twinx(plot(xunit=u"hr",))
-cycledataplot!(procdata, (:T1, :T2, :T3), :Tsh, (:pirani, :cm), pcolor=:green)
+cycledataplot!(procdata, (:T1, :T2, :T3), :Tsh, (:pirani, :cm), pcolor=:green, nmarks=30)
 plot!(subplot=1, legend=:left)
 plot!(subplot=2, ylim=(0, 200), legend=:bottomright)
 savefig("recipe_tp.svg"); #md #hide
@@ -110,7 +110,7 @@ savefig("recipe_tp.svg"); #md #hide
 twinx(plot())
 ## plot data 
 @df procdata plot!(:t, :Tsh, color=:black, label=L"T_\mathrm{sh}", lw=2, subplot=1)
-@df procdata exptfplot!(:t, :T1, :T2, :T3, lw=2, subplot=1)
+@df procdata exptfplot!(:t, :T1, :T2, :T3, lw=2, subplot=1, nmarks=30)
 ## style the axes
 plot!(subplot=1, xlabel="Time", ylabel="Temperature", ygrid=true, legend=:left)
 ## plot on secondary axis
@@ -129,9 +129,9 @@ savefig("tp_recipe_comps.svg"); #md #hide
 # This object has a plot recipe, useful for examining what you are feeding to the fit:
 fitdat_all = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 13u"hr"],
                                     :T2[:t .< 13u"hr"],
-                                    :T3[:t .< 16u"hr"]),
+                                    :T3[:t .< 16u"hr"]);
                                     t_end)
-plot(fitdat_all)
+plot(fitdat_all, nmarks=30)
 savefig("recipe_pdfit.svg"); #md #hide
 # ![](recipe_pdfit.svg) #md
 
@@ -140,9 +140,9 @@ savefig("recipe_pdfit.svg"); #md #hide
 # the optimizer to take drying time into account we could provide and plot it as such.
 ## Note that we pass T1 and T2 in a tuple as frozen temperatures, then T3 as a next argument
 fitdat_vw = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 13u"hr"],
-                                    :T2[:t .< 13u"hr"]), 
-                                    :T3[:t .< 16u"hr"],)
-plot(fitdat_vw)
+                                    :T2[:t .< 13u"hr"]); 
+                                    Tvws=:T3[:t .< 16u"hr"],)
+plot(fitdat_vw, nmarks=40)
 savefig("recipe_pdfitvw.svg"); #md #hide
 # ![](recipe_pdfitvw.svg) #md
 
@@ -228,7 +228,7 @@ sol_rf = solve(prob, Rodas3());
 # # Plot Recipes for Solution Objects
 
 # For conventional drying, we only need to plot temperatures of the frozen layer:
-modconvtplot(sol_conv)
+modconvtplot(sol_conv, sampmarks=true)
 savefig("recipe_pikal.svg"); #md #hide
 # ![](recipe_pikal.svg) #md
 
@@ -238,7 +238,7 @@ savefig("recipe_multipikal.svg") #hide
 # ![](recipe_multipikal.svg) #md
 
 # For microwave-assisted drying, we also need to plot vial wall temperatures:
-modrftplot(sol_rf)
+modrftplot(sol_rf, sampmarks=true)
 savefig("recipe_rf.svg"); #md #hide
 # ![](recipe_rf.svg) #md
 

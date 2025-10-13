@@ -1,4 +1,3 @@
-export qrf_integrate
 
 # This is a plot recipe used to add markers only every so often along the series.
 # e.g. if you have 100 data points but only want 10 markers, this will help.
@@ -31,20 +30,37 @@ export qrf_integrate
     y := sy
 end
 
-@doc raw"""
-    exptfplot(time, T1, [T2, ...]; labsuffix=", exp.")
-    exptfplot!(time, T1, [T2, ...]; labsuffix=", exp.")
+const nmarks_doc = """
+`nmarks` is an integer, indicating how many points to plot with markers, so that the number
+of markers is reasonable even with many data points. To plot all points (default), pass `nmarks=0`.
+
+"""
+const sampmarks_marker_doc = """
+`sampmarks=false` (default) will only show markers at selected points, while `sampmarks=true` will put a line through all points.
+
+"""
+const sampmarks_line_doc = """
+`sampmarks=false` (default) will only put a line through all points, while `sampmarks=true` will show markers at selected points.
+
+"""
+
+"""
+    exptfplot(time, T1, [T2, ...]; nmarks=0, labsuffix=", exp.")
+    exptfplot!(time, T1, [T2, ...]; nmarks=0, labsuffix=", exp.")
 
 Plot recipe for one or more experimentally measured product temperatures, all at same times.
 This recipe adds one series for each passed temperature series, with labels defaulting to `"T_{fi}"*labsuffix`.
-"""
+
+$nmarks_doc 
+$sampmarks_marker_doc
+""" 
 exptfplot
 @doc (@doc exptfplot) exptfplot!
 
 @userplot ExpTfPlot
-@recipe function f(tpe::ExpTfPlot; labsuffix = ", exp.")
+@recipe function f(tpe::ExpTfPlot; nmarks=0, sampmarks=false, labsuffix = ", exp.")
     time, Ts... = tpe.args
-    step = size(time, 1) ÷ 10
+    step = (nmarks == 0) ? 1 : (maximum([length(T) for T in Ts]) ÷ nmarks) 
     n = size(Ts, 1)
     # pal = palette(:Blues_5,)[end:-1:begin] # Requires Plots for palette, so hard-code this default
     pal = [RGB{Float64}(0.031,0.318,0.612), 
@@ -60,46 +76,52 @@ exptfplot
     end
     for (i, T) in enumerate(Ts)
         @series begin
-            seriestype := :samplemarkers
-            step := step
-            offset := step÷n *(i-1) + 1
             markershape --> markers[i]
             label --> labels[i]
             seriescolor --> pal[i]
-            if T == :dummy
-                return [Inf], [Inf]
+            if sampmarks
+                seriestype := :samplemarkers
+                step := step
+                offset := step÷n *(i-1) + 1
+                return time[eachindex(T)], T
             else
+                seriestype --> :scatter
+                offset = step÷n *(i-1) + 1
                 minlen = min(length(time), length(T))
-                return time[1:minlen], T[1:minlen]
+                return time[offset:step:minlen], T[offset:step:minlen]
             end
         end
     end
 end
 
-@doc raw"""
-    exptvwplot(time, T1, [T2, ...]; trim)
-    exptvwplot!(time, T1, [T2, ...]; trim)
+
+
+"""
+    exptvwplot(time, T1, [T2, ...]; skip=1, nmarks=0, labsuffix=", exp.")
+    exptvwplot!(time, T1, [T2, ...]; skip=1, nmarks=0, labsuffix=", exp.")
 
 Plot recipe for a set of experimentally measured vial wall temperatures.
 This recipe adds one series for each passed temperature series, with labels defaulting to `"T_{vwi}"*labsuffix`.
-`trim` is an integer, indicating how many points to skip at a time, so that 
+`skip` is an integer, indicating how many points to skip at a time, so that 
 the dotted line looks dotted even with noisy data.
+
+$nmarks_doc
+$sampmarks_marker_doc
 """
 exptvwplot
 @doc (@doc exptvwplot) exptvwplot!
 
 @userplot ExpTvwPlot
-@recipe function f(tpev::ExpTvwPlot; trim=10, labsuffix=", exp.")
+@recipe function f(tpev::ExpTvwPlot; nmarks=0, sampmarks=false, skip=1, labsuffix=", exp.")
     time, Ts... = tpev.args
-    time_trim = time[begin:trim:end]
-    step = size(time_trim, 1) ÷ (10)
     n = size(Ts, 1)
     # color = palette(:Blues_5)[end]
     pal = [RGB{Float64}(0.031,0.318,0.612), 
            RGB{Float64}(0.192,0.51,0.741), 
            RGB{Float64}(0.42,0.682,0.839), 
            RGB{Float64}(0.741,0.843,0.906)]
-    markers = (:pentagon, :ltriangle, :rtriangle, :heptagon)
+    # markers = (:pentagon, :ltriangle, :rtriangle, :heptagon)
+    markers = (:circle, :square, :diamond, :hexagon)
     
     if length(Ts) == 1
         labels = ["\$T_\\mathrm{vw}\$"*labsuffix]
@@ -107,32 +129,43 @@ exptvwplot
         labels = ["\$T_\\mathrm{vw$i}\$"*labsuffix for i in 1:n]
     end
     for (i, T) in enumerate(Ts)
-        T_trim = T[begin:trim:end]
-        minlen = min(length(time_trim), length(T_trim))
         @series begin
-            seriestype := :samplemarkers
-            step := step
-            offset := step÷n *(i-1) + 1
-            linestyle --> :dash
             markershape --> markers[i]
             label --> labels[i]
             seriescolor --> pal[i]
-            return time_trim[1:minlen], T_trim[1:minlen]
+            markercolor --> :white
+            markerstrokecolor --> pal[i]
+            markerstrokewidth --> 1.5
+            if sampmarks
+                linestyle --> :dash
+                time_skip = time[begin:skip:end]
+                T_skip = T[begin:skip:end]
+                seriestype := :samplemarkers
+                step = (nmarks == 0) ? 1 : (size(time_skip, 1) ÷ nmarks) 
+                step := step
+                offset := step÷n *(i-1) + 1
+                return time_skip, T_skip
+            else
+                minlen = min(length(time), length(T))
+                seriestype --> :scatter
+                step = nmarks == 0 ? 1 : (size(time, 1) ÷ nmarks) 
+                offset = step÷n *(i-1) + 1
+                return time[offset:step:minlen], T[offset:step:minlen]
+            end
         end
     end
     
 end
 
-@doc raw"""
+"""
     modconvtplot(sols; sampmarks=false, labsuffix = ", model")
     modconvtplot!(sols; sampmarks=false, labsuffix = ", model")
 
 Plot recipe for one or multiple solutions to the Pikal model, e.g. the output of [`gen_sol_pd`](@ref LyoPronto.gen_sol_pd).
 This adds a series to the plot for each passed solution, with labels defaulting to `"T_{fi}"*labsuffix`.
 
-If `sampmarks` is true, the solution will be interpolated to evenly spaced time points and 
-markers will be added to some of those points.
-"""
+$sampmarks_line_doc
+""" 
 modconvtplot
 @doc (@doc modconvtplot) modconvtplot!
 
@@ -181,7 +214,6 @@ modconvtplot
     end
 end
 
-
 """
     modrftplot(sol, labsuffix=", model", sampmarks=false, trimend=0)
     modrftplot!(sol, labsuffix=", model", sampmarks=false, trimend=0)
@@ -192,10 +224,9 @@ This adds two series to the plot, with labels defaulting to `["T_f" "T_{vw}"] .*
 The optional argument `trimend` controls how many time points to trim from the end
 (which is helpful if temperature shoots up as mf -> 0).
 
-If `sampmarks` is true, the solution will be interpolated to evenly spaced time points and 
-markers will be added to some of those points.
-
 Since this is a recipe, any Plots.jl keyword arguments can be passed to modify the plot.
+
+$sampmarks_line_doc
 """
 modrftplot
 @doc (@doc modrftplot) modrftplot!
@@ -227,8 +258,10 @@ modrftplot
             seriestype := :samplemarkers
             step := step
             T = sol.(t_nd, idxs=3)*u"K"
-            markershape --> :utriangle
+            markershape --> :dtriangle
             seriescolor --> color
+            markercolor --> :white
+            markerstrokecolor --> color
             label --> "\$T_\\mathrm{vw}\$"*labsuffix # Default label
             linestyle := :dash
             time, T
@@ -271,9 +304,9 @@ tendplot
         t_end = tp.args[1]
         @series begin
             seriestype := :vline
-            label --> "\$t_\\mathrm{end}\$"
+            label --> ""
             seriescolor --> :gray
-            linestyle --> :dot
+            linestyle --> :dash
             linewidth --> 3
             return [ustrip(u"hr", t_end)]
         end
@@ -285,7 +318,7 @@ tendplot
         end
         @series begin
             seriestype := :vspan
-            label --> "\$t_\\mathrm{end}\$, range"
+            label --> ""
             seriescolor --> :gray
             seriesalpha --> 0.3
             linewidth --> 1
@@ -339,13 +372,11 @@ end
 @recipe function f(asp::AreaStackPlot)
     x, ys... = asp.args
     yprev = zeros(eltype(ys[1]), size(ys[1], 1))
-    ymat = hcat(yprev, ys...)
+    ymat = hcat(yprev, reverse(ys)...)
     ys_cum = cumsum(ymat, dims=2)
-    pal = [:yellow, :orange, :red]
-    for i in axes(ys_cum, 2)[begin:end-1]
+    for i in axes(ys_cum, 2)[end-1:-1:1]
         @series begin
             fillrange := ys_cum[:,i]
-            fillcolor --> pal[i]
             linealpha --> 0
             marker --> :none
             return x,  ys_cum[:,i+1]
@@ -450,6 +481,7 @@ exppplot
 @recipe function f(epp::ExpPPlot)
     t, ps..., names = epp.args
     defaultlabels = [pressurenames(name) for name in names]
+    markershape --> [:utriangle :dtriangle]
     for (i, p) in enumerate(ps)
         @series begin
             seriestype --> :samplemarkers
@@ -475,7 +507,7 @@ cycledataplot
 @doc (@doc cycledataplot) cycledataplot!
 
 @userplot CycleDataPlot
-@recipe function f(cdp::CycleDataPlot; pcolor=:black, tendkind=:onoff)
+@recipe function f(cdp::CycleDataPlot; pcolor=:black, tendkind=Val(:onoff))
 
     dat, Ts, Tsh, ps = cdp.args
     unitformat --> :square

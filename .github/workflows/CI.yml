@@ -18,38 +18,21 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1'
+          - "lts"
+          - "1.11"
+          - "1"
+          - "pre"
         os:
           - ubuntu-latest
         arch:
           - x64
     steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+      - uses: actions/checkout@v5
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
-
       # Run tests
       - uses: julia-actions/julia-runtest@v1
-
-      # Build docs
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
-        with:
-          version: '1'
-      - name: Instantiate and install dependencies
-        run: |
-          julia --project=docs -e '
-              using Pkg
-              Pkg.develop(PackageSpec(path=pwd()))
-              Pkg.instantiate()'
-      - name: Generate documentation and deploy
-        env: # needed for pushing to gh-pages branch
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-          GKSwstype: "100" # https://discourse.julialang.org/t/generation-of-documentation-fails-qt-qpa-xcb-could-not-connect-to-display/60988
-        run:
-          julia --project=docs docs/make.jl

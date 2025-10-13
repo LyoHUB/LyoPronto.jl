@@ -1,5 +1,3 @@
-export lumped_cap_rf!
-export ParamObjRF
 
 function shapefac(Bi)
     charfunc(x) = -x*besselj1(x) + Bi*besselj0(x)
@@ -167,7 +165,7 @@ The `ParamObjRF` type is a container for the parameters used in the RF model.
 """
 ParamObjRF
 
-function ParamObjRF(tuptup) 
+function ParamObjRF(tuptup::Tuple) 
     if (length(tuptup[4]) == 4 && length(tuptup[6]) == 3)
         return ParamObjRF(tuptup[1]..., tuptup[2]...,
                     tuptup[3]..., tuptup[4]..., missing,
@@ -183,6 +181,11 @@ function ParamObjRF(tuptup)
     end
 end
 Base.size(po::ParamObjRF) = (6,)
+
+# This constructor catches if Rp is passed as a tuple or NamedTuple and constructs an appropriate object
+function ParamObjRF(Rp::Union{NamedTuple, Tuple}, args...)
+    return ParamObjRF(RpFormFit(Rp...), args...)
+end
 
 function Base.getindex(po::ParamObjRF, i)
     if i == 1

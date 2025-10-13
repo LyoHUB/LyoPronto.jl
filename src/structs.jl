@@ -1,4 +1,3 @@
-export RpFormFit, RampedVariable, ConstPhysProp, PrimaryDryFit
 
 @concrete terse struct RpFormFit
     R0
@@ -52,7 +51,6 @@ A plot recipe is also provided for this type, e.g. `plot(rv; tmax=10u"hr")` wher
 """
 RampedVariable
 
-# get_dimensions(::Type{Quantity{T,D,U}}) where {T, D, U} = D
 function (rv::RampedVariable{false})(t)
     return rv.setpts
 end
@@ -117,19 +115,6 @@ function RampedVariable(setpts, ramprates, holds)
     RampedVariable{true}(setpts, ramprates, holds, timestops)
 end
 
-function Base.:(+)(rv::RampedVariable{b, T1,T2,T3,T4}, x) where {b, T1,T2,T3,T4}
-    return @set rv.setpts .+= x
-end
-function Base.:(+)(x, rv::RampedVariable)
-    return rv + x
-end
-function Base.:(-)(rv::RampedVariable{b, T1,T2,T3,T4}, x) where {b, T1,T2,T3,T4}
-    return @set rv.setpts .-= x
-end
-function Base.:(-)(x, rv::RampedVariable)
-    return @set rv.setpts = x .- rv.setpts
-end
-
 function Base.hash(rv::RampedVariable, h::UInt)
     hash(rv.setpts, hash(rv.ramprates, hash(rv.holds, hash(rv.timestops, hash(:RampedVariable, h)))))
 end
@@ -159,7 +144,7 @@ end
 (pp::PhysProp{V, false, true , false} where V)(T, p, f) = pp.valfunc(p)
 (pp::PhysProp{V, false, false, false} where V)(T, p, f) = pp.valfunc
 
-PhysProp(x) = PhysProp{typeof(x), false, false, false}(x::T)
+PhysProp(x) = PhysProp{typeof(x), false, false, false}(x)
 function PhysProp(x, args...) 
     func_T = (:T ∈ args)
     func_p = (:p ∈ args)
@@ -173,35 +158,65 @@ end
 (cpp::ConstPhysProp)(args...) = cpp.val
 Base.show(io::IO, cpp::ConstPhysProp) = print(io, "ConstPhysProp($(cpp.val))")
 
-# function Base.show(io::IO, pp::PhysProp) 
-#     return print(io, "PhysProp($(rv.setpts[1]))")
-# end
 
-"""
-PrimaryDryFit: a type for storing experimental data and indicating how it should be fit.
+# It would be nice to use ConcreteStructs here, but it struggles with my constructor.
+struct PrimaryDryFit{T1, T2, T3, T4, T5, T6}
+    t::T1
+    Tfs::T2
+    Tf_iend::T3# = [length(Tf) for Tf in Tfs]
+    Tvws::T4# = missing
+    Tvw_iend::T5# = (ismissing(Tvws) ? missing : [length(Tvw) for Tvw in Tvws])
+    t_end::T6# = missing
+    function PrimaryDryFit(t, Tfs, Tf_iend, Tvws, Tvw_iend, t_end)
+        if !(t isa AbstractVector) || ~(first(t) isa Unitful.Time)
+            throw(ArgumentError("t should be a vector of time points with units of time"))
+        end
+        if !(Tfs isa Tuple) || !(Tfs[1] isa AbstractVector) 
+            throw(ArgumentError("Tfs should be a tuple of vectors of temperature measurements"))
+        end
+        if !ismissing(Tvws)
+            if Tvws isa Number && !(Tvws isa Unitful.Temperature)
+                throw(ArgumentError("If Tvws is a single value, it should be a temperature"))
+            end
+            if (Tvws isa AbstractVector) || ~(Tvws[1][1] isa Unitful.Temperature)
+                throw(ArgumentError("If not a single value, Tvws should be a tuple of vectors of temperature measurements"))
+            end
+        end
+        if !ismissing(t_end)
+            if !(t_end isa Unitful.Time) && (t_end isa Tuple && !(first(t_end) isa Unitful.Time))
+                throw(ArgumentError("t_end should be a time or a tuple of two times"))
+            end
+        end
+        new{typeof.((t, Tfs, Tf_iend, Tvws, Tvw_iend, t_end))...}(
+                t, Tfs, Tf_iend, Tvws, Tvw_iend, t_end)
+    end
+end
+@doc """
+PrimaryDryFit: a type for indicating how experimental data should be fit.
 
 Provided constructors:
 
-    PrimaryDryFit(t, Tfs, Tvw, t_end)
-    PrimaryDryFit(t, Tfs) = PrimaryDryFit(t, Tfs, missing, missing)
-    PrimaryDryFit(t, Tfs, Tvw) = PrimaryDryFit(t, Tfs, Tvw, missing)
-    PrimaryDryFit(t, Tfs, t_end::Union{Unitful.Time}, Tuple{Tt, Tt}}) where Tt  = PrimaryDryFit(t, Tfs, missing, t_end)
+    PrimaryDryFit(t, Tfs, Tvws, t_end)
+    PrimaryDryFit(t, Tfs; Tvws=missing, t_end=missing) = PrimaryDryFit(t, Tfs, Tvws, t_end)
+
+Note that `Tvws` and `t_end` in the second constructors are keyword arguments, so either or both
+can be left out.
 
 The use of this struct is determined in large part by the implementation of 
-[`LyoPronto.obj_expT`](@ref). If a given field is not available, set it
-to `missing` and things should basically work. At least `t` and `Tfs` are 
-expected to always be provided.
+[`LyoPronto.obj_expT`](@ref) and [`LyoPronto.err_expT!`](@ref). If a given field is not 
+available, it will be set to `missing` and things should basically work. At least `t` and 
+`Tfs` are expected to always be provided.
 
-In the end, Tfs and Tvws are each stored as a tuple of vectors, but the constructor tries to be flexible about 
-allowing a single vector to be passed in place of a tuple of vectors.
+In the end, `Tfs` and `Tvws` are each stored as a tuple of vectors, but the constructors try to 
+be flexible about allowing a single vector to be passed in place of a tuple of vectors.
 
-`Tf_iend` and `Tvw_iend` default to `[length(Tf) for Tf in Tfs]` and `[length(Tvw) for Tvw in Tvws]`, 
+The fields `Tf_iend` and `Tvw_iend` default to `[length(Tf) for Tf in Tfs]` and `[length(Tvw) for Tvw in Tvws]`, 
 respectively, with one value for each temperature series; 
 they are used to dictate if a given temperature series should
 be truncated sooner than the full length in the fitting procedure.
-This implies that all the temperature series are valid initially at the same
+This implies that all the temperature series correspond to the same
 time points, then stop having measured values after a different number of measurements.
-If a single value is given for `Tvw`, then it is taken to be an endpoint, and `Tvw_iend` will be `missing`.
+If a single value is given for `Tvws`, then it is taken to be an endpoint, and `Tvw_iend` will be `missing`.
 
 `t_end` indicates an end of drying, particularly if taken from other measurements
 (e.g. from Pirani-CM convergence). If set to `missing`, it is ignored in the
@@ -211,22 +226,11 @@ single time case.
 
 Principal Cases:
 - Conventional: provide only `t, Tfs`
-- Conventional with Pirani ending: provide `t, Tfs, t_end`
-- RF with measured vial wall: provide `t, Tfs, Tvws`, 
-- RF, matching model Tvw to experimental Tf[end] without measured vial wall: provide `t, Tfs, Tvw`
+- Conventional with Pirani ending: provide `t, Tfs; t_end=...`
+- RF with measured vial wall: provide `t, Tfs; Tvws=...`, 
+- RF, matching model Tvw to experimental Tf[end] without measured vial wall: provide `t, Tfs, Tvws=...`
 """
-struct PrimaryDryFit{Tt, TT, Ti, Ttv<:AbstractVector{Tt}, TTv<:AbstractVector{TT}, 
-        TTf<:Tuple{TTv, Vararg{TTv}},
-        TTvw<:Union{Missing, TT, Tuple{TTv, Vararg{TTv}}},
-        TTvwi<:Union{Missing, Vector{Ti}},
-        Tte<:Union{Missing, Tt, Tuple{Tt, Tt}}}
-    t::Ttv
-    Tfs::TTf
-    Tf_iend::Vector{Ti}# = [length(Tf) for Tf in Tfs]
-    Tvws::TTvw# = missing
-    Tvw_iend::TTvwi# = (ismissing(Tvws) ? missing : [length(Tvw) for Tvw in Tvws])
-    t_end::Tte# = missing
-end
+PrimaryDryFit
 
 # Primary constructor
 function PrimaryDryFit(t, Tfs, Tvws, t_end) 
@@ -252,9 +256,7 @@ function PrimaryDryFit(t, Tfs, Tvws, t_end)
     t_end)
 end
 # Convenience constructors
-PrimaryDryFit(t, Tfs) = PrimaryDryFit(t, Tfs, missing, missing)
-PrimaryDryFit(t, Tfs, Tvws) = PrimaryDryFit(t, Tfs, Tvws, missing)
-PrimaryDryFit(t, Tfs, t_end::Union{Unitful.Time, Tuple{Tt, Tt}}) where Tt  = PrimaryDryFit(t, Tfs, missing, t_end)
+PrimaryDryFit(t, Tfs; Tvws=missing, t_end=missing) = PrimaryDryFit(t, Tfs, Tvws, t_end)
 
 function Base.:(==)(p1::PrimaryDryFit, p2::PrimaryDryFit)
     cond1 = p1.t == p2.t
@@ -267,10 +269,11 @@ function Base.:(==)(p1::PrimaryDryFit, p2::PrimaryDryFit)
 end
 
 # Add a little bit of sugar to our transforms
-export ConstWrapTV
 struct ConstWrapTV <: TransformVariables.ScalarTransform end
 TransformVariables.transform(::ConstWrapTV, x) = ConstPhysProp(x)
 TransformVariables.inverse(::ConstWrapTV, x) = x.value
 
-TransformVariables.transform(t::TVScale{ConstPhysProp}, x) = ConstPhysProp(t.scale.value*x)
-TransformVariables.inverse(t::TVScale{ConstPhysProp}, x) = x.value/t.scale.value
+# These create method ambiguities with other TransformVariables methods
+# I don't think they were needed, but if so can be brought back with more specificity
+# TransformVariables.transform(t::TVScale{ConstPhysProp}, x) = ConstPhysProp(t.scale.value*x)
+# TransformVariables.inverse(t::TVScale{ConstPhysProp}, x) = x.value/t.scale.value
