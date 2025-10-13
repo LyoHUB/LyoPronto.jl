@@ -104,7 +104,7 @@ end
 function gen_nsol_pd(fitlog, tr, pos; saveats=fill([], length(pos)), badprms=nothing, kwargs...)
     fitprm = transform(tr, fitlog)
     if pos isa ParamObj # only one param object...
-        pos = repeat([pos], length(fitdats))
+        pos = repeat([pos], length(saveats))
     end
     if hasproperty(fitprm, :separate) && hasproperty(fitprm, :shared)
         sep_inds = get(fitprm, :sep_inds, 1:length(fitprm.separate))

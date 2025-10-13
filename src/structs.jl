@@ -144,7 +144,7 @@ end
 (pp::PhysProp{V, false, true , false} where V)(T, p, f) = pp.valfunc(p)
 (pp::PhysProp{V, false, false, false} where V)(T, p, f) = pp.valfunc
 
-PhysProp(x) = PhysProp{typeof(x), false, false, false}(x::T)
+PhysProp(x) = PhysProp{typeof(x), false, false, false}(x)
 function PhysProp(x, args...) 
     func_T = (:T ∈ args)
     func_p = (:p ∈ args)
