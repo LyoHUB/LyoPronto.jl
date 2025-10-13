@@ -11,6 +11,7 @@ SavitzkyGolay = "c4bf5708-b6a6-4fbe-bcd0-6850ed671584"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TransformVariables = "84d833dd-6860-57f9-a1a7-6da5db126cff"
 TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
+Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [sources]
 LyoPronto = {path = ".."}

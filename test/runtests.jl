@@ -8,6 +8,8 @@ ti = time()
 
 @testset "Aqua" begin include("test_aqua.jl") end
 
+@testset "JET typos excluding DiffEqBase" begin include("test_jet.jl") end
+
 @testset "RpFormFit" begin
     R0, A1, A2 = 1.0u"cm^2*hr*Torr/g", 14u"cm*hr*Torr/g", 1u"1/cm"
     Rp = RpFormFit(R0, A1, A2)
