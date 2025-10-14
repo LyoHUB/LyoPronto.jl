@@ -45,6 +45,21 @@ end
 
 """
     $(SIGNATURES)
+Construct a typical transform for fitting Kvwf, Bf, and Bvw (as for a microwave cycle).
+
+`Kvwf_scalefac`, `Bf_scalefac`, and `Bvw_scalefac` are used to provide upper and lower 
+bounds on the fitted parameter, as `(Kvwfg/Kvwf_scalefac, Kvwfg*Kvwf_scalefac)`, etc.
+This is enforced with a logistic transform scaled and shifted appropriately.
+"""
+function KBB_transform_bounded(Kvwfg, Bfg, Bvwg; Kvwf_scalefac=1e2, Bf_scalefac=1e4, Bvw_scalefac=1e4)
+    tr = as((Kvwf = TVScale(Kvwfg*Kvwf_scalefac) ∘ TVLogistic() ∘ TVShift(logit(inv(Kvwf_scalefac))),
+        Bf = TVScale(Bfg*Bf_scalefac) ∘ TVLogistic() ∘ TVShift(logit(inv(Bf_scalefac))),
+        Bvw = TVScale(Bvwg*Bvw_scalefac) ∘ TVLogistic() ∘ TVShift(logit(inv(Bvw_scalefac))) ))
+    return tr
+end
+
+"""
+    $(SIGNATURES)
 
 Simulate primary drying, given a vector of parameter guesses, a mapping `tr` from `fitlog` to named coefficients, and other parameters in `po`.
 
