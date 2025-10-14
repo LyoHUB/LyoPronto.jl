@@ -1,5 +1,5 @@
 using TransformVariables
-using Optimization, OptimizationOptimJL
+using OptimizationOptimJL
 using LineSearches
 using NonlinearSolve
 optalg = LBFGS(linesearch=LineSearches.BackTracking())
