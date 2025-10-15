@@ -9,10 +9,11 @@ This package also provides that fitting functionality for a model applicable to 
 
 ## Installation
 
-From the Julia REPL's Pkg mode (open a REPL and type `]` so that the prompt turns blue), add this package as a Git repo:
+From the Julia REPL's Pkg mode (open a REPL and type `]` so that the prompt turns blue), add this package from the General registry with:
 ```
-add https://github.com/LyoHUB/LyoPronto.jl.git
+add LyoPronto
 ```
+
 
 ## Documentation
 
