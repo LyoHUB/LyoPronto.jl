@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Example, conventional lyo · LyoPronto.jl</title><meta name="title" content="Example, conventional lyo · LyoPronto.jl"/><meta property="og:title" content="Example, conventional lyo · LyoPronto.jl"/><meta property="twitter:title" content="Example, conventional lyo · LyoPronto.jl"/><meta name="description" content="Documentation for LyoPronto.jl."/><meta property="og:description" content="Documentation for LyoPronto.jl."/><meta property="twitter:description" content="Documentation for LyoPronto.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">LyoPronto.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li class="is-active"><a class="tocitem" href>Example, conventional lyo</a><ul class="internal"><li class="toplevel"><a class="tocitem" href="#Read-in-process-data"><span>Read in process data</span></a></li><li><a class="tocitem" href="#Identify-one-definition-of-end-of-primary-drying-with-Savitzky-Golay-filter"><span>Identify one definition of end of primary drying with Savitzky-Golay filter</span></a></li><li><a class="tocitem" href="#Plot-the-temperature-data,-with-another-plot-recipe"><span>Plot the temperature data, with another plot recipe</span></a></li><li><a class="tocitem" href="#Plot-all-cycle-data-at-once-with-a-slick-recipe"><span>Plot all cycle data at once with a slick recipe</span></a></li><li><a class="tocitem" href="#Set-up-model"><span>Set up model</span></a></li><li class="toplevel"><a class="tocitem" href="#Fit-model-parameters-to-match-data"><span>Fit model parameters to match data</span></a></li></ul></li><li><a class="tocitem" href="../utilities/">Other tools</a></li><li><a class="tocitem" href="../all_recipes/">Plot recipes</a></li><li><a class="tocitem" href="../../alldocstrings/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Example, conventional lyo</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Example, conventional lyo</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/LyoHUB/LyoPronto.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/LyoHUB/LyoPronto.jl/blob/main/docs/example/fitting_mannitol.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Imports"><a class="docs-heading-anchor" href="#Imports">Imports</a><a id="Imports-1"></a><a class="docs-heading-anchor-permalink" href="#Imports" title="Permalink"></a></h1><p>LyoPronto is this package. It reexports several other packages, so after <code>using LyoPronto</code>, you have effectively also done <code>using Unitful</code> and a few others.</p><pre><code class="language-julia hljs">using LyoPronto</code></pre><p>These are other packages that I use in the test suite, but you can use others in their place. TypedTables provides a lightweight table structure, not as broadly flexible as a DataFrame but great for our needs</p><pre><code class="language-julia hljs">using TypedTables, CSV</code></pre><p>TransformVariables provides tools for mapping optimization parameters to sensible ranges.</p><pre><code class="language-julia hljs">using TransformVariables</code></pre><p>Optimization provides a common interface to a variety of optimization packages, including Optim. We import it with OptimizationOptimJL to specify Optim as a backend. LineSearches gives a little more granular control over solver algorithms for Optim.</p><pre><code class="language-julia hljs">using OptimizationOptimJL
+using LineSearches</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Precompiling</span></span> packages...
+<span class="sgr36"><span class="sgr1">Info</span></span> Given OptimizationOptimJL was explicitly requested, output will be shown live 
+WARNING: Method definition supports_opt_cache_interface(Optim.AbstractOptimizer) in module OptimizationOptimJL at /home/runner/.julia/packages/OptimizationOptimJL/2AQnq/src/OptimizationOptimJL.jl:15 overwritten at /home/runner/.julia/packages/OptimizationOptimJL/2AQnq/src/OptimizationOptimJL.jl:20.
+ERROR: Method overwriting is not permitted during Module precompilation. Use `__precompile__(false)` to opt-out of precompilation.
+   2347.5 ms<span class="sgr33">  ? </span>OptimizationOptimJL
+WARNING: Method definition supports_opt_cache_interface(Optim.AbstractOptimizer) in module OptimizationOptimJL at /home/runner/.julia/packages/OptimizationOptimJL/2AQnq/src/OptimizationOptimJL.jl:15 overwritten at /home/runner/.julia/packages/OptimizationOptimJL/2AQnq/src/OptimizationOptimJL.jl:20.
+ERROR: Method overwriting is not permitted during Module precompilation. Use `__precompile__(false)` to opt-out of precompilation.</code></pre><p>Or, instead of using a scalar optimization package, we can use a least-squares solver.</p><pre><code class="language-julia hljs">using NonlinearSolve</code></pre><p>Plots is a frontend for several plotting packages, and its companion package StatsPlots has a very nice macro I like.</p><pre><code class="language-julia hljs">using Plots
+using StatsPlots: @df
+using LaTeXStrings</code></pre><h1 id="Read-in-process-data"><a class="docs-heading-anchor" href="#Read-in-process-data">Read in process data</a><a id="Read-in-process-data-1"></a><a class="docs-heading-anchor-permalink" href="#Read-in-process-data" title="Permalink"></a></h1><pre><code class="language-julia hljs"># Data start at 8th row of CSV file.
+# This needs to point to the right file, which for documentation is kinda wonky
+procdata_raw = CSV.read(joinpath(@__DIR__, &quot;..&quot;, &quot;..&quot;, &quot;example&quot;, &quot;2024-06-04-10_MFD_AH.csv&quot;), Table, header=8)
+# MicroFD, used for this experiment, has a column indicating primary drying
+t = uconvert.(u&quot;hr&quot;, procdata_raw.CycleTime .- procdata_raw.CycleTime[1])
+# At midnight, timestamps revert to zero, so catch that case
+for i in eachindex(t)[begin+1:end]
+    if t[i] &lt; t[i-1]
+        t[i:end] .+= 24u&quot;hr&quot;
+    end
+end
+
+# Rename the columns we will use, and add units
+procdata = map(procdata_raw) do row
+    # In the anonymous `do` function, `row` is a row of the table.
+    # Return a new row as a NamedTuple
+    (pirani = row.VacPirani * u&quot;mTorr&quot;,
+     cm = row.VacCPM * u&quot;mTorr&quot;,
+     T1 = row.TP1 * u&quot;°C&quot;,
+     T2 = row.TP2 * u&quot;°C&quot;,
+     T3 = row.TP4 * u&quot;°C&quot;, # Quirk of this experimental run: TP3 slot was empty
+     Tsh = row.ShelfSetPT * u&quot;°C&quot;,
+     phase = row.Phase
+    )
+end
+procdata = Table(procdata, (;t)) # Append time to table
+
+# Count time from the beginning of experiment
+pd_data = filter(row-&gt;row.phase == 4, procdata)
+pd_data.t .-= pd_data.t[1]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1268-element Vector{Unitful.Quantity{Rational{Int64}, 𝐓, Unitful.FreeUnits{(hr,), 𝐓, nothing}}}:
+     0//1 hr
+     1//60 hr
+     1//30 hr
+     1//20 hr
+     1//15 hr
+     1//12 hr
+     1//10 hr
+     7//60 hr
+     2//15 hr
+     3//20 hr
+      ⋮
+ 75557//3600 hr
+ 75617//3600 hr
+ 75677//3600 hr
+ 75737//3600 hr
+ 75797//3600 hr
+ 75857//3600 hr
+ 75917//3600 hr
+ 75977//3600 hr
+ 76037//3600 hr</code></pre><h2 id="Identify-one-definition-of-end-of-primary-drying-with-Savitzky-Golay-filter"><a class="docs-heading-anchor" href="#Identify-one-definition-of-end-of-primary-drying-with-Savitzky-Golay-filter">Identify one definition of end of primary drying with Savitzky-Golay filter</a><a id="Identify-one-definition-of-end-of-primary-drying-with-Savitzky-Golay-filter-1"></a><a class="docs-heading-anchor-permalink" href="#Identify-one-definition-of-end-of-primary-drying-with-Savitzky-Golay-filter" title="Permalink"></a></h2><pre><code class="language-julia hljs">t_end = identify_pd_end(pd_data.t, pd_data.pirani, Val(:der2))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">4561//225 hr</code></pre><p>Plots provides a very convenient macro <code>@df</code> which inserts table columns into a function call, which is very handy for plotting. Here this is combined with a recipe for plotting the pressure:</p><pre><code class="language-julia hljs">@df pd_data exppplot(:t, :pirani, :cm, (&quot;Pirani&quot;, &quot;CM&quot;))
+tendplot!(t_end) # Use a custom recipe provided by LyoPronto for plotting t_end</code></pre><p><img src="../pirani.svg" alt/></p><h2 id="Plot-the-temperature-data,-with-another-plot-recipe"><a class="docs-heading-anchor" href="#Plot-the-temperature-data,-with-another-plot-recipe">Plot the temperature data, with another plot recipe</a><a id="Plot-the-temperature-data,-with-another-plot-recipe-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-the-temperature-data,-with-another-plot-recipe" title="Permalink"></a></h2><p>To check that everything looks right, plot the temperatures, taking advantage of a recipe from this package, as well as the <code>L&quot;[latex]&quot;</code> macro from <code>LaTeXStrings</code>. We can also exploit the <code>@df</code> macro from <code>StatsPlots</code> to make this really smooth.</p><pre><code class="language-julia hljs">@df pd_data exptfplot(:t, :T1, :T2, :T3, nmarks=40)
+@df pd_data plot!(:t, :Tsh, label=L&quot;T_{sh}&quot;, c=:black)</code></pre><p><img src="../exptemps.svg" alt/></p><h2 id="Plot-all-cycle-data-at-once-with-a-slick-recipe"><a class="docs-heading-anchor" href="#Plot-all-cycle-data-at-once-with-a-slick-recipe">Plot all cycle data at once with a slick recipe</a><a id="Plot-all-cycle-data-at-once-with-a-slick-recipe-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-all-cycle-data-at-once-with-a-slick-recipe" title="Permalink"></a></h2><pre><code class="language-julia hljs">twinx(plot())
+cycledataplot!(procdata, (:T1, :T2, :T3), :Tsh, (:pirani, :cm), pcolor=:green, nmarks=40)</code></pre><p><img src="../fullcycle.svg" alt/></p><p>Based on an examination of the temperature data, we want to go only up to the &quot;temperature rise&quot; commonly observed in lyophilization near (but not at) the end of drying. To pass this information on to the least-squares fitting routine, pass the temperatures up to the end of primary drying into a  <a href="../../alldocstrings/#LyoPronto.PrimaryDryFit"><code>PrimaryDryFit</code></a> object. To be clear, no fitting happens yet: this object just wraps the data up for fitting.</p><pre><code class="language-julia hljs">fitdat_all = @df pd_data PrimaryDryFit(:t, (:T1[:t .&lt; 13u&quot;hr&quot;],
+                                    :T2[:t .&lt; 13u&quot;hr&quot;],
+                                    :T3[:t .&lt; 16u&quot;hr&quot;]);
+                                    t_end)
+# There is a plot recipe for this fit object
+plot(fitdat_all, nmarks=30)</code></pre><p><img src="../pdfit.svg" alt/></p><p>By passing all three temperature series to <code>PrimaryDryFit</code>, this will compare model output to all three temperature series at once.</p><h2 id="Set-up-model"><a class="docs-heading-anchor" href="#Set-up-model">Set up model</a><a id="Set-up-model-1"></a><a class="docs-heading-anchor-permalink" href="#Set-up-model" title="Permalink"></a></h2><pre><code class="language-julia hljs"># Vial geometry
+# Ran with a 10mL vial, not strictly a 10R but with similar dimensions
+ri, ro = get_vial_radii(&quot;10R&quot;)
+Ap = π*ri^2
+Av = π*ro^2
+
+# Formulation parameters
+csolid = 0.05u&quot;g/mL&quot; # g solute / mL solution
+ρsolution = 1u&quot;g/mL&quot; # g/mL total solution density
+# Provide some guess values for Rp, partly as a dummy for the model
+R0 = 0.8u&quot;cm^2*Torr*hr/g&quot;
+A1 = 14u&quot;cm*Torr*hr/g&quot;
+A2 = 1u&quot;1/cm&quot;
+Rp = RpFormFit(R0, A1, A2)
+
+# Fill
+Vfill = 3u&quot;mL&quot;
+hf0 = Vfill / Ap
+
+# Cycle parameters
+pch = RampedVariable(100u&quot;mTorr&quot;) # constant pressure
+T_shelf_0 = -40.0u&quot;°C&quot; # initial shelf temperature
+T_shelf_final = -10.0u&quot;°C&quot;  # final shelf temperature
+ramp_rate = 0.5 *u&quot;K/minute&quot; # ramp rate
+# Ramp for shelf temperature: convert to Kelvin because Celsius doesn&#39;t do math very well
+Tsh = RampedVariable(uconvert.(u&quot;K&quot;, [T_shelf_0, T_shelf_final]), ramp_rate)
+
+# If we actually know the heat transfer as a function of pressure, we can use this form.
+# KC = 6.556e-5u&quot;cal/s/K/cm^2&quot;
+# KP = 2.41e-3u&quot;cal/s/K/cm^2/Torr&quot;
+# KD = 2.62u&quot;1/Torr&quot;
+# Kshf = RpFormFit(KC, KP, KD)
+# But for now, treat it as a constant guess
+Kshf = ConstPhysProp(5.0u&quot;W/m^2/K&quot;)
+
+po = ParamObjPikal([
+    (Rp, hf0, csolid, ρsolution),
+    (Kshf, Av, Ap),
+    (pch, Tsh)
+]);</code></pre><p>As a sanity check, run the model to see that temperatures are in the right ballpark. Plot it with a recipe that attaches correct units.</p><pre><code class="language-julia hljs">prob = ODEProblem(po)
+sol = solve(prob, Rodas3())
+@df pd_data exptfplot(:t, :T1, :T2, :T3, nmarks=20)
+modconvtplot!(sol, label=L&quot;$T_p$, model&quot;)</code></pre><p><img src="../modelpre.svg" alt/></p><h1 id="Fit-model-parameters-to-match-data"><a class="docs-heading-anchor" href="#Fit-model-parameters-to-match-data">Fit model parameters to match data</a><a id="Fit-model-parameters-to-match-data-1"></a><a class="docs-heading-anchor-permalink" href="#Fit-model-parameters-to-match-data" title="Permalink"></a></h1><p>Optimization algorithms are happiest when they can run across all real numbers. So we use TransformVariables.jl to map all reals to positive values of our parameters, with sensible scales. The <code>TVExp</code> transform maps all real numbers to positive values, and the <code>TVScale</code> transform scales the value to a more reasonable range. The transform <code>ConstWrapTV</code> is defined in LyoPronto, and makes a constant callable function from a value.</p><p>Kshf needs to be callable. Rp needs to be a callable, and the <code>RpFormFit</code> struct does that; by passing the new values with Rp as a NamedTuple, the constructor for <code>ParamObjPikal</code> will unpack it.</p><pre><code class="language-julia hljs">trans_KRp = as((Kshf = ConstWrapTV() ∘ TVScale(Kshf(0)) ∘ TVExp(),
+                Rp=as((R0 = TVScale(R0) ∘ TVExp(),
+                A1 = TVScale(A1) ∘ TVExp(),
+                A2 = TVScale(A2) ∘ TVExp(),))))
+# Or, using a convenience function for the same,
+trans_KRp = KRp_transform_basic(Kshf(0), R0, A1, A2)
+trans_Rp = Rp_transform_basic(R0, A1, A2)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[1:3] NamedTuple of transformations
+  [1:3] :Rp → NamedTuple of transformations
+    [1:1] :R0 → TVScale(0.8 hr cm^2 Torr g^-1) ∘ asℝ₊
+    [2:2] :A1 → TVScale(14 hr cm Torr g^-1) ∘ asℝ₊
+    [3:3] :A2 → TVScale(1 cm^-1) ∘ asℝ₊</code></pre><p>With this transform, we can set up the optimization problem. A good first step is to make sure the guess value is reasonable. In this case, I think that we should get good results with a zero guess</p><pre><code class="language-julia hljs">pg = fill(0.1, 4) # 4 parameters to optimize
+pg = [1.0, 0.1, 0.1, 0.1] # 4 parameters to optimize
+# Not plotted since will produce the same as above, but this computes a solution
+@time LyoPronto.gen_sol_pd(pg, trans_KRp, po)
+
+# The optimization problem needs to know the transform, other parameters, and what data to fit
+pass = (trans_KRp, po, fitdat_all)
+# The objective function will be obj_pd, which is compatible with automatic differentiation
+obj = OptimizationFunction(obj_pd, AutoForwardDiff())
+# Solve the optimization problem
+optalg = LBFGS(linesearch=LineSearches.BackTracking())
+@time opt = solve(OptimizationProblem(obj, pg, pass), optalg)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+u: 4-element Vector{Float64}:
+ 1.0215882216286325
+ 0.15130349203807303
+ 0.4102871794045672
+ 0.19238390129374977</code></pre><p>This works, but by using a scalar objective function, we throw away part of the problem structure–we have a least-squares problem, so the first derivative of the objective is essentially used to reconstruct the residuals that we could just be passing directly. To reformulate this, we can use a <code>NonlinearLeastSquaresProblem</code>.</p><p>To avoid allocating a residual vector every time, we use an inplace function that needs to know how many residuals there are. The <a href="../../alldocstrings/#LyoPronto.num_errs-Tuple{Any}"><code>num_errs</code></a> function looks at a <a href="../../alldocstrings/#LyoPronto.PrimaryDryFit"><code>PrimaryDryFit</code></a> and counts the number of data points that can be used by <code>obj_pd</code> or <code>nls_pd!</code>.</p><pre><code class="language-julia hljs">nls_eqs = NonlinearFunction{true}(nls_pd!, resid_prototype=zeros(num_errs(fitdat_all)))
+# After that, problem setup looks similar to the optimization approach
+nlsprob = NonlinearLeastSquaresProblem(nls_eqs, pg, pass)
+@time nls = solve(nlsprob, LevenbergMarquardt())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: StalledSuccess
+u: 4-element Vector{Float64}:
+  1.0218431696984125
+  0.37060911857252
+  0.22610275309609848
+ -0.2479171267430067</code></pre><p>We should graph the results to see that they make sense.</p><pre><code class="language-julia hljs">sol_opt = gen_sol_pd(opt.u, pass...)
+sol_nls = gen_sol_pd(nls.u, pass...)
+# Plot recipe for several temperature series:
+@df pd_data exptfplot(:t, :T1, :T2, :T3, nmarks=30, ylabel=&quot;Temperature&quot;, xlabel=&quot;Time&quot;)
+# And compare to the model output:
+modconvtplot!(sol_opt, labsuffix=&quot;, optimizer&quot;)
+modconvtplot!(sol_nls, labsuffix=&quot;, least-squares&quot;, c=:purple)</code></pre><p><img src="../modelopt.svg" alt/></p><p>And to get out our fit values, we can apply the transform to the values our optimizer found. Note that the direct least squares approach solves the same problem, but may not reach an identical local minimum because the algorithms take different paths.</p><pre><code class="language-julia hljs">po_opt = transform(trans_KRp, opt.u)
+po_nls = transform(trans_KRp, nls.u)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(Kshf = ConstPhysProp(13.891554730342616 W K^-1 m^-2), Rp = (R0 = 1.1588933802663346 hr cm^2 Torr g^-1, A1 = 17.551862729477513 hr cm Torr g^-1, A2 = 0.7804246169279818 cm^-1))</code></pre><p>To check goodness of fit, we can look at the objective being used for optimization. This objective is a normalized sum of squared error, so smaller is better.</p><pre><code class="language-julia hljs">[obj_expT(sol, fitdat_all) for sol in (sol_opt, sol_nls)]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element Vector{Float64}:
+ 2.281408414958091
+ 2.322860388718868</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Home</a><a class="docs-footer-nextpage" href="../utilities/">Other tools »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Wednesday 15 October 2025 00:53">Wednesday 15 October 2025</span>. Using Julia version 1.12.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
