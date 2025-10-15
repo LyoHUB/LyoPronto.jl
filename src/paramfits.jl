@@ -45,7 +45,7 @@ end
 
 """
     $(SIGNATURES)
-Construct a typical transform for fitting Kvwf, Bf, and Bvw (as for a microwave cycle).
+Construct a bounded transform for fitting Kvwf, Bf, and Bvw (as for a microwave cycle).
 
 `Kvwf_scalefac`, `Bf_scalefac`, and `Bvw_scalefac` are used to provide upper and lower 
 bounds on the fitted parameter, as `(Kvwfg/Kvwf_scalefac, Kvwfg*Kvwf_scalefac)`, etc.
