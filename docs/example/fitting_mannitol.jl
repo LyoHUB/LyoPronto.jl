@@ -10,8 +10,9 @@ using TypedTables, CSV
 # TransformVariables provides tools for mapping optimization parameters to sensible ranges.
 using TransformVariables
 # Optimization provides a common interface to a variety of optimization packages, including Optim.
+# We import it with OptimizationOptimJL to specify Optim as a backend.
 # LineSearches gives a little more granular control over solver algorithms for Optim.
-using Optimization, OptimizationOptimJL
+using OptimizationOptimJL
 using LineSearches
 # Or, instead of using a scalar optimization package, we can use a least-squares solver.
 using NonlinearSolve
