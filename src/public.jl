@@ -8,3 +8,4 @@ public e_0, ϵppf, eppf, εppf, ϵpp_gl, epp_gl, εpp_gl
 public ρ_sucrose, k_sucrose
 
 public extract_ts
+public calc_md_Q

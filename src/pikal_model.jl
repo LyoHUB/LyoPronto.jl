@@ -15,30 +15,31 @@ const end_drying_callback = ContinuousCallback(end_cond, terminate!, save_positi
 # -------------------------------------------
 # Incorporate the nonlinear algebraic part in a DAE formulation.
 # This has the advantage that, afterward, temperatures can be cheaply interpolated by builtin solutions
-
-@doc raw"""
-    lyo_1d_dae!(du, u, params, t)
-
-Internal implementation of the Pikal model.
-See [`lyo_1d_dae_f`](@ref) for the wrapped version, which is more fully documented.
 """
-function lyo_1d_dae!(du, u, params, t)
+    $(SIGNATURES)
 
-    if params isa ParamObj
+With the Pikal model, compute the mass flow at `u=[hf, Tf]`, time `t`, and conditions `po`.
+Ideally `po` should be a `ParamObjPikal`.
+
+This gets used inside the DAE solve, but for consistency is provided separately so to avoid
+the risk of making unit mistakes.
+"""
+function calc_md_Q(u, po, t)
+
+    if po isa ParamObj
         (; Rp, hf0, csolid, ρsolution,
-        Kshf, Av, Ap, pch, Tsh) = params
+        Kshf, Av, Ap, pch, Tsh) = po
     else
-        Rp, hf0, csolid, ρsolution = params[1]
-        Kshf, Av, Ap = params[2]
-        pch, Tsh = params[3]
+        Rp, hf0, csolid, ρsolution = po[1]
+        Kshf, Av, Ap = po[2]
+        pch, Tsh = po[3]
     end
-    
+
     td = t*u"hr" # Dimensional time
     hf = u[1]*u"cm"
     Tf = u[2]*u"K"
     if Tf < 0.0u"K"
-        du .= NaN
-        return nothing
+        return NaN
     end
 
     hd = hf0 - hf
@@ -47,6 +48,31 @@ function lyo_1d_dae!(du, u, params, t)
     Tsub = Tf - Qshf/k_ice/Ap*hf
     delta_p = calc_psub(Tsub)-pch(td)
     dmdt = - Ap*(delta_p)/Rp(hd)
+    return dmdt, Qshf
+end
+
+@doc raw"""
+    lyo_1d_dae!(du, u, params, t)
+
+Internal implementation of the Pikal model.
+See [`lyo_1d_dae_f`](@ref) for the wrapped version, which is more fully documented.
+"""
+function lyo_1d_dae!(du, u, params, t)
+    
+    # Need a handful of parameters in this function.
+    if params isa ParamObj
+        (; csolid, ρsolution, Ap) = params
+    else
+        csolid, ρsolution = params[1][3:4]
+        Ap = params[2][3]
+    end
+    # This logic is carried out in a separate function,
+    # so that it can be reused after the fact for computing mass flow.
+    dmdt, Qshf = calc_md_Q(u, params, t)
+    if isnan(dmdt)
+        du .= NaN
+        return nothing
+    end
     Qsub = uconvert(u"W", dmdt*ΔHsub)
 
     dhf_dt = min(0.0u"cm/hr", dmdt/(ρsolution-csolid)/Ap |> u"cm/hr") # Cap dhf_dt at 0: no desublimation
@@ -175,6 +201,7 @@ function ODEProblem(po::ParamObjPikal; u0=calc_u0(po), tspan=(0.0, 1000.0))
         tstops = tstops, callback=end_drying_callback)
 end
 
+
 # -----------------
 # Directly estimate Rp from time series
 
@@ -213,7 +240,6 @@ function dae_Rp!(du, u, p, tn)
     pch, Tsh) = po
 
     Tf = Tf_interp(t)
-
 
     Q = Kshf(pch(t))*Av*(Tsh(t) - Tf)
     Tsub = Tf - Q/Ap/LyoPronto.k_ice * (hf0-hd)
