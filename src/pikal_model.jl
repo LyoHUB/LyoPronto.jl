@@ -201,7 +201,6 @@ function ODEProblem(po::ParamObjPikal; u0=calc_u0(po), tspan=(0.0, 1000.0))
         tstops = tstops, callback=end_drying_callback)
 end
 
-
 # -----------------
 # Directly estimate Rp from time series
 
