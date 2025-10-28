@@ -38,8 +38,8 @@ function calc_md_Q(u, po, t)
     td = t*u"hr" # Dimensional time
     hf = u[1]*u"cm"
     Tf = u[2]*u"K"
-    if Tf < 0.0u"K"
-        return NaN
+    if Tf < 0.0u"K" # Unphysical temperature needs an escape hatch
+        return NaN*u"kg/s", NaN*u"W"
     end
 
     hd = hf0 - hf
