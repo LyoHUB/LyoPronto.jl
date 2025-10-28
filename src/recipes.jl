@@ -389,11 +389,11 @@ end
 @recipe function f(bsp::BarStackPlot)
     x, ys... = bsp.args
     yprev = zeros(eltype(ys[1]), size(ys[1], 1))
-    ymat = hcat(yprev, ys...)
+    ymat = hcat(yprev, reverse(ys)...)
     ys_cum = cumsum(ymat, dims=2)
     ys_cum = ys_cum ./ maximum(ys_cum, dims=2)
-    pal = [:yellow, :orange, :red]
-    for i in axes(ys_cum, 2)[begin:end-1]
+    pal = [:red, :orange, :yellow]
+    for i in axes(ys_cum, 2)[end-1:-1:begin]
         @series begin
             seriestype := :bar
             fillrange := ys_cum[:,i]
