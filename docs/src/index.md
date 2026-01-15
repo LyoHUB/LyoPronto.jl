@@ -19,9 +19,9 @@ Some key advantages this has over the original version of LyoPRONTO are:
 ## Installation
 As a Julia package, this code can be easily installed with the Julia package manager. 
 
-From the Julia REPL's Pkg mode (open a REPL and type `]` so that the prompt turns blue), add this package as a Git repo:
+You can add LyoPronto from the Julia General registry (so just like most other packages), using the Julia REPL's Pkg mode (open the REPL and type `]` so the prompt turns blue):
 ```
-add https://github.com/LyoHUB/LyoPronto.jl.git
+add LyoPronto
 ```
 `dev` can be substituted for `add` if you want to make changes to this package yourself, as explained in the [Julia Pkg manual](https://pkgdocs.julialang.org/v1/managing-packages/).
 
@@ -35,11 +35,11 @@ Heavy use is made of [Unitful.jl](https://painterqubits.github.io/Unitful.jl/sta
 
 ## Authors
 
-Written by Isaac S. Wheeler, a PhD student at Purdue University.
+Written by Isaac S. Wheeler, a PhD student at Purdue University, advised by Vivek Narsimhan and Alina Alexeenko.
 This work was supported in part by funding for NIIMBL project PC4.1-307 .
 
-## License
+## Licensing
 
-None yet. My intentions are to use the MIT license once this has been published in a scientific journal.
+This package is released with the MIT license.
 
 
