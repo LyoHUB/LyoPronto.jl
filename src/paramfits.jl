@@ -6,7 +6,7 @@ Construct a typical transform for fitting both Kshf and Rp.
 function KRp_transform_basic(Kshfg, R0g, A1g, A2g)
     t1 = K_transform_basic(Kshfg)
     t2 = Rp_transform_basic(R0g, A1g, A2g)
-    return as(merge(t1.transformations, t2.transformations))
+    return merge(t1, t2)
 end
 """
     $(SIGNATURES)
