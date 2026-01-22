@@ -3,9 +3,10 @@
 # `using LyoPronto`, you have effectively also done `using Unitful` and a few others.
 using LyoPronto
 
-# These are other packages that I use in the test suite,
+# These packages are used in the test suite,
 # but you can use others in their place.
-# TypedTables provides a lightweight table structure, not as broadly flexible as a DataFrame but great for our needs
+
+# TypedTables provides a lightweight table structure, not as broadly flexible as a DataFrame but great for our needs.
 using TypedTables, CSV
 # TransformVariables provides tools for mapping optimization parameters to sensible ranges.
 using TransformVariables
