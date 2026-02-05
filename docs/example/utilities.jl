@@ -21,7 +21,7 @@ set_default(labelformat=:square) # Sets a Latexify default
 
 ## Data start at 8th row of CSV file.
 ## This needs to point to the right file, which for documentation is kinda wonky
-procdata_raw = CSV.read(joinpath(@__DIR__, "..", "..", "example", "2024-06-04-10_MFD_AH.csv"), Table, header=8)
+procdata_raw = CSV.read(joinpath(@__DIR__, "..", "..", "example", "2024-06-04-10_MFD_AH.csv"), Table, header=7)
 t = uconvert.(u"hr", procdata_raw.CycleTime .- procdata_raw.CycleTime[1])
 ## At midnight, timestamps revert to zero, so catch that case
 for i in eachindex(t)[begin+1:end]
