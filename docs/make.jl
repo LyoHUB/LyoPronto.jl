@@ -3,10 +3,10 @@ using LyoPronto
 using Documenter
 using Literate
 
-@info "Using Literate to generate example"
-Literate.markdown((@__DIR__)*"/example/fitting_mannitol.jl", (@__DIR__)*"/src/generated", documenter=true)
-Literate.markdown((@__DIR__)*"/example/all_recipes.jl", (@__DIR__)*"/src/generated", documenter=true)
-Literate.markdown((@__DIR__)*"/example/utilities.jl", (@__DIR__)*"/src/generated", documenter=true)
+@info "Using Literate to generate examples"
+for file in ["fitting_mannitol.jl", "fitting_rf_mannitol.jl", "all_recipes.jl", "utilities.jl"]
+    Literate.markdown((@__DIR__)*"/example/$file", (@__DIR__)*"/src/generated", documenter=true)
+end
 
 @info "Building Documentation"
 makedocs(;
@@ -17,6 +17,7 @@ makedocs(;
     pages = [
         "Home" => "index.md",
         "Example, conventional lyo" => "generated/fitting_mannitol.md",
+        "Example, microwave-assisted lyo" => "generated/fitting_rf_mannitol.md",
         "Other tools" => "generated/utilities.md",
         "Plot recipes" => "generated/all_recipes.md",
         "Reference" => "alldocstrings.md",
