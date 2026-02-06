@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Plot recipes · LyoPronto.jl</title><meta name="title" content="Plot recipes · LyoPronto.jl"/><meta property="og:title" content="Plot recipes · LyoPronto.jl"/><meta property="twitter:title" content="Plot recipes · LyoPronto.jl"/><meta name="description" content="Documentation for LyoPronto.jl."/><meta property="og:description" content="Documentation for LyoPronto.jl."/><meta property="twitter:description" content="Documentation for LyoPronto.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">LyoPronto.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../fitting_mannitol/">Example, conventional lyo</a></li><li><a class="tocitem" href="../fitting_rf_mannitol/">Example, microwave-assisted lyo</a></li><li><a class="tocitem" href="../utilities/">Other tools</a></li><li class="is-active"><a class="tocitem" href>Plot recipes</a><ul class="internal"><li class="toplevel"><a class="tocitem" href="#Note-on-recipes"><span>Note on recipes</span></a></li><li class="toplevel"><a class="tocitem" href="#Read-Process-Data"><span>Read Process Data</span></a></li><li class="toplevel"><a class="tocitem" href="#Cycle-Data-Recipes"><span>Cycle Data Recipes</span></a></li><li><a class="tocitem" href="#Pressure-plotting-and-end-of-drying"><span>Pressure plotting and end of drying</span></a></li><li><a class="tocitem" href="#Temperature-plotting"><span>Temperature plotting</span></a></li><li><a class="tocitem" href="#Plot-all-cycle-data-at-once-with-a-slick-recipe"><span>Plot all cycle data at once with a slick recipe</span></a></li><li class="toplevel"><a class="tocitem" href="#Fitting-Object-Recipes"><span>Fitting Object Recipes</span></a></li><li class="toplevel"><a class="tocitem" href="#Example-models"><span>Example models</span></a></li><li><a class="tocitem" href="#Conventional-lyophilization"><span>Conventional lyophilization</span></a></li><li><a class="tocitem" href="#Microwave-assisted-lyophilization"><span>Microwave-assisted lyophilization</span></a></li><li class="toplevel"><a class="tocitem" href="#Plot-Recipes-for-Solution-Objects"><span>Plot Recipes for Solution Objects</span></a></li></ul></li><li><a class="tocitem" href="../../alldocstrings/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Plot recipes</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Plot recipes</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/LyoHUB/LyoPronto.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/LyoHUB/LyoPronto.jl/blob/main/docs/example/all_recipes.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Imports"><a class="docs-heading-anchor" href="#Imports">Imports</a><a id="Imports-1"></a><a class="docs-heading-anchor-permalink" href="#Imports" title="Permalink"></a></h1><p>LyoPronto is this package. It reexports several other packages, so after <code>using LyoPronto</code>, you have effectively also done <code>using Unitful</code> and a few others.</p><pre><code class="language-julia hljs">using LyoPronto</code></pre><p>These are other packages that I use in the test suite, but you can use others in their place. TypedTables provides a lightweight table structure, not as broadly flexible as a DataFrame but great for our needs</p><pre><code class="language-julia hljs">using TypedTables, CSV</code></pre><p>Plots is a frontend for several plotting packages, and its companion package StatsPlots has a very nice macro I like.</p><pre><code class="language-julia hljs">using Plots
+using StatsPlots: @df
+using LaTeXStrings</code></pre><p>For dealing with parameter structs and making copies, Accessors provides the @set and @reset macros</p><pre><code class="language-julia hljs">using Accessors</code></pre><h1 id="Note-on-recipes"><a class="docs-heading-anchor" href="#Note-on-recipes">Note on recipes</a><a id="Note-on-recipes-1"></a><a class="docs-heading-anchor-permalink" href="#Note-on-recipes" title="Permalink"></a></h1><p>All of the below recipes are implemented with the Plots.jl recipe system.</p><p>One feature is that each of these functions has a version that produces a new plot and one that modifies an existing plot which differ by a bang: <code>exptfplot(...)</code> produces a new plot, while <code>exptfplot!(...)</code> adds to an existing plot.</p><p>Another is that you can pass any Plots keyword arguments to any of the plot calls, such as to override the default colors or labels provided by the recipes.</p><h1 id="Read-Process-Data"><a class="docs-heading-anchor" href="#Read-Process-Data">Read Process Data</a><a id="Read-Process-Data-1"></a><a class="docs-heading-anchor-permalink" href="#Read-Process-Data" title="Permalink"></a></h1><p>This needs to point to the right file, which for documentation is kinda wonky; adjust this in to refer to an appropriate file.</p><pre><code class="language-julia hljs"># Data start at 8th row of CSV file.
+file_loc = joinpath(@__DIR__, &quot;..&quot;, &quot;..&quot;, &quot;example&quot;, &quot;2024-06-04-10_MFD_AH.csv&quot;)
+procdata_raw = CSV.read(file_loc, Table, header=7)
+t = uconvert.(u&quot;hr&quot;, procdata_raw.CycleTime .- procdata_raw.CycleTime[1])
+# At midnight, timestamps revert to zero, so catch that case
+for i in eachindex(t)[begin+1:end]
+    if t[i] &lt; t[i-1]
+        t[i:end] .+= 24u&quot;hr&quot;
+    end
+end
+# Some of the dispatches don&#39;t like if time is not a float
+t = float.(t)
+
+# Rename the columns we will use, and add units
+procdata = map(procdata_raw) do row
+    # In the anonymous `do` function, `row` is a row of the table.
+    # Return a new row as a NamedTuple
+    (pirani = row.VacPirani * u&quot;mTorr&quot;,
+     cm = row.VacCPM * u&quot;mTorr&quot;,
+     T1 = row.TP1 * u&quot;°C&quot;,
+     T2 = row.TP2 * u&quot;°C&quot;,
+     T3 = row.TP4 * u&quot;°C&quot;, # Quirk of this experimental run: TP3 slot was empty
+     Tsh = row.ShelfSetPT * u&quot;°C&quot;,
+     phase = row.Phase # identify whether freezing, primary drying, or secondary
+    )
+end
+procdata = Table(procdata, (;t)) # Append time to table
+
+# Count time from the beginning of experiment
+pd_data = filter(row-&gt;row.phase == 4, procdata)
+tstart_pd = pd_data.t[1]
+pd_data.t .-= pd_data.t[1]
+
+t_end = identify_pd_end(pd_data.t, pd_data.pirani, Val(:onoff))
+
+T_shelf_0 = -40.0u&quot;°C&quot; |&gt; u&quot;K&quot; # initial shelf temperature, in Kelvin for math reasons
+T_shelf_final = -10.0u&quot;°C&quot; |&gt; u&quot;K&quot; # final shelf temperature
+ramp_rate = 0.5 *u&quot;K/minute&quot; # ramp rate
+# Set points, followed, by ramp rate, followed by hold times if there are multiple ramps
+Tsh = RampedVariable([T_shelf_0, T_shelf_final], ramp_rate)
+# Single set point with no ramps
+pch = RampedVariable(100u&quot;mTorr&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">RampedVariable(100 mTorr)</code></pre><h1 id="Cycle-Data-Recipes"><a class="docs-heading-anchor" href="#Cycle-Data-Recipes">Cycle Data Recipes</a><a id="Cycle-Data-Recipes-1"></a><a class="docs-heading-anchor-permalink" href="#Cycle-Data-Recipes" title="Permalink"></a></h1><p>Plots provides a very convenient macro <code>@df</code> which inserts table columns into a function call, which is very handy for plotting. We will use this liberally.</p><h2 id="Pressure-plotting-and-end-of-drying"><a class="docs-heading-anchor" href="#Pressure-plotting-and-end-of-drying">Pressure plotting and end of drying</a><a id="Pressure-plotting-and-end-of-drying-1"></a><a class="docs-heading-anchor-permalink" href="#Pressure-plotting-and-end-of-drying" title="Permalink"></a></h2><pre><code class="language-julia hljs">@df pd_data exppplot(:t, :pirani, :cm, (&quot;Pirani&quot;, &quot;CM&quot;))
+tendplot!(t_end)</code></pre><p><img src="../recipe_pressure.svg" alt/></p><pre><code class="language-julia hljs">@df pd_data exppplot(:t, :cm, :pirani, (&quot;cap&quot;, &quot;pir&quot;))
+tendplot!(t_end[1])</code></pre><p><img src="../recipe_pressure_alt.svg" alt/></p><h2 id="Temperature-plotting"><a class="docs-heading-anchor" href="#Temperature-plotting">Temperature plotting</a><a id="Temperature-plotting-1"></a><a class="docs-heading-anchor-permalink" href="#Temperature-plotting" title="Permalink"></a></h2><pre><code class="language-julia hljs">@df procdata exptfplot(:t, :T1, :T2, nmarks=40, sampmarks=true, linealpha=0.2)
+@df procdata exptvwplot!(:t, :T3, nmarks=30, sampmarks=true, linealpha=0.2)</code></pre><p><img src="../recipe_temp.svg" alt/></p><pre><code class="language-julia hljs">@df pd_data exptfplot(:t, :T1, :T2, labsuffix = &quot; prod&quot;)
+@df pd_data exptvwplot!(:t, :T3, labsuffix = &quot; vial&quot;)</code></pre><p><img src="../recipe_temp_alt.svg" alt/></p><h2 id="Plot-all-cycle-data-at-once-with-a-slick-recipe"><a class="docs-heading-anchor" href="#Plot-all-cycle-data-at-once-with-a-slick-recipe">Plot all cycle data at once with a slick recipe</a><a id="Plot-all-cycle-data-at-once-with-a-slick-recipe-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-all-cycle-data-at-once-with-a-slick-recipe" title="Permalink"></a></h2><pre><code class="language-julia hljs">twinx(plot(xunit=u&quot;hr&quot;,))
+cycledataplot!(procdata, (:T1, :T2, :T3), :Tsh, (:pirani, :cm), pcolor=:green, nmarks=30)
+plot!(subplot=1, legend=:left)
+plot!(subplot=2, ylim=(0, 200), legend=:bottomright)</code></pre><p><img src="../recipe_tp.svg" alt/></p><p>If you want more granular control, you can expand this into its component pieces:</p><pre><code class="language-julia hljs"># set up plot
+twinx(plot())
+# plot data
+@df procdata plot!(:t, :Tsh, color=:black, label=L&quot;T_\mathrm{sh}&quot;, lw=2, subplot=1)
+@df procdata exptfplot!(:t, :T1, :T2, :T3, lw=2, subplot=1, nmarks=30)
+# style the axes
+plot!(subplot=1, xlabel=&quot;Time&quot;, ylabel=&quot;Temperature&quot;, ygrid=true, legend=:left)
+# plot on secondary axis
+@df procdata exppplot!(:t, :pirani, :cm, (&quot;Pirani&quot;, &quot;CM&quot;), c=:green, subplot=2)
+# style second axis
+plot!(subplot=2, ylabel=&quot;Pressure&quot;, foreground_color_axis=:green, bordercolor=:green,
+    seriescolor=:green)
+plot!(subplot=2, ylim=(0, 200), legend=:bottomright)</code></pre><p><img src="../tp_recipe_comps.svg" alt/></p><h1 id="Fitting-Object-Recipes"><a class="docs-heading-anchor" href="#Fitting-Object-Recipes">Fitting Object Recipes</a><a id="Fitting-Object-Recipes-1"></a><a class="docs-heading-anchor-permalink" href="#Fitting-Object-Recipes" title="Permalink"></a></h1><p>As a reminder, the <code>PrimaryDryFit</code> object is a container for the data we will use in fitting–no actual iterations are happening yet. This object has a plot recipe, useful for examining what you are feeding to the fit:</p><pre><code class="language-julia hljs">fitdat_all = @df pd_data PrimaryDryFit(:t, (:T1[:t .&lt; 13u&quot;hr&quot;],
+                                    :T2[:t .&lt; 13u&quot;hr&quot;],
+                                    :T3[:t .&lt; 16u&quot;hr&quot;]);
+                                    t_end)
+plot(fitdat_all, nmarks=30)</code></pre><p><img src="../recipe_pdfit.svg" alt/></p><p>If T3 were instead a vial wall temperature measurement and we don&#39;t want the optimizer to take drying time into account we could provide and plot it as such.</p><pre><code class="language-julia hljs"># Note that we pass T1 and T2 in a tuple as frozen temperatures, then T3 as a next argument
+fitdat_vw = @df pd_data PrimaryDryFit(:t, (:T1[:t .&lt; 13u&quot;hr&quot;],
+                                    :T2[:t .&lt; 13u&quot;hr&quot;]);
+                                    Tvws=:T3[:t .&lt; 16u&quot;hr&quot;],)
+plot(fitdat_vw, nmarks=40)</code></pre><p><img src="../recipe_pdfitvw.svg" alt/></p><p>In lack of a better place, it is also worth mentioning that <code>RampedVariable</code> structs have a plotting recipe as well. Since the end time isn&#39;t specified by the struct, specify it in the plot recipe.</p><pre><code class="language-julia hljs">plot(Tsh, tmax=5u&quot;hr&quot;)</code></pre><p><img src="../recipe_rv.svg" alt/></p><pre><code class="language-julia hljs">plot(pch)</code></pre><img src="833d8f7b.svg" alt="Example block output"/><h1 id="Example-models"><a class="docs-heading-anchor" href="#Example-models">Example models</a><a id="Example-models-1"></a><a class="docs-heading-anchor-permalink" href="#Example-models" title="Permalink"></a></h1><h2 id="Conventional-lyophilization"><a class="docs-heading-anchor" href="#Conventional-lyophilization">Conventional lyophilization</a><a id="Conventional-lyophilization-1"></a><a class="docs-heading-anchor-permalink" href="#Conventional-lyophilization" title="Permalink"></a></h2><pre><code class="language-julia hljs"># Vial geometry
+# Ran with a 10mL vial, not strictly a 10R but with similar dimensions
+Ap, Av = π.*get_vial_radii(&quot;10R&quot;) .^ 2
+
+# Formulation parameters
+csolid = 0.05u&quot;g/mL&quot; # g solute / mL solution
+ρsolution = 1u&quot;g/mL&quot; # g/mL total solution density
+# Previously fitted values for Rp
+R0 = 0.93u&quot;cm^2*Torr*hr/g&quot;
+A1 = 21.1u&quot;cm*Torr*hr/g&quot;
+A2 = 1.2u&quot;1/cm&quot;
+Rp = RpFormFit(R0, A1, A2)
+# Fit value for heat transfer coeff
+Kshf = ConstPhysProp(13.9u&quot;W/m^2/K&quot;)
+
+# Fill
+Vfill = 3u&quot;mL&quot;
+hf0 = Vfill / Ap
+
+# Cycle parameters
+
+po = ParamObjPikal([
+    (Rp, hf0, csolid, ρsolution),
+    (Kshf, Av, Ap),
+    (pch, Tsh)
+]);
+
+prob = ODEProblem(po)
+sol_conv = solve(prob, Rodas3());
+
+# Make some alternate versions for showing in plots
+po_alt1 = @set po.Kshf.val = 16u&quot;W/m^2/K&quot;
+po_alt2 = @set po.Kshf.val = 10u&quot;W/m^2/K&quot;
+sol_calt1 = solve(ODEProblem(po_alt1), Rodas3())
+sol_calt2 = solve(ODEProblem(po_alt2), Rodas3());</code></pre><h2 id="Microwave-assisted-lyophilization"><a class="docs-heading-anchor" href="#Microwave-assisted-lyophilization">Microwave-assisted lyophilization</a><a id="Microwave-assisted-lyophilization-1"></a><a class="docs-heading-anchor-permalink" href="#Microwave-assisted-lyophilization" title="Permalink"></a></h2><p>A few more physical properties and fit parameters need to be provided:</p><pre><code class="language-julia hljs">cpf = LyoPronto.cp_ice
+cpv = LyoPronto.cp_gl
+mv = get_vial_mass(&quot;10R&quot;)
+mf0 = Vfill * ρsolution
+# Microwave field-related parameters
+f_RF = 8u&quot;GHz&quot;
+epp_f = LyoPronto.ϵppf
+epp_w = LyoPronto.epp_gl
+# Fit parameters
+Bf = 2.0e7u&quot;Ω/m^2&quot;
+Bvw = 0.9e7u&quot;Ω/m^2&quot;
+Kvwf = 2.4u&quot;W/K/m^2&quot;
+# Microwave power per vial
+P_per_vial = RampedVariable(10u&quot;W&quot;/17 * 0.54) # actual input power / vial
+
+po_rf = ParamObjRF((
+    (Rp, hf0, csolid, ρsolution),
+    (Kshf, Av, Ap),
+    (pch, Tsh, P_per_vial),
+    (mf0, cpf, mv, cpv),
+    (f_RF, epp_f, epp_w),
+    (Kvwf, Bf, Bvw),
+))
+
+prob = ODEProblem(po_rf)
+sol_rf = solve(prob, Rodas3());</code></pre><h1 id="Plot-Recipes-for-Solution-Objects"><a class="docs-heading-anchor" href="#Plot-Recipes-for-Solution-Objects">Plot Recipes for Solution Objects</a><a id="Plot-Recipes-for-Solution-Objects-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-Recipes-for-Solution-Objects" title="Permalink"></a></h1><p>For conventional drying, we only need to plot temperatures of the frozen layer:</p><pre><code class="language-julia hljs">modconvtplot(sol_conv, sampmarks=true)</code></pre><p><img src="../recipe_pikal.svg" alt/></p><p>We can show multiple solutions at once:</p><pre><code class="language-julia hljs">modconvtplot(sol_conv, sol_calt1, sol_calt2)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">&quot;/home/runner/work/LyoPronto.jl/LyoPronto.jl/docs/build/generated/recipe_multipikal.svg&quot;</code></pre><p><img src="../recipe_multipikal.svg" alt/></p><p>For microwave-assisted drying, we also need to plot vial wall temperatures:</p><pre><code class="language-julia hljs">modrftplot(sol_rf, sampmarks=true)</code></pre><p><img src="../recipe_rf.svg" alt/></p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../utilities/">« Other tools</a><a class="docs-footer-nextpage" href="../../alldocstrings/">Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Friday 6 February 2026 20:07">Friday 6 February 2026</span>. Using Julia version 1.12.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
