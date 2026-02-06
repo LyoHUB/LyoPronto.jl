@@ -1,10 +1,9 @@
-Run started: 6/4/2024 10:38:37 AM,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-Product Name: Man5 controlled anneal,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-Product Number: 1,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-Operator: ,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-Recipe File Name: man5.rcp,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+Run started: 6/4/2024 10:38:37 AM
+
+Product Name: Man5 controlled anneal
+Product Number: 1
+Recipe File Name: man5.rcp
+
 CycleTime,Cycle,Phase,Step,VacSetPT,VacPirani,VacCPM,ShelfSetPT,ShelfInlet,Condenser,TPAvg,TP1,TP2,TP3,TP4,TP5,TP6,TP7,TP8,TShelfSurface,TProdConsider,HeatFlux,KvShelf,MassFlowVial,MassFlowHR,RProd,PercentDried,GroupAvg,Qshelf,KvSys_SS,KvFinal_SS,HFSystem,Percent_FRZ,LyoSIM,LyoSIM_SetPT,Percent_RM
 10:38:38,9,1,0,500,738690,0,-25,2.6,9.6,3.4,5.2,3.2,999.9,1.9,999.9,999.9,999.9,999.9,0,5.2,-4004027,0,0,0,0,0,5.2,100,0,0,-4004027,NaN,1.3,-25,0
 10:39:39,9,1,1,0,463110,0,13.1,1.3,9.9,3.2,5.1,2.9,999.9,1.6,999.9,999.9,999.9,999.9,-0.6,5.1,0,0,0,0,0,0,5.1,100,0,0,0,NaN,-2.4,3,0

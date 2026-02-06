@@ -19,27 +19,44 @@ Some key advantages this has over the original version of LyoPRONTO are:
 ## Installation
 As a Julia package, this code can be easily installed with the Julia package manager. 
 
-From the Julia REPL's Pkg mode (open a REPL and type `]` so that the prompt turns blue), add this package as a Git repo:
+You can add LyoPronto from the Julia General registry (so just like most other packages), using the Julia REPL's Pkg mode (open the REPL and type `]` so the prompt turns blue):
 ```
-add https://github.com/LyoHUB/LyoPronto.jl.git
+add LyoPronto
 ```
 `dev` can be substituted for `add` if you want to make changes to this package yourself, as explained in the [Julia Pkg manual](https://pkgdocs.julialang.org/v1/managing-packages/).
 
 ## Dependencies and Reexports
-This package leverages the strengths of the [DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/) ecosystem to solve equations quickly and efficiently, although it only directly depends on `OrdinaryDiffEqRosenbrock` and `DiffEqCallbacks`, which are both reexported.
 
-Also provided are plot recipes for [Plots.jl](https://docs.juliaplots.org/stable), although this package only depends on `RecipesBase`.
+The following are reexported by this package (so that you don't need to import them after importing LyoPronto):
+- [OrdinaryDiffEqRosenbrock](https://docs.sciml.ai/DiffEqDocs/stable/); used for solving the DAEs and ODEs inherent here
+- [DiffEqCallbacks](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/), used for ending DAE and ODE solves when drying ends
+- [Unitful](https://juliaphysics.github.io/Unitful.jl/stable/); specifically, the `u""` macro, `ustrip`, `uconvert`, and `NoUnits`, which is all the API surface needed for regular usage of LyoPronto.
 
-Heavy use is made of [Unitful.jl](https://painterqubits.github.io/Unitful.jl/stable/), which is reexported.
+Other noteworthy dependencies:
+- [TransformVariables.jl](https://tpapp.github.io/TransformVariables.jl/stable/), which is used to map vector spaces onto realistic parameter values for the inevitable parameter fitting step
+- LyoPronto provides [plot recipes](https://docs.juliaplots.org/stable/recipes/) for [Plots.jl](https://docs.juliaplots.org/stable), although it does not depend on Plots in full.  
+
+Plots.jl is used for plotting in this documentation, with the following defaults:
+```@example plot_defaults
+using Plots # hide
+default(:fontfamily, "Computer Modern")
+default(:framestyle, :box)
+default(:lw, 2)
+default(:markersize, 4)
+default(:markerstrokewidth, 0.5)
+default(:unitformat, :square)
+resetfontsizes(); scalefontsizes(1.2)
+```
+
 
 
 ## Authors
 
-Written by Isaac S. Wheeler, a PhD student at Purdue University.
+Written by Isaac S. Wheeler, a PhD student at Purdue University, advised by Vivek Narsimhan and Alina Alexeenko.
 This work was supported in part by funding for NIIMBL project PC4.1-307 .
 
-## License
+## Licensing
 
-None yet. My intentions are to use the MIT license once this has been published in a scientific journal.
+This package is released with the MIT license.
 
 

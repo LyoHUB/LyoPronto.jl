@@ -3,9 +3,10 @@
 # `using LyoPronto`, you have effectively also done `using Unitful` and a few others.
 using LyoPronto
 
-# These are other packages that I use in the test suite,
+# These packages are used in the test suite,
 # but you can use others in their place.
-# TypedTables provides a lightweight table structure, not as broadly flexible as a DataFrame but great for our needs
+
+# TypedTables provides a lightweight table structure, not as broadly flexible as a DataFrame but great for our needs.
 using TypedTables, CSV
 # TransformVariables provides tools for mapping optimization parameters to sensible ranges.
 using TransformVariables
@@ -25,7 +26,8 @@ using LaTeXStrings
 
 ## Data start at 8th row of CSV file.
 ## This needs to point to the right file, which for documentation is kinda wonky
-procdata_raw = CSV.read(joinpath(@__DIR__, "..", "..", "example", "2024-06-04-10_MFD_AH.csv"), Table, header=8)
+file_loc = joinpath(@__DIR__, "..", "..", "example", "2024-06-04-10_MFD_AH.csv")
+procdata_raw = CSV.read(file_loc, Table, header=7)
 ## MicroFD, used for this experiment, has a column indicating primary drying
 t = uconvert.(u"hr", procdata_raw.CycleTime .- procdata_raw.CycleTime[1])
 ## At midnight, timestamps revert to zero, so catch that case
@@ -34,6 +36,12 @@ for i in eachindex(t)[begin+1:end]
         t[i:end] .+= 24u"hr"
     end
 end
+
+cp(file_loc, "./2024-06-04-10_MFD_AH.csv"); #md #hide
+cp(file_loc[1:end-4] * ".yaml", "./2024-06-04-10_MFD_AH.yaml"); #md #hide
+# If you want to follow along exactly, you can download the CSV file 
+# [here](2024-06-04-10_MFD_AH.csv), and some metadata about the cycle 
+# [here](2024-06-04-10_MFD_AH.yaml).
 
 ## Rename the columns we will use, and add units
 procdata = map(procdata_raw) do row
