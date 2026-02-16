@@ -11,7 +11,7 @@ using TransformVariables
 using TransformVariables: logit
 using RecipesBase
 using ColorTypes: RGB
-using CSV
+using TypedTables
 using PrecompileTools
 using SpecialFunctions: besselj0, besselj1
 using DataInterpolations
