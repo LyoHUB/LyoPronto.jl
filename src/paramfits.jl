@@ -14,12 +14,12 @@ end
 Construct a typical transform for fitting Rp.
 """
 function Rp_transform_basic(R0g, A1g, A2g)
-    tr = as((
-        Rp = as((
+    tr = as((;
+        Rp = as(RpFormFit, as((;
             R0 = TVScale(R0g) ∘ TVExp(),
             A1 = TVScale(A1g) ∘ TVExp(),
             A2 = TVScale(A2g) ∘ TVExp(),
-            )),
+            )),)
         ))
     return tr
 end
@@ -29,7 +29,7 @@ end
 Construct a typical transform for fitting Kshf (a.k.a. Kv).
 """
 function K_transform_basic(Kshfg)
-    tr = as((Kshf = ConstWrapTV() ∘ TVScale(Kshfg) ∘ TVExp(),))
+    tr = as((;Kshf = as(ConstPhysProp, TVScale(Kshfg) ∘ TVExp(),)))
     return tr
 end
 """
@@ -72,6 +72,7 @@ This small function runs
 ```
 fitprm = transform(tr, fitlog)
 new_params = setproperties(po, fitprm)
+!isnothing(badprms) && badprms(new_params) && return NaN
 prob = ODEProblem(new_params; tspan=(0.0, 1000.0))
 sol = solve(prob, Rodas4(autodiff=AutoForwardDiff(chunksize=2)); saveat, kwargs...)
 ```
