@@ -4,6 +4,7 @@
     A1
     A2
 end
+RpFormFit(;R0, A1, A2) = RpFormFit(R0, A1, A2)
 @doc """
 A convenience type for dealing with the common functional form given to Rp and Kv.
 
