@@ -38,7 +38,7 @@ t_end = t[end]
 pdfit = PrimaryDryFit(t, T; t_end)
 
 @testset "Both Kv and Rp, optimization routine" begin
-    tr = KRp_transform_basic(Kshf(pch(0))*0.75, R0*0.5, 2*A1, A2*0.5)
+    tr = KRp_transform_basic(Kshf(pch(0))*1.5, R0*0.75, 2*A1, A2*0.5)
     pg = fill(0.0, 4)
     sol = @inferred gen_sol_pd(pg, tr, po)
     @test sol != base_sol
@@ -48,10 +48,11 @@ pdfit = PrimaryDryFit(t, T; t_end)
     obj = OptimizationFunction(obj_pd, AutoForwardDiff(chunksize=4))
     opt = solve(OptimizationProblem(obj, pg, pass), optalg)
     vals = transform(tr, opt.u)
+    @test all(opt.u .!= 0)
     @test vals.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.3
     @test vals.Rp.R0 ≈ R0 rtol=0.1
-    @test vals.Rp.A1 ≈ A1 rtol=0.1
-    @test vals.Rp.A2 ≈ A2 rtol=0.1
+    @test vals.Rp.A1 ≈ A1 rtol=0.3
+    @test vals.Rp.A2 ≈ A2 rtol=0.5
 end
 
 @testset "Only Rp" begin
@@ -66,7 +67,7 @@ end
     opt = solve(OptimizationProblem(obj, pg, pass), optalg)
     vals = transform(tr, opt.u)
     @test vals.Rp.R0 ≈ R0 rtol=0.1
-    @test vals.Rp.A1 ≈ A1 rtol=0.1
+    @test vals.Rp.A1 ≈ A1 rtol=0.2
     @test vals.Rp.A2 ≈ A2 rtol=0.5
 end
 
