@@ -163,12 +163,11 @@ savefig("modelpre.svg"); #md #hide
 # Optimization algorithms are happiest when they can run across all real numbers.
 # So we use TransformVariables.jl to map all reals to positive values of our parameters, with sensible scales.
 # The `TVExp` transform maps all real numbers to positive values, and the `TVScale` transform scales the value to a more reasonable range.
-# The transform `ConstWrapTV` is defined in LyoPronto, and makes a constant callable function from a value.
 
 # Kshf needs to be callable, so we wrap it in ConstPhysProp.
 # Rp needs to be a callable, and the `RpFormFit` struct with fields R0, A1, and A2 does that. 
 
-trans_KRp = as((Kshf = as(ConstPhysProp, TVScale(Kshf(0)) ∘ TVExp()),
+trans_KRp = as((Kshf = as(ConstPhysProp, (TVScale(Kshf(0)) ∘ TVExp(),)),
                 Rp=as(RpFormFit, as((R0 = TVScale(R0) ∘ TVExp(),
                 A1 = TVScale(A1) ∘ TVExp(),
                 A2 = TVScale(A2) ∘ TVExp(),)))))

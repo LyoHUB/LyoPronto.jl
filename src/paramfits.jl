@@ -29,7 +29,7 @@ end
 Construct a typical transform for fitting Kshf (a.k.a. Kv).
 """
 function K_transform_basic(Kshfg)
-    tr = as((;Kshf = as(ConstPhysProp, TVScale(Kshfg) ∘ TVExp(),)))
+    tr = as((;Kshf = as(ConstPhysProp, (TVScale(Kshfg) ∘ TVExp(),))))
     return tr
 end
 """
