@@ -166,6 +166,8 @@ savefig("modelpre.svg"); #md #hide
 
 # Kshf needs to be callable, so we wrap it in ConstPhysProp.
 # Rp needs to be a callable, and the `RpFormFit` struct with fields R0, A1, and A2 does that. 
+# This `as` function uses TransformVariables to create a transform that maps from 4 real 
+# numbers to callable Kshf and Rp, with appropriate scaling.
 
 trans_KRp = as((Kshf = as(ConstPhysProp, (TVScale(Kshf(0)) ∘ TVExp(),)),
                 Rp=as(RpFormFit, as((R0 = TVScale(R0) ∘ TVExp(),
