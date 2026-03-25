@@ -58,7 +58,6 @@ export gen_sol_pd, obj_pd, gen_nsol_pd, objn_pd
 export KRp_transform_basic, K_transform_basic, Rp_transform_basic, KBB_transform_basic
 export KBB_transform_bounded
 export obj_expT, err_expT, err_expT!, num_errs, nls_pd, nls_pd!
-export ConstWrapTV
 # plotting tools (mostly already done by macros)
 export qrf_integrate
 # End of primary drying

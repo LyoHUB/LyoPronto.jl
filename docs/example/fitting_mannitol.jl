@@ -163,16 +163,16 @@ savefig("modelpre.svg"); #md #hide
 # Optimization algorithms are happiest when they can run across all real numbers.
 # So we use TransformVariables.jl to map all reals to positive values of our parameters, with sensible scales.
 # The `TVExp` transform maps all real numbers to positive values, and the `TVScale` transform scales the value to a more reasonable range.
-# The transform `ConstWrapTV` is defined in LyoPronto, and makes a constant callable function from a value.
 
-# Kshf needs to be callable.
-# Rp needs to be a callable, and the `RpFormFit` struct does that; by passing the new values 
-# with Rp as a NamedTuple, the constructor for `ParamObjPikal` will unpack it.
+# Kshf needs to be callable, so we wrap it in ConstPhysProp.
+# Rp needs to be a callable, and the `RpFormFit` struct with fields R0, A1, and A2 does that. 
+# This `as` function uses TransformVariables to create a transform that maps from 4 real 
+# numbers to callable Kshf and Rp, with appropriate scaling.
 
-trans_KRp = as((Kshf = ConstWrapTV() ∘ TVScale(Kshf(0)) ∘ TVExp(),
-                Rp=as((R0 = TVScale(R0) ∘ TVExp(),
+trans_KRp = as((Kshf = as(ConstPhysProp, (TVScale(Kshf(0)) ∘ TVExp(),)),
+                Rp=as(RpFormFit, as((R0 = TVScale(R0) ∘ TVExp(),
                 A1 = TVScale(A1) ∘ TVExp(),
-                A2 = TVScale(A2) ∘ TVExp(),))))
+                A2 = TVScale(A2) ∘ TVExp(),)))))
 ## Or, using a convenience function for the same,
 trans_KRp = KRp_transform_basic(Kshf(0), R0, A1, A2)
 trans_Rp = Rp_transform_basic(R0, A1, A2)

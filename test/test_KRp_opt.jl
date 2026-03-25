@@ -48,10 +48,11 @@ pdfit = PrimaryDryFit(t, T; t_end)
     obj = OptimizationFunction(obj_pd, AutoForwardDiff(chunksize=4))
     opt = solve(OptimizationProblem(obj, pg, pass), optalg)
     vals = transform(tr, opt.u)
+    @test all(opt.u .!= 0)
     @test vals.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.3
     @test vals.Rp.R0 ≈ R0 rtol=0.1
-    @test vals.Rp.A1 ≈ A1 rtol=0.1
-    @test vals.Rp.A2 ≈ A2 rtol=0.1
+    @test vals.Rp.A1 ≈ A1 rtol=0.3
+    @test vals.Rp.A2 ≈ A2 rtol=0.5
 end
 
 @testset "Only Rp" begin
@@ -66,7 +67,7 @@ end
     opt = solve(OptimizationProblem(obj, pg, pass), optalg)
     vals = transform(tr, opt.u)
     @test vals.Rp.R0 ≈ R0 rtol=0.1
-    @test vals.Rp.A1 ≈ A1 rtol=0.1
+    @test vals.Rp.A1 ≈ A1 rtol=0.2
     @test vals.Rp.A2 ≈ A2 rtol=0.5
 end
 

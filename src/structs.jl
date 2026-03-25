@@ -4,6 +4,7 @@
     A1
     A2
 end
+RpFormFit(;R0, A1, A2) = RpFormFit(R0, A1, A2)
 @doc """
 A convenience type for dealing with the common functional form given to Rp and Kv.
 
@@ -267,13 +268,3 @@ function Base.:(==)(p1::PrimaryDryFit, p2::PrimaryDryFit)
     cond6 = ismissing(p1.t_end) ? ismissing(p2.t_end) : (p1.t_end == p2.t_end)
     return all([cond1, cond2, cond3, cond4, cond5, cond6])
 end
-
-# Add a little bit of sugar to our transforms
-struct ConstWrapTV <: TransformVariables.ScalarTransform end
-TransformVariables.transform(::ConstWrapTV, x) = ConstPhysProp(x)
-TransformVariables.inverse(::ConstWrapTV, x) = x.value
-
-# These create method ambiguities with other TransformVariables methods
-# I don't think they were needed, but if so can be brought back with more specificity
-# TransformVariables.transform(t::TVScale{ConstPhysProp}, x) = ConstPhysProp(t.scale.value*x)
-# TransformVariables.inverse(t::TVScale{ConstPhysProp}, x) = x.value/t.scale.value

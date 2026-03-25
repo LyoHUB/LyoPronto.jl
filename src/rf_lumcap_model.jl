@@ -182,11 +182,6 @@ function ParamObjRF(tuptup::Tuple)
 end
 Base.size(po::ParamObjRF) = (6,)
 
-# This constructor catches if Rp is passed as a tuple or NamedTuple and constructs an appropriate object
-function ParamObjRF(Rp::Union{NamedTuple, Tuple}, args...)
-    return ParamObjRF(RpFormFit(Rp...), args...)
-end
-
 function Base.getindex(po::ParamObjRF, i)
     if i == 1
         return (po.Rp, po.hf0, po.csolid, po.ρsolution)

@@ -144,12 +144,6 @@ function ParamObjPikal(tuptup)
     return ParamObjPikal(tuptup[1]..., tuptup[2]..., tuptup[3]...)
 end
 
-# This constructor catches if Rp is passed as a tuple or NamedTuple and constructs an appropriate object
-function ParamObjPikal(Rp::Union{NamedTuple, Tuple},
-    hf0, csolid, ρsolution, Kshf, Av, Ap, pch, Tsh)
-    return ParamObjPikal(RpFormFit(Rp...), hf0, csolid, ρsolution, Kshf, Av, Ap, pch, Tsh)
-end
-
 function Base.getindex(p::ParamObjPikal, i::Int)
     if i == 1
         return (p.Rp, p.hf0, p.csolid, p.ρsolution)
