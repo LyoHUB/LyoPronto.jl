@@ -1,0 +1,27 @@
+user: Anna Huang
+# Lyophilizer: either LyoStar, REVO, or MicroFD
+lyophilizer: MicroFD
+# Vial size and count in the run
+containers:
+  type: SiO2 10mL
+  count: 19
+fill: 3.0 # Fill in mL
+concentration: 0.05 # Solids content, in w/v % (e.g. .05g/mL w
+formulation: Mannitol 5%
+# Controlled ice nucleation
+CIN: true
+# Annealing after freezing
+annealing: true
+# Freeze-thaw cycle only
+freezethaw: false
+# Include RF heating details, as necessary.
+RF: false
+closed loop: false
+# freezethaw:
+comments: ' '
+
+timestamp: 2024-06-06 11:08
+original filenames:
+- C:/OptiDry/Logs/Run Logging/Data-6-4-24-Run-1.csv
+start date: 2024-06-04
+project: SURF
