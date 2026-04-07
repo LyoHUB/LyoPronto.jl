@@ -14,6 +14,7 @@ function shapefac(Bi)
 end
 
 const Bi_samp = 10.0 .^range(-2, 5, length=71)
+# TODO: this line takes 1.5s to precompile, so should move to computing when params are constructed
 const S_samp = shapefac.(Bi_samp)
 const S_interp = LinearInterpolation(S_samp, Bi_samp, extrapolation=ExtrapolationType.Linear)
 
@@ -94,6 +95,7 @@ function lumped_cap_rf!(du, u, params, tn, qret = Val(false))
     mflow = Ap/Rp(h_d)*(calc_psub(T_f) - pch(t)) # g/s
     Q_sub = mflow*ΔHsub # Sublimation
     # Evaluate heat transfer from wall
+    # TODO: precalculate Bi and shape factor in ParamObjRF constructor
     Bi = uconvert(NoUnits, Kvwf*rad/k_dry)
     Q_vwf = 2π*(Kvwf*rad*h_f + k_dry*(hf0-h_f)*S_interp(Bi)) * (T_vw-T_f)
     # Volumetric heating
@@ -133,6 +135,7 @@ end
 # )
 # ```
 
+# TODO: precalculate Bi and shape factor in ParamObjRF constructor
 @concrete terse struct ParamObjRF <: ParamObj
     Rp
     hf0

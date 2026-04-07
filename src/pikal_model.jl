@@ -1,11 +1,11 @@
 
-@doc raw"""
+"""
     end_cond(u, t, integ)
 
 Compute the end condition for primary drying (that `mf` or `hf` approaches zero).
 """
 end_cond(u, t, integ) = u[1] - 1e-10 # When reaches 1e-10, is basically zero
-@doc raw"""
+"""
 A callback for use in simulating either the Pikal or RF model.
 
 Terminates the time integration when [`end_cond`](@ref) evaluates to `true`.
@@ -237,7 +237,7 @@ function dae_Rp!(du, u, p, tn)
     Q = Kshf(pch(t))*Av*(Tsh(t) - Tf)
     Tsub = Tf - Q/Ap/LyoPronto.k_ice * (hf0-hd)
     md = Q/LyoPronto.ΔH
-    Rp = Ap*(calc_psub(Tsub)-pch(t))/md |> u"cm^2*Torr*hr/g"
+    Rp = uconvert(u"cm^2*Torr*hr/g", Ap*(calc_psub(Tsub)-pch(t))/md)
     if Q <= 0.0u"W" || Rp <= 0.0u"m/s" || isnan(Rp)
         du[1] = du[2] = 0.0
         return

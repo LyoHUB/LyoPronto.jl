@@ -107,7 +107,7 @@ function get_vial_shape(vialsize::String)
 end
 
 
-@doc raw"""
+"""
     make_outlines(dims, Vfill)
 
 Return a sequence of points (ready to be made into `Plots.Shape`s for the vial and fill volume, with Unitful dimensions, for given vial dimensions.

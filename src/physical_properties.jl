@@ -90,7 +90,7 @@ const μ_vap = 8.1 * u"μPa*s"
 # -----------------
 # Definitely varying properties
 
-@doc raw"""
+"""
     calc_psub(T) 
     calc_psub(T::Q) where Q<:Quantity
 
@@ -141,6 +141,12 @@ const Cref = [1.175, 1.168, 1.129, 1.088, 1.073, 1.062, 1.056, 1.038, 1.024]
 const B_interp = LinearInterpolation(Bref, Tref, extrapolation=ExtrapolationType.Linear)
 const C_interp = LinearInterpolation(Cref, Tref, extrapolation=ExtrapolationType.Linear)
 
+@doc """
+    ϵppf(T, f)
+
+Compute the dielectric loss of ice as a function of temperature and frequency.
+Expects temperature in Kelvin and frequency in Hz, with Unitful units.
+"""
 function ϵppf(T, f)
     if f == 0u"Hz"
         return 0.0
@@ -152,13 +158,6 @@ function ϵppf(T, f)
     A = (β/(T-T0)) * fr
     return uconvert(NoUnits, A/f) + B_interp(T)*ustrip(u"GHz", f)^C_interp(T)
 end
-@doc """
-    ϵppf(T, f)
-
-Compute the dielectric loss of ice as a function of temperature and frequency.
-Expects temperature in Kelvin and frequency in Hz, with Unitful units.
-"""
-ϵppf
 
 end # module Dielectric
 
