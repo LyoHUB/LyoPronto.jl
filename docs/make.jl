@@ -20,6 +20,7 @@ makedocs(;
         "Example, microwave-assisted lyo" => "generated/fitting_rf_mannitol.md",
         "Other tools" => "generated/utilities.md",
         "Plot recipes" => "generated/all_recipes.md",
+        "Equipment capability estimation" => "eqcap.md",
         "Reference" => "alldocstrings.md",
     ],
     # Don't worry about what `CI` does in this line.
