@@ -16,6 +16,7 @@ using TypedTables
 using PrecompileTools
 using SpecialFunctions: besselj0, besselj1
 using DataInterpolations
+using Interpolations: interpolate, Gridded, Linear
 using SavitzkyGolay
 using Roots
 using Accessors
@@ -40,6 +41,7 @@ include("recipes.jl")
 include("cycle_time.jl")
 include("get_vial_dims.jl")
 include("physical_properties.jl")
+include("eq_cap_ECCURT.jl")
 
 # Exports, all in one place
 # convenience structs
@@ -65,6 +67,7 @@ export qrf_integrate
 export identify_pd_end
 # Vial dimensions
 export get_vial_radii, get_vial_mass, get_vial_shape, make_outlines
+export ECCURT
 
 
 # include("precompilation.jl")
