@@ -59,6 +59,12 @@ function (line::ECLine)(p)
     return line.k * p + line.b
 end
 
+# TODO: consider whether evaluating at points 3 and 4 along mass flow sample is actually the best
+# We're throwing out half of the data!
+# Possibly we can come up with a little bit better interpolation by doing interpolation 
+# directly on the pressures from CFD at all four mass fluxes,  then
+# doing a hard-coded regression to get slope and intercept
+
 # Original MATLAB code: 
 # for i=1:27
 #     A(i).k = (m_dot(3)-m_dot(4))/(Pch(i).f(3)-Pch(i).f(4));
