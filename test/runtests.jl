@@ -41,6 +41,18 @@ end
     @test P_per_vial(Inf*u"minute") == 10u"W"
 end
 
+@testset "ECCURT translation" begin
+    m_test = [0.1, 0.3, 0.5, 0.8]
+    D_t = 120
+    vth_t = 50
+    L_t = 300
+    V_t = 0.092
+    new_p = ECCURT.eq_cap_pressure.(m_test, D_t, vth_t, L_t, V_t)
+    validate_p = [45.6, 93.1, 140.5, 211.7]
+    @test all(isapprox.(new_p, validate_p, atol=1.0))
+
+    @test_warn "extrap" ECCURT.eq_cap_pressure(0.1, 120, 50, 30, 0.492)
+end
 
 @testset "PrimaryDryFit: API for construction" begin
     t1 = collect(range(0.0u"hr", 10.0u"hr", length=5))
