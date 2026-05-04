@@ -4,7 +4,7 @@ using Unitful: ustrip, @u_str, Quantity
 using DocStringExtensions
 using Interpolations: interpolate, Gridded, Linear, extrapolate, Line
 
-public eq_cap_pressure, eq_cap_line
+VERSION >= v"1.11" && eval(Meta.parse("public eq_cap_pressure, eq_cap_line"))
 
 const M_DOT = [0.1291, 0.4644, 0.7776, 1.1772]
 
@@ -62,8 +62,8 @@ end
 # TODO: consider whether evaluating at points 3 and 4 along mass flow sample is actually the best
 # We're throwing out half of the data!
 # Possibly we can come up with a little bit better interpolation by doing interpolation 
-# directly on the pressures from CFD at all four mass fluxes,  then
-# doing a hard-coded regression to get slope and intercept
+# directly on the pressures from CFD at all four mass fluxes, then
+# doing a hard-coded regression to get slope and intercept from four data points
 
 # Original MATLAB code: 
 # for i=1:27
