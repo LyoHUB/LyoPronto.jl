@@ -4,7 +4,7 @@ using Unitful: ustrip, @u_str, Quantity
 using DocStringExtensions
 using Interpolations: interpolate, Gridded, Linear, extrapolate, Line
 
-VERSION >= v"1.11" && eval(Meta.parse("public eq_cap_pressure, eq_cap_line"))
+VERSION >= v"1.11" && eval(Meta.parse("public eq_cap_pressure, eq_cap_line, eq_cap_line_new"))
 
 const M_DOT = [0.1291, 0.4644, 0.7776, 1.1772]
 
@@ -59,18 +59,13 @@ function (line::ECLine)(p)
     return line.k * p + line.b
 end
 
-# TODO: consider whether evaluating at points 3 and 4 along mass flow sample is actually the best
-# We're throwing out half of the data!
-# Possibly we can come up with a little bit better interpolation by doing interpolation 
-# directly on the pressures from CFD at all four mass fluxes, then
-# doing a hard-coded regression to get slope and intercept from four data points
 
 # Original MATLAB code: 
 # for i=1:27
 #     A(i).k = (m_dot(3)-m_dot(4))/(Pch(i).f(3)-Pch(i).f(4));
 #     A(i).b = m_dot(3)-A(i).k*Pch(i).f(3);
 # end
-# Dimensions here: d, da, l?
+# Dimensions here: d, da, l
 const Ak = [(M_DOT[3] - M_DOT[4])/(PCH[3,1,i,j,k] - PCH[4,1,i,j,k]) for i in axes(PCH,3), j in axes(PCH,4), k in axes(PCH, 5)]
 const Ab = [M_DOT[3] - Ak[i,j,k]*PCH[3,1,i,j,k] for i in axes(PCH,3), j in axes(PCH,4), k in axes(PCH, 5)]
 
@@ -78,7 +73,7 @@ const Ab = [M_DOT[3] - Ak[i,j,k]*PCH[3,1,i,j,k] for i in axes(PCH,3), j in axes(
 #     A(i+27).k = (m_dot(3)-m_dot(4))/(Pch(i).g(3)-Pch(i).g(4));
 #     A(i+27).b = m_dot(3)-A(i+27).k*Pch(i).g(3);
 # end
-# Dimensions here: d, da, l?
+# Dimensions here: d, da, l
 const Bk = [(M_DOT[3] - M_DOT[4])/(PCH[3,2,i,j,k] - PCH[4,2,i,j,k]) for i in axes(PCH,3), j in axes(PCH,4), k in axes(PCH, 5)]
 const Bb = [M_DOT[3] - Bk[i,j,k]*PCH[3,2,i,j,k] for i in axes(PCH,3), j in axes(PCH,4), k in axes(PCH, 5)]
 
@@ -137,6 +132,73 @@ then evaluate that line with mass flow rate `m` in kg/hr to get minimum controll
 function eq_cap_pressure(m, D, valve_thickness, L, volume)
     line = eq_cap_line(D, valve_thickness, L, volume)
     return (m - line.b) / line.k
+end
+
+# ------------------------------------------------
+# This original interpolation was throwing out half of the data!
+# Here instead, we interpolate on the pressures directly, then
+# do a hard-coded regression to get slope and intercept from the four data points
+
+# Order of dimensions: v, d, da, l
+# const PCH_vecs = [PCH[:,i,j,k,l] for i in axes(PCH,2), j in axes(PCH,3), k in axes(PCH,4), l in reverse(axes(PCH,5))]
+# const pch_interp = interpolate((VOLUME_SAMPLE, D_SAMPLE, DA_SAMPLE, L_SAMPLE), PCH_reorder, Gridded(Linear()))
+
+# Dimensions: [[v, d, da, l], md]
+const PCH_sep = [[PCH[ii,i,j,k,l] for i in axes(PCH,2), j in axes(PCH,3), k in axes(PCH,4), l in reverse(axes(PCH,5))] for ii in axes(PCH,1)]
+# A vector of four interpolators, since Interpolations.jl doesn't do interpolation of vectors itself
+const pch_sep_interp = [extrapolate(interpolate((VOLUME_SAMPLE, D_SAMPLE, DA_SAMPLE, L_SAMPLE), PCH_sep[ii], Gridded(Linear())), Line()) for ii in axes(PCH_sep,1)]
+
+"""
+    $(SIGNATURES)
+
+Compute the pressures at the four mass flow rate sample points for given geometry parameters.
+The resulting vector is in the same order as `M_DOT`, and has units of mTorr
+(explicitly with Unitful, if given `Unitful.Quantity` inputs)
+"""
+function eq_cap_pressures_new(d, vt, l, volume)
+    if ~(D_SAMPLE[1] <= d <= D_SAMPLE[end]) || ~(DA_SAMPLE[1] <= d/vt <= DA_SAMPLE[end]) || ~(L_SAMPLE[1] <= l <= L_SAMPLE[end]) || ~(VOLUME_SAMPLE[1] <= volume <= VOLUME_SAMPLE[end])
+        @warn "Input geometry parameters are outside the range of the original data, so extrapolation is being used. Results may be inaccurate."
+    end
+    pch = [pch_sep_interp[ii](volume, d, d/vt, l) for ii in axes(PCH_sep,1)]
+end
+function eq_cap_pressures_new(d::Quantity, vt::Quantity, l::Quantity, volume::Quantity)
+    p_ndim = eq_cap_pressures_new(ustrip(u"mm", d), ustrip(u"mm", vt), 
+        ustrip(u"mm", l), ustrip(u"m^3", volume))
+    return p_ndim .* u"mTorr"
+end
+
+const n_md = length(M_DOT)
+const sum_md = sum(M_DOT)
+
+"""
+    $(SIGNATURES)
+
+Compute the equipment capability line for given geometry parameters using interpolation on 
+the pressures at the four mass flow rate sample points.
+
+That line can be evaluated at pressure `p`, as a float in mTorr or with Unitful pressure 
+to get the corresponding mass flow rate in kg/hr.
+To invert a resulting `line`, access its slope with `line.k` (in kg/hr/mTorr) and its intercept with
+`line.b` (in kg/hr).
+"""
+function eq_cap_line_new(d, vt, l, volume)
+    pch = eq_cap_pressures_new(d, vt, l, volume)
+
+    spch = sum(pch)
+    regress_denom = n_md*sum(pch.^2) - spch^2 
+    # Linear regression to get slope and intercept from four data points
+    knum = n_md*sum(M_DOT .* pch) - sum_md*sum(pch)
+    k = knum / regress_denom
+    bnum = sum(pch.^2)*sum_md - spch*sum(M_DOT .* pch)
+    b = bnum / regress_denom
+    return ECLine(k, b)
+end
+function eq_cap_line_new(d::Quantity, vt::Quantity, l::Quantity, volume::Quantity)
+    ndim = eq_cap_line_new(ustrip(u"mm", d), ustrip(u"mm", vt), 
+        ustrip(u"mm", l), ustrip(u"m^3", volume))
+    @reset ndim.k *= u"kg/hr/mTorr"
+    @reset ndim.b *= u"kg/hr"
+    return ndim
 end
 
 
