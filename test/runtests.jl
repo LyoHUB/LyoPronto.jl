@@ -84,7 +84,6 @@ end
             # A few points have worse error: give those higher tolerance by hand
             # Those points could be investigated more closely in future
             atol = (i,j,k,l) ∈ [(3,1,2,1), (3,3,1,1), (3,1,1,1)] ? .025 : .007
-            @info "check line" i j k l
             for (m, pch) in zip(ECCURT.M_DOT, ECCURT.PCH[:,k,i,j,l])
                 @test newline(pch) ≈ m atol=atol # tolerance in kg/hr
             end
