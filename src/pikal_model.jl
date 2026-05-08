@@ -192,7 +192,7 @@ function ODEProblem(po::ParamObjPikal; u0=calc_u0(po), tspan=(0.0, 1000.0))
     t0 = get_t0(po)
     @reset tspan[1] = t0 
     return ODEProblem(lyo_1d_dae_f, u0, tspan, po; 
-        tstops = tstops, callback=end_drying_callback)
+        tstops = tstops, callback=end_drying_callback, initializealg=BrownFullBasicInit())
 end
 
 # -----------------
@@ -273,7 +273,7 @@ end
 
 ODEProblem(::RpEstimator{true}) = error("Cannot create ODEProblem for multiple Tf at once. Index into the RpEstimator to choose a Tf series.")
 function ODEProblem(re::RpEstimator{false}; u0=[0.0,0], tspan=(get_t0(re), ustrip(u"hr", re.Tf_interp.t[end])))
-    return ODEProblem(dae_Rpf, u0, tspan, re; tstops=ustrip.(u"hr", re.Tf_interp.t))
+    return ODEProblem(dae_Rpf, u0, tspan, re; tstops=ustrip.(u"hr", re.Tf_interp.t), initializealg=BrownFullBasicInit())
 end
 
 function calc_hRp_T(po::ParamObjPikal, pdf::PrimaryDryFit; i=nothing)
