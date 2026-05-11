@@ -72,7 +72,7 @@ This small function runs
 ```
 fitprm = transform(tr, fitlog)
 new_params = setproperties(po, fitprm)
-!isnothing(badprms) && badprms(new_params) && return NaN
+!isnothing(badprms) && badprms(new_params) && return Val(NaN)
 prob = ODEProblem(new_params; tspan=(0.0, 1000.0))
 sol = solve(prob, Rodas4(autodiff=AutoForwardDiff(chunksize=2)); saveat, kwargs...)
 ```
@@ -89,7 +89,7 @@ Other `kwargs` are passed directly (as is) to the ODE `solve` call.
 function gen_sol_pd(fitlog, tr, po; saveat=[], badprms=nothing, kwargs...)
     fitprm = transform(tr, fitlog)
     prms = setproperties(po, fitprm)
-    !isnothing(badprms) && badprms(prms) && return NaN
+    !isnothing(badprms) && badprms(prms) && return Val(NaN)
     prob = ODEProblem(prms; tspan=(0.0, 1000.0))
     sol = solve(prob, odealg_chunk2; saveat, kwargs...)
     return sol
@@ -135,7 +135,7 @@ function gen_nsol_pd(fitlog, tr, pos; saveats=fill([], length(pos)), badprms=not
         error("Length of transformed variable and pos do not match.")
     end
     if !isnothing(badprms) && any([badprms(p) for p in prms])
-       return NaN 
+       return Val(NaN) 
     end
     sols = map(prms, saveats) do prm, saveat
         prob = ODEProblem(prm; tspan=(0.0, 1000.0))
@@ -282,6 +282,7 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit;
     return ustrip(u"K^2", Tfobj + Tvw_weight*Tvwobj) + tweight*ustrip(u"hr^2", tobj)
 end
 
+obj_expT(sol::Val{NaN}, pdfit; kwargs...) = NaN
 function obj_expT(sol, pdfit; verbose=false, kwargs...) 
     verbose && @warn "`obj_expT` got passed improper args. Might not be a problem, but check." sol
     # In some cases, inputs are so bad it's not worth an ODE solve, so this method
@@ -291,6 +292,7 @@ function obj_expT(sol, pdfit; verbose=false, kwargs...)
     end
     error("Improper call to `obj_expT`.")
 end
+
 
 """
     $(SIGNATURES)
@@ -439,7 +441,7 @@ $errexpT_doc
 function err_expT(sol, pdfit; tweight=1, verbose = false)
     if sol.retcode !== ReturnCode.Terminated || length(sol.u) <= 1
         verbose && @info "ODE solve failed or incomplete, probably." sol.retcode sol[1, :]
-        return NaN
+        return [NaN]
     end
     tmd = sol.t[end].*u"hr"
     nt = length(sol.t) - 1
