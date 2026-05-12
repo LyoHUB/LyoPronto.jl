@@ -17,7 +17,7 @@ LyoPronto = {path = ".."}
 [compat]
 Aqua = "0.8"
 LineSearches = "7.3"
-NonlinearSolve = "4.9"
+NonlinearSolve = "4.9 - 4.16"
 OptimizationOptimJL = "0.4.6"
 Test = "1"
 TypedTables = "1"
