@@ -11,13 +11,12 @@ TransformVariables = "84d833dd-6860-57f9-a1a7-6da5db126cff"
 TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
-[sources]
-LyoPronto = {path = ".."}
-
 [compat]
 Aqua = "0.8"
 LineSearches = "7.3"
-NonlinearSolve = "4.9"
 OptimizationOptimJL = "0.4.6"
 Test = "1"
 TypedTables = "1"
+
+[sources.LyoPronto]
+path = ".."

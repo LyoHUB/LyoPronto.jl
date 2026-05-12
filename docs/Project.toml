@@ -17,7 +17,6 @@ TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 
 [compat]
 Plots = "1.41"
-NonlinearSolve = "4.9"
 OptimizationOptimJL = "0.4.6"
 
 [sources]
