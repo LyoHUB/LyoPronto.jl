@@ -25,6 +25,10 @@ TransformVariables = "84d833dd-6860-57f9-a1a7-6da5db126cff"
 TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
+[extras] 
+NonlinearSolve = "8913a72c-1f9b-4ce2-8d82-65094dcecaec"
+NonlinearSolveBase = "be0214bd-f91f-a760-ac4e-3421ce2b2da0"
+
 [compat]
 ADTypes = "1.14"
 Accessors = "0.1"
@@ -35,6 +39,8 @@ DataInterpolations = "7.2, 8"
 DiffEqCallbacks = "3, 4"
 DocStringExtensions = "0.9"
 LinearAlgebra = "1"
+NonlinearSolve = "4.9 - 4.16"
+NonlinearSolveBase = "2 - 2.19"
 OrdinaryDiffEqNonlinearSolve = "1"
 OrdinaryDiffEqRosenbrock = "1"
 PrecompileTools = "1"
