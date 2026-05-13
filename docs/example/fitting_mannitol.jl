@@ -203,7 +203,9 @@ optalg = LBFGS(linesearch=LineSearches.BackTracking())
 # looks at a [`PrimaryDryFit`](@ref LyoPronto.PrimaryDryFit) and counts the number of data 
 # points that can be used by `obj_pd` or `nls_pd!`.
 
-nls_eqs = NonlinearFunction{true}(nls_pd!, resid_prototype=zeros(num_errs(fitdat_all)))
+## nls_eqs = NonlinearFunction{true}(nls_pd!, resid_prototype=zeros(num_errs(fitdat_all)))
+## LyoPronto provides a shorthand for this:
+nls_eqs = NonlinearFunction(fitdat_all)
 ## After that, problem setup looks similar to the optimization approach
 nlsprob = NonlinearLeastSquaresProblem(nls_eqs, pg, pass)
 @time nls = solve(nlsprob, LevenbergMarquardt())
