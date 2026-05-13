@@ -3,6 +3,7 @@ module LyoPronto
 using Reexport
 @reexport using OrdinaryDiffEqRosenbrock
 import OrdinaryDiffEqRosenbrock: ODEProblem
+import NonlinearSolve: NonlinearFunction
 @reexport using OrdinaryDiffEqNonlinearSolve
 @reexport using DiffEqCallbacks
 @reexport using Unitful: @u_str, ustrip, uconvert, NoUnits

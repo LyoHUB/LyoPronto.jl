@@ -184,6 +184,12 @@ function nls_pd(fitlog, tpf; tweight=1.0, verbose=false)
     return err_expT(sol, tpf[3]; tweight, verbose)
 end
 
+# Prepare a fitting nonlinear function with some sensible defaults
+function NonlinearFunction(fitdat::PrimaryDryFit)
+    NonlinearFunction{true, SciMLBase.FullSpecialize}(nls_pd!, 
+        resid_prototype=zeros(num_errs(fitdat)))
+end
+
 """
     $(SIGNATURES)
 
