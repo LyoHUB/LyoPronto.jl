@@ -180,7 +180,7 @@ trans_KBB = KBB_transform_bounded(Kvwf, Bf, Bvw)
 ## Create nonlinear least-squares function
 ## nls_M1 = NonlinearFunction{true, SciMLBase.FullSpecialize}(nls_pd!, resid_prototype=zeros(num_errs(fitdat)))
 ## LyoPronto provides a shorthand for this:
-nls_eqs = NonlinearFunction(fitdat_all)
+nls_eqs = NonlinearFunction(fitdat)
 ## Guess values for fit parameters, in log space
 ## In practice, these often need tinkering with
 p0 = [3.0, 3.0, 0.3]
