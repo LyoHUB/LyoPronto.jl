@@ -135,7 +135,7 @@ function gen_nsol_pd(fitlog, tr, pos; saveats=fill([], length(pos)), badprms=not
         error("Length of transformed variable and pos do not match.")
     end
     if !isnothing(badprms) && any([badprms(p) for p in prms])
-       return Val(NaN) 
+       return fill(Val(NaN), length(prms))
     end
     sols = map(prms, saveats) do prm, saveat
         prob = ODEProblem(prm; tspan=(0.0, 1000.0))
