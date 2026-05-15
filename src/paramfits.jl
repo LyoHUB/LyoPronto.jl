@@ -185,10 +185,17 @@ function nls_pd(fitlog, tpf; tweight=1.0, verbose=false)
 end
 
 # Prepare a fitting nonlinear function with some sensible defaults
-function NonlinearFunction(fitdat::PrimaryDryFit)
-    NonlinearFunction{true, SciMLBase.FullSpecialize}(nls_pd!, 
-        resid_prototype=zeros(num_errs(fitdat)))
+function NonlinearFunction(fitdat::PrimaryDryFit; tweight=1.0, verbose=false)
+    if tweight == 1.0 && verbose == false
+        NonlinearFunction{true, SciMLBase.FullSpecialize}(nls_pd!, 
+            resid_prototype=zeros(num_errs(fitdat)))
+    else
+        f = (e, f, tpf) -> nls_pd!(e, f, tpf; tweight, verbose)
+        NonlinearFunction{true, SciMLBase.FullSpecialize}(f,
+            resid_prototype=zeros(num_errs(fitdat)))
+    end
 end
+
 
 """
     $(SIGNATURES)
