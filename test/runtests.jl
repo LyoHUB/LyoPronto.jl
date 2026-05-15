@@ -1,6 +1,7 @@
 using LyoPronto
 using Test
 using Unitful: DimensionError
+using Accessors
 
 # Run test suite
 println("Starting tests")

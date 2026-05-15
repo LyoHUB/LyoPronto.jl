@@ -69,6 +69,14 @@ end
     @test vals.Rp.R0 ≈ R0 rtol=0.1
     @test vals.Rp.A1 ≈ A1 rtol=0.2
     @test vals.Rp.A2 ≈ A2 rtol=0.5
+
+    # Check that the badprms path outputs NaNs as expected
+    badprms = x->true
+    @test isnan(obj_pd(pg, pass; badprms))
+
+    # Check that it also works if given a specific condition
+    badprms = x->x.Kshf(pch(0)) < 100u"W/m^2/K" 
+    @test isnan(obj_pd(pg, pass; badprms))
 end
 
 
@@ -86,3 +94,48 @@ end
     @test vals.Rp.A1 ≈ A1 rtol=0.1
     @test vals.Rp.A2 ≈ A2 rtol=0.3
 end
+
+po2 = @set po.Rp = RpFormFit(2u"cm^2*Torr*hr/g", 5u"cm*Torr*hr/g", 0.0u"cm^-1")
+po3 = @set po.Rp = RpFormFit(0.5u"cm^2*Torr*hr/g", 20u"cm*Torr*hr/g", 0.0u"cm^-1")
+
+pos = [po, po2, po3]
+pdfits = map(pos) do poi
+    base_sol = solve(ODEProblem(poi), LyoPronto.odealg_chunk2)
+    t = base_sol.t*u"hr"
+    T = base_sol[2,:]*u"K"
+    t_end = t[end]
+    pdfit = PrimaryDryFit(t, T; t_end)
+end
+
+
+@testset "Fit with shared Kv, distinct Rp" begin
+    new_trans = as((; 
+        shared = K_transform_basic(Kshf(pch(0))*0.75),
+        separate = Rp_transform_basic(R0*0.75, A1*2, A2*0.5)
+    ))
+
+    pg = fill(0.0, TransformVariables.dimension(new_trans))
+    sols = @inferred gen_nsol_pd(pg, new_trans, pos)
+    @testset "Different solution" for sol in sols
+        sol != base_sol
+    end
+    pass = (new_trans, pos, pdfits)
+    err = @inferred objn_pd(pg, pass)
+    obj = OptimizationFunction(objn_pd, AutoForwardDiff(chunksize=5)) # Length of 10: divide it nicely
+    opt = solve(OptimizationProblem(obj, pg, pass), optalg)
+    vals = transform(tr, opt.u)
+    @test vals.shared.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.1
+    for (poi, sepi) in zip(pos, vals.separate)
+        @test sepi.Rp.R0 ≈ poi.Rp.R0 rtol=0.1
+        @test sepi.Rp.A1 ≈ poi.Rp.A1 rtol=0.1
+        @test sepi.Rp.A2 ≈ poi.Rp.A2 atol=0.3
+    end
+
+    # Check that the badprms path outputs NaNs as expected
+    badprms = x->true
+    @test isnan(objn_pd(pg, pass; badprms))
+
+    badprms = x->x.Kshf(pch(0)) < 100u"W/m^2/K" 
+    @test isnan(obj_pd(pg, pass; badprms))
+end
+
