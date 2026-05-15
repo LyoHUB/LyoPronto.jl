@@ -148,12 +148,3 @@ end
     badprms = x->x.Kshf(pch(0)) < 100u"W/m^2/K" 
     @test all(isnan.(objn_pd(pg, pass; badprms)))
 end
-
-
-objn_pd(pg, pass)
-objn_pd(exact, pass)
-objn_pd(opt.u, pass)
-
-pdfits[1]
-checks = gen_nsol_pd(exact, big_trans, pos)
-checks[1].prob.p
