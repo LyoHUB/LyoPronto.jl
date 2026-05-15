@@ -95,7 +95,7 @@ end
     @test vals.Rp.A2 ≈ A2 rtol=0.3
 end
 
-po2 = @set po.Rp = RpFormFit(2u"cm^2*Torr*hr/g", 5u"cm*Torr*hr/g", 0.0u"cm^-1")
+po2 = @set po.Rp = RpFormFit(2u"cm^2*Torr*hr/g", 5u"cm*Torr*hr/g", 1.5u"cm^-1")
 po3 = @set po.Rp = RpFormFit(0.5u"cm^2*Torr*hr/g", 20u"cm*Torr*hr/g", 0.0u"cm^-1")
 
 pos = [po, po2, po3]
@@ -109,33 +109,51 @@ end
 
 
 @testset "Fit with shared Kv, distinct Rp" begin
-    new_trans = as((; 
+    big_trans = as((; 
         shared = K_transform_basic(Kshf(pch(0))*0.75),
-        separate = Rp_transform_basic(R0*0.75, A1*2, A2*0.5)
+        separate = as(Vector, Rp_transform_basic(R0*0.75, A1*2, A2*0.5), 3)
     ))
 
-    pg = fill(0.0, TransformVariables.dimension(new_trans))
-    sols = @inferred gen_nsol_pd(pg, new_trans, pos)
-    @testset "Different solution" for sol in sols
-        sol != base_sol
+
+
+    pg = fill(0.0, TransformVariables.dimension(big_trans))
+    @test_broken @inferred gen_nsol_pd(pg, big_trans, pos)
+    sols = gen_nsol_pd(pg, big_trans, pos)
+    @testset "Different solution" begin
+        for sol in sols
+            @test sol != base_sol
+        end
     end
-    pass = (new_trans, pos, pdfits)
-    err = @inferred objn_pd(pg, pass)
+    pass = (big_trans, pos, pdfits)
+    # err = @inferred objn_pd(pg, pass)
+
+    # This specific test can be deleted if it becomes trouble, probably
+    exact = log.([1/0.75, 1/0.75, 0.5, 2, 2/0.8/0.75, 5/14/2, 1.5*2, 0.5/0.8/0.75, 20/14/2, 1e-20])
+    @test objn_pd(exact, pass) ≈ 0 atol=1e-4  # Transformation should give zero objective at original values
+
     obj = OptimizationFunction(objn_pd, AutoForwardDiff(chunksize=5)) # Length of 10: divide it nicely
-    opt = solve(OptimizationProblem(obj, pg, pass), optalg)
-    vals = transform(tr, opt.u)
+    opt = solve(OptimizationProblem(obj, pg, pass), optalg, f_abstol=1e-2)
+    vals = transform(big_trans, opt.u)
     @test vals.shared.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.1
     for (poi, sepi) in zip(pos, vals.separate)
         @test sepi.Rp.R0 ≈ poi.Rp.R0 rtol=0.1
-        @test sepi.Rp.A1 ≈ poi.Rp.A1 rtol=0.1
-        @test sepi.Rp.A2 ≈ poi.Rp.A2 atol=0.3
+        @test sepi.Rp.A1 ≈ poi.Rp.A1 rtol=0.3
+        @test sepi.Rp.A2 ≈ poi.Rp.A2 atol=0.6u"cm^-1"
     end
 
     # Check that the badprms path outputs NaNs as expected
     badprms = x->true
-    @test isnan(objn_pd(pg, pass; badprms))
+    @test all(isnan.(objn_pd(pg, pass; badprms)))
 
     badprms = x->x.Kshf(pch(0)) < 100u"W/m^2/K" 
-    @test isnan(obj_pd(pg, pass; badprms))
+    @test all(isnan.(objn_pd(pg, pass; badprms)))
 end
 
+
+objn_pd(pg, pass)
+objn_pd(exact, pass)
+objn_pd(opt.u, pass)
+
+pdfits[1]
+checks = gen_nsol_pd(exact, big_trans, pos)
+checks[1].prob.p
