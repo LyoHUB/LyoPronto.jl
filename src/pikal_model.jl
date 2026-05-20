@@ -38,11 +38,12 @@ function calc_md_Q(u, po, t)
     td = t*u"hr" # Dimensional time
     hf = u[1]*u"cm"
     Tf = u[2]*u"K"
-    if Tf < 0.0u"K" # Unphysical temperature needs an escape hatch
+    hd = hf0 - hf
+    # escape hatch: unphysical temperatures or Rp too small can cause DAE convergence failure
+    if Tf < 0.0u"K" || Rp(hd) < 1e-4u"hr*cm^2*Torr/g"
         return NaN*u"kg/s", NaN*u"W"
     end
 
-    hd = hf0 - hf
     pchl = pch(td)
     Qshf = Av*Kshf(pchl)*(Tsh(td) - Tf)
     Tsub = Tf - Qshf/k_ice/Ap*hf
