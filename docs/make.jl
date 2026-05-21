@@ -2,6 +2,7 @@ CI = get(ENV, "CI", nothing) == "true" || get(ENV, "GITHUB_TOKEN", nothing) !== 
 using LyoPronto
 using Documenter
 using Literate
+ENV["GKSwstype"] = 100
 
 @info "Using Literate to generate examples"
 for file in ["fitting_mannitol.jl", "fitting_rf_mannitol.jl", "all_recipes.jl", "utilities.jl"]
@@ -20,6 +21,7 @@ makedocs(;
         "Example, microwave-assisted lyo" => "generated/fitting_rf_mannitol.md",
         "Other tools" => "generated/utilities.md",
         "Plot recipes" => "generated/all_recipes.md",
+        "Equipment capability estimation" => "eqcap.md",
         "Reference" => "alldocstrings.md",
     ],
     # Don't worry about what `CI` does in this line.

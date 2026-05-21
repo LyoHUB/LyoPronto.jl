@@ -1,7 +1,7 @@
 using LyoPronto
 using Test
-using Unitful: DimensionError
 using Accessors
+using Unitful: DimensionError, Mass, Time
 
 # Run test suite
 println("Starting tests")
@@ -42,6 +42,71 @@ end
     @test P_per_vial(Inf*u"minute") == 10u"W"
 end
 
+@testset "ECCURT translation" begin
+    m_test = [0.1, 0.3, 0.5, 0.8]
+    D_t = 120
+    vth_t = 50
+    L_t = 300
+    V_t = 0.092
+    new_p = ECCURT.eq_cap_pressure.(m_test, D_t, vth_t, L_t, V_t)
+    validate_p = [45.6, 93.1, 140.5, 211.7]
+    @test all(isapprox.(new_p, validate_p, atol=1.0))
+
+    @test_warn "extrap" ECCURT.eq_cap_pressure(0.1, 120, 50, 30, 0.492)
+
+    m_t = m_test*u"kg/hr"
+    D_t = D_t*u"mm"
+    vth_t = vth_t*u"mm"
+    L_t = L_t*u"mm"
+    V_t = V_t*u"m^3"
+    new_p_q = ECCURT.eq_cap_pressure.(m_t, D_t, vth_t, L_t, V_t)
+    @test all(isapprox.(new_p_q, validate_p*u"mTorr", atol=1.0u"mTorr"))
+    @test_warn "extrap" ECCURT.eq_cap_pressure.(m_t, D_t, vth_t, L_t, 10*V_t)
+
+    # Check that interpolation on Pch is giving back the original values
+    @testset "Pch interpolation consistency" begin 
+        for (i, d) in enumerate(ECCURT.D_SAMPLE), (j, da) in enumerate(ECCURT.DA_SAMPLE), (k, v) in enumerate(ECCURT.VOLUME_SAMPLE), (l, l_val) in enumerate(reverse(ECCURT.L_SAMPLE))
+            vt = d/da
+            pressures = ECCURT.eq_cap_pressures_new(d, vt, l_val, v)
+            @test pressures ≈ ECCURT.PCH[:,k,i,j,l] atol=0.1 # tolerance in mTorr
+        end
+    end
+
+    # Evaluate the error in the constructed lines against the original data points
+    @testset "Line construction consistency" begin
+        olderrs = 0.0
+        newerrs = 0.0
+        worse_points = 0
+        total_points = length(ECCURT.PCH)
+        for (i, d) in enumerate(ECCURT.D_SAMPLE), (j, da) in enumerate(ECCURT.DA_SAMPLE), (k, v) in enumerate(ECCURT.VOLUME_SAMPLE), (l, l_val) in enumerate(reverse(ECCURT.L_SAMPLE))
+            vt = d/da
+            newline = ECCURT.eq_cap_line_new(d, vt, l_val, v)
+            # A few points have worse error: give those higher tolerance by hand
+            # Those points could be investigated more closely in future
+            atol = (i,j,k,l) ∈ [(3,1,2,1), (3,3,1,1), (3,1,1,1)] ? .025 : .007
+            for (m, pch) in zip(ECCURT.M_DOT, ECCURT.PCH[:,k,i,j,l])
+                @test newline(pch) ≈ m atol=atol # tolerance in kg/hr
+            end
+
+            oldline = ECCURT.eq_cap_line(d, vt, l_val, v)
+            # Check that the new line is usually closer to the original data points than the old line
+            for (jj, m, pch) in zip(1:4, ECCURT.M_DOT, ECCURT.PCH[:,k,i,j,l])
+                newerr = abs(newline(pch) - m)
+                olderr = abs(oldline(pch) - m)
+                worse_points += (olderr < newerr) && jj ∈ (1,2)
+                olderrs += olderr^2
+                newerrs += newerr^2
+            end
+        end
+        # The new line should have lower overall error than the old line, even with a few points that are worse
+        @test newerrs < olderrs
+        # 1/2 of the points were exactly matched with the old line; of the remaining, most (e.g. 75%) should be better
+        @test worse_points/(total_points/2) <= 0.25 # 
+    end
+
+
+
+end
 
 @testset "PrimaryDryFit: API for construction" begin
     t1 = collect(range(0.0u"hr", 10.0u"hr", length=5))
