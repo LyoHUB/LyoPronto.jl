@@ -15,7 +15,7 @@
         y := [Inf]
     end
     # add a series for the line, if it's not turned off
-    if haskey(plotattributes, :linewidth) && plotattributes[:linewidth] > 0
+    if haskey(plotattributes, :linewidth) && plotattributes[:linewidth] != :auto && plotattributes[:linewidth] > 0
         @series begin
             primary := false # no legend entry
             markershape := :none # ensure no markers
