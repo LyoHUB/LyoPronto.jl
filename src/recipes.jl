@@ -36,39 +36,37 @@
     end
 end
 
-# TODO: these docs should be updated to have a more sensible API which allows turning off lines or markers
-# Also, nmarks=0 should not be all points: maybe NaN or Inf are better sentinels for that case.
 const nmarks_doc = """
 `nmarks` is an integer, indicating how many points to plot with markers, so that the number
-of markers is reasonable even with many data points. To plot all points (default), pass `nmarks=0`.
+of markers is reasonable even with many data points. To plot all points (default), pass `nmarks=Inf`.
 
 """
-const sampmarks_marker_doc = """
-`sampmarks=false` (default) will only show markers at selected points, while `sampmarks=true` will put a line through all points.
+const showline_doc = """
+This recipe defaults to showing data points without a line, but a line can be added by passing `showline=true` or specifying a `linewidth` (or `lw`).
 
 """
-const sampmarks_line_doc = """
-`sampmarks=false` (default) will only put a line through all points, while `sampmarks=true` will show markers at selected points.
+const showmarks_doc = """
+This recipe defaults to showing a line with no markers, but a line can be added by passing `showmarks=true` or specifying a `markershape` (or `ms`).
 
 """
 
 """
-    exptfplot(time, T1, [T2, ...]; nmarks=0, labsuffix=", exp.")
-    exptfplot!(time, T1, [T2, ...]; nmarks=0, labsuffix=", exp.")
+    exptfplot(time, T1, [T2, ...]; nmarks=Inf, showline=false, labsuffix=", exp.")
+    exptfplot!(time, T1, [T2, ...]; nmarks=Inf, showline=false, labsuffix=", exp.")
 
 Plot recipe for one or more experimentally measured product temperatures, all at same times.
 This recipe adds one series for each passed temperature series, with labels defaulting to `"T_{fi}"*labsuffix`.
 
 $nmarks_doc 
-$sampmarks_marker_doc
+$showline_doc
 """ 
 exptfplot
 @doc (@doc exptfplot) exptfplot!
 
 @userplot ExpTfPlot
-@recipe function f(tpe::ExpTfPlot; nmarks=0, sampmarks=false, labsuffix = ", exp.")
+@recipe function f(tpe::ExpTfPlot; nmarks=Inf, showline=false, labsuffix = ", exp.")
     time, Ts... = tpe.args
-    step = (nmarks == 0) ? 1 : (maximum([length(T) for T in Ts]) ÷ nmarks) 
+    step = (nmarks == Inf) ? 1 : (maximum([length(T) for T in Ts]) ÷ nmarks) 
     n = size(Ts, 1)
     # pal = palette(:Blues_5,)[end:-1:begin] # Requires Plots for palette, so hard-code this default
     pal = [RGB{Float64}(0.031,0.318,0.612), 
@@ -87,8 +85,7 @@ exptfplot
             markershape --> markers[i]
             label --> labels[i]
             seriescolor --> pal[i]
-            # TODO: get rid of this kwarg, it's a bad API
-            if sampmarks
+            if showline || get(plotattributes, :linewidth, 0) > 0
                 seriestype := :samplemarkers
                 step := step
                 offset := step÷n *(i-1) + 1
@@ -106,8 +103,8 @@ end
 
 
 """
-    exptvwplot(time, T1, [T2, ...]; skip=1, nmarks=0, labsuffix=", exp.")
-    exptvwplot!(time, T1, [T2, ...]; skip=1, nmarks=0, labsuffix=", exp.")
+    exptvwplot(time, T1, [T2, ...]; skip=1, nmarks=Inf, showline=false, labsuffix=", exp.")
+    exptvwplot!(time, T1, [T2, ...]; skip=1, nmarks=Inf, showline=false, labsuffix=", exp.")
 
 Plot recipe for a set of experimentally measured vial wall temperatures.
 This recipe adds one series for each passed temperature series, with labels defaulting to `"T_{vwi}"*labsuffix`.
@@ -115,13 +112,13 @@ This recipe adds one series for each passed temperature series, with labels defa
 the dotted line looks dotted even with noisy data.
 
 $nmarks_doc
-$sampmarks_marker_doc
+$showline_doc
 """
 exptvwplot
 @doc (@doc exptvwplot) exptvwplot!
 
 @userplot ExpTvwPlot
-@recipe function f(tpev::ExpTvwPlot; nmarks=0, sampmarks=false, skip=1, labsuffix=", exp.")
+@recipe function f(tpev::ExpTvwPlot; nmarks=Inf, showline=true, skip=1, labsuffix=", exp.")
     time, Ts... = tpev.args
     n = size(Ts, 1)
     # color = palette(:Blues_5)[end]
@@ -146,19 +143,19 @@ exptvwplot
             markerstrokecolor --> pal[i]
             markerstrokewidth --> 1.5
             # TODO: try to remove this kwarg, clunky API
-            if sampmarks
+            if showline || get(plotattributes, :linewidth, 0) > 0
                 linestyle --> :dash
                 time_skip = time[begin:skip:end]
                 T_skip = T[begin:skip:end]
                 seriestype := :samplemarkers
-                step = (nmarks == 0) ? 1 : (size(time_skip, 1) ÷ nmarks) 
+                step = (nmarks == Inf) ? 1 : (size(time_skip, 1) ÷ nmarks) 
                 step := step
                 offset := step÷n *(i-1) + 1
                 return time_skip, T_skip
             else
                 minlen = min(length(time), length(T))
                 seriestype --> :scatter
-                step = nmarks == 0 ? 1 : (size(time, 1) ÷ nmarks) 
+                step = nmarks == Inf ? 1 : (size(time, 1) ÷ nmarks) 
                 offset = step÷n *(i-1) + 1
                 return time[offset:step:minlen], T[offset:step:minlen]
             end
@@ -168,20 +165,20 @@ exptvwplot
 end
 
 """
-    modconvtplot(sols; sampmarks=false, labsuffix = ", model")
-    modconvtplot!(sols; sampmarks=false, labsuffix = ", model")
+    modconvtplot(sols; showmarks=false, labsuffix = ", model")
+    modconvtplot!(sols; showmarks=false, labsuffix = ", model")
 
 Plot recipe for one or multiple solutions to the Pikal model, e.g. the output of [`gen_sol_pd`](@ref LyoPronto.gen_sol_pd).
 This adds a series to the plot for each passed solution, with labels defaulting to `"T_{fi}"*labsuffix`.
 
-$sampmarks_line_doc
+$showmarks_doc
 """ 
 modconvtplot
 @doc (@doc modconvtplot) modconvtplot!
 
 
 @userplot ModConvTPlot
-@recipe function f(tpmc::ModConvTPlot; sampmarks=false, labsuffix = ", model")
+@recipe function f(tpmc::ModConvTPlot; showmarks=false, labsuffix = ", model")
     sols = tpmc.args
     # pal = palette(:Oranges_4).colors[end:-1:begin+1] # Requires Plots as dependency...
     pal = [
@@ -189,14 +186,14 @@ modconvtplot
     RGB{Float64}(0.992,0.553,0.235)
     RGB{Float64}(0.992,0.745,0.522)
     ]
-    markers = (:utriangle, :dtriangle, :cross)
+    showmarks = showmarks || get(plotattributes, :markershape, :none) != :none
     if length(sols) == 1
         labels = ["\$T_\\mathrm{f}\$"*labsuffix]
     else
         labels = ["\$T_\\mathrm{f$i}\$"*labsuffix for i in 1:length(sols)]
     end
 
-    if sampmarks 
+    if showmarks 
         for (i, sol) in enumerate(sols)
             t_nd = range(sol.t[begin], sol.t[end], length=101)
             time = t_nd*u"hr"
@@ -204,6 +201,7 @@ modconvtplot
             @series begin
                 seriestype := :samplemarkers
                 step := 20
+                offset = 10*(i-1)+1
                 markershape --> :auto
                 seriescolor --> pal[i]
                 label --> labels[i]
@@ -225,8 +223,8 @@ modconvtplot
 end
 
 """
-    modrftplot(sol, labsuffix=", model", sampmarks=false, trimend=0)
-    modrftplot!(sol, labsuffix=", model", sampmarks=false, trimend=0)
+    modrftplot(sol, labsuffix=", model", showmarks=false, trimend=0)
+    modrftplot!(sol, labsuffix=", model", showmarks=false, trimend=0)
 
 Plot recipe for one solution to the lumped capacitance model.
 
@@ -236,15 +234,16 @@ The optional argument `trimend` controls how many time points to trim from the e
 
 Since this is a recipe, any Plots.jl keyword arguments can be passed to modify the plot.
 
-$sampmarks_line_doc
+$showmarks_doc
 """
 modrftplot
 @doc (@doc modrftplot) modrftplot!
 
 @userplot ModRFTPlot
-@recipe function f(tpmr::ModRFTPlot; labsuffix = ", model", sampmarks=false, trimend=0)
+@recipe function f(tpmr::ModRFTPlot; showmarks=false, labsuffix = ", model", trimend=0)
     sol = tpmr.args[1]
-    if sampmarks
+    showmarks = showmarks || get(plotattributes, :markershape, :none) != :none
+    if showmarks
         t_nd = range(sol.t[begin], sol.t[end-trimend], length=31)
         step = 6
     else
@@ -254,7 +253,7 @@ modrftplot
     # color = palette(:Oranges_3)[end]
     color = RGB{Float64}(0.902,0.333,0.051)
     # Frozen temperature: tends to have a crazy time point at end
-    if sampmarks
+    if showmarks
         @series begin
             seriestype := :samplemarkers
             step := step
