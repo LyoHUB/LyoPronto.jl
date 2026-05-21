@@ -2,6 +2,7 @@ CI = get(ENV, "CI", nothing) == "true" || get(ENV, "GITHUB_TOKEN", nothing) !== 
 using LyoPronto
 using Documenter
 using Literate
+ENV["GKSwstype"] = 100
 
 @info "Using Literate to generate examples"
 for file in ["fitting_mannitol.jl", "fitting_rf_mannitol.jl", "all_recipes.jl", "utilities.jl"]

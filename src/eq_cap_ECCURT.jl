@@ -4,6 +4,19 @@ using Unitful: ustrip, @u_str, Quantity
 using DocStringExtensions
 using Interpolations: interpolate, Gridded, Linear, extrapolate, Line
 
+const DIMS_DOC = """
+The input values are:
+- `d`: Diameter of the duct [\$mm\$].
+- `vt`: Thickness of the butterfly valve inside the duct [\$mm\$]
+- `l`: Length of the duct [\$mm\$].
+- `v`: Volume of the product chamber [\$m^3\$].
+"""
+const UNITS_DOC = """
+If provided with `Unitful.Quantity` inputs, the geometry parameters will be converted to the
+expected units (mm for lengths, m^3 for volume) before calculation, and the result will 
+have Unitful units as well. If provided with plain floats, plain floats will be returned.
+"""
+
 VERSION >= v"1.11" && eval(Meta.parse("public eq_cap_pressure, eq_cap_line, eq_cap_line_new"))
 
 const M_DOT = [0.1291, 0.4644, 0.7776, 1.1772]
@@ -96,15 +109,9 @@ Compute the equipment capability line for given geometry parameters.
 The resulting object can be called with a pressure in mTorr to get the corresponding mass flow rate in kg/hr.
 The line's slope and intercept can be accessed with `line.k` and `line.b`, respectively.
 
-If provided with `Unitful.Quantity` inputs, the geometry parameters will be converted to the
-expected units (mm for dimensions, m^3 for volume) before calculation, and the result will 
-have Unitful units as well. If provided with plain floats, plain floats will be returned.
+$(UNITS_DOC)
 
-Dimensions:
-- `d`: Diameter of the duct (spool) from chamber to condenser [mm]
-- `vt`: Thickness of the butterfly valve in the duct (spool) from chamber to condenser [mm]
-- `l`: Length of the duct (spool) [mm]
-- `volume`: Volume of the product chamber [m^3]
+$(DIMS_DOC)
 """
 function eq_cap_line(d, vt, l, volume)
     if ~(D_SAMPLE[1] <= d <= D_SAMPLE[end]) || ~(DA_SAMPLE[1] <= d/vt <= DA_SAMPLE[end]) || ~(L_SAMPLE[1] <= l <= L_SAMPLE[end]) || ~(VOLUME_SAMPLE[1] <= volume <= VOLUME_SAMPLE[end])
@@ -128,6 +135,10 @@ end
 
 Call `eq_cap_line` to get the equipment capability line for the given geometry parameters, 
 then evaluate that line with mass flow rate `m` in kg/hr to get minimum controllable pressure in mTorr.
+
+$(UNITS_DOC)
+
+$(DIMS_DOC)
 """
 function eq_cap_pressure(m, D, valve_thickness, L, volume)
     line = eq_cap_line(D, valve_thickness, L, volume)
@@ -153,7 +164,10 @@ const pch_sep_interp = [extrapolate(interpolate((VOLUME_SAMPLE, D_SAMPLE, DA_SAM
 
 Compute the pressures at the four mass flow rate sample points for given geometry parameters.
 The resulting vector is in the same order as `M_DOT`, and has units of mTorr
-(explicitly with Unitful, if given `Unitful.Quantity` inputs)
+
+$(UNITS_DOC)
+
+$(DIMS_DOC)
 """
 function eq_cap_pressures_new(d, vt, l, volume)
     if ~(D_SAMPLE[1] <= d <= D_SAMPLE[end]) || ~(DA_SAMPLE[1] <= d/vt <= DA_SAMPLE[end]) || ~(L_SAMPLE[1] <= l <= L_SAMPLE[end]) || ~(VOLUME_SAMPLE[1] <= volume <= VOLUME_SAMPLE[end])
@@ -180,6 +194,10 @@ That line can be evaluated at pressure `p`, as a float in mTorr or with Unitful 
 to get the corresponding mass flow rate in kg/hr.
 To invert a resulting `line`, access its slope with `line.k` (in kg/hr/mTorr) and its intercept with
 `line.b` (in kg/hr).
+
+$(UNITS_DOC)
+
+$(DIMS_DOC)
 """
 function eq_cap_line_new(d, vt, l, volume)
     pch = eq_cap_pressures_new(d, vt, l, volume)

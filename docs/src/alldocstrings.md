@@ -39,3 +39,9 @@ Pages = ["model.jl"]
 Modules = [LyoPronto, LyoPronto.Dielectric]
 Pages = ["physical_properties.jl"]
 ```
+
+## Equipment Capability
+```@autodocs
+Modules = [LyoPronto, LyoPronto.ECCURT]
+Pages = ["eq_cap_ECCURT.jl"]
+```
