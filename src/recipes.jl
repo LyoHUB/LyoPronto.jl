@@ -7,29 +7,37 @@
     n = length(y)
     sx, sy = x[offset:step:n], y[offset:step:n]
     # add an empty series with the correct type for legend markers
+    markershape = get(plotattributes, :markershape, :auto)
     @series begin
         seriestype := :path
-        markershape --> :auto
+        markershape := markershape 
         x := [Inf]
         y := [Inf]
     end
-    # add a series for the line
-    @series begin
-        primary := false # no legend entry
-        markershape := :none # ensure no markers
-        seriestype := :path
-        seriescolor := get(plotattributes, :seriescolor, :auto)
-        x := x
-        y := y
+    # add a series for the line, if it's not turned off
+    if haskey(plotattributes, :linewidth) && plotattributes[:linewidth] > 0
+        @series begin
+            primary := false # no legend entry
+            markershape := :none # ensure no markers
+            seriestype := :path
+            x := x
+            y := y
+        end
     end
-    # return  a series for the sampled markers
-    primary := false
-    seriestype := :scatter
-    markershape --> :auto
-    x := sx
-    y := sy
+    # add a series for the sampled markers, if they aren't turned off
+    if markershape ∉ (:none, nothing)
+        @series begin
+            primary := false
+            seriestype := :scatter
+            markershape := markershape
+            x := sx
+            y := sy
+        end
+    end
 end
 
+# TODO: these docs should be updated to have a more sensible API which allows turning off lines or markers
+# Also, nmarks=0 should not be all points: maybe NaN or Inf are better sentinels for that case.
 const nmarks_doc = """
 `nmarks` is an integer, indicating how many points to plot with markers, so that the number
 of markers is reasonable even with many data points. To plot all points (default), pass `nmarks=0`.
@@ -79,6 +87,7 @@ exptfplot
             markershape --> markers[i]
             label --> labels[i]
             seriescolor --> pal[i]
+            # TODO: get rid of this kwarg, it's a bad API
             if sampmarks
                 seriestype := :samplemarkers
                 step := step
@@ -136,6 +145,7 @@ exptvwplot
             markercolor --> :white
             markerstrokecolor --> pal[i]
             markerstrokewidth --> 1.5
+            # TODO: try to remove this kwarg, clunky API
             if sampmarks
                 linestyle --> :dash
                 time_skip = time[begin:skip:end]
