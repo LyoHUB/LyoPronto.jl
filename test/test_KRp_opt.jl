@@ -69,6 +69,14 @@ end
     @test vals.Rp.R0 ≈ R0 rtol=0.1
     @test vals.Rp.A1 ≈ A1 rtol=0.2
     @test vals.Rp.A2 ≈ A2 rtol=0.5
+
+    # Check that the badprms path outputs NaNs as expected
+    badprms = x->true
+    @test isnan(obj_pd(pg, pass; badprms))
+
+    # Check that it also works if given a specific condition
+    badprms = x->x.Kshf(pch(0)) < 100u"W/m^2/K" 
+    @test isnan(obj_pd(pg, pass; badprms))
 end
 
 
@@ -85,4 +93,58 @@ end
     @test vals.Rp.R0 ≈ R0 rtol=0.1
     @test vals.Rp.A1 ≈ A1 rtol=0.1
     @test vals.Rp.A2 ≈ A2 rtol=0.3
+end
+
+po2 = @set po.Rp = RpFormFit(2u"cm^2*Torr*hr/g", 5u"cm*Torr*hr/g", 1.5u"cm^-1")
+po3 = @set po.Rp = RpFormFit(0.5u"cm^2*Torr*hr/g", 20u"cm*Torr*hr/g", 0.0u"cm^-1")
+
+pos = [po, po2, po3]
+pdfits = map(pos) do poi
+    base_sol = solve(ODEProblem(poi), LyoPronto.odealg_chunk2)
+    t = base_sol.t*u"hr"
+    T = base_sol[2,:]*u"K"
+    t_end = t[end]
+    pdfit = PrimaryDryFit(t, T; t_end)
+end
+
+
+@testset "Fit with shared Kv, distinct Rp" begin
+    big_trans = as((; 
+        shared = K_transform_basic(Kshf(pch(0))*0.75),
+        separate = as(Vector, Rp_transform_basic(R0*0.75, A1*2, A2*0.5), 3)
+    ))
+
+
+
+    pg = fill(0.0, TransformVariables.dimension(big_trans))
+    @test_broken @inferred gen_nsol_pd(pg, big_trans, pos)
+    sols = gen_nsol_pd(pg, big_trans, pos)
+    @testset "Different solution" begin
+        for sol in sols
+            @test sol != base_sol
+        end
+    end
+    pass = (big_trans, pos, pdfits)
+    # err = @inferred objn_pd(pg, pass)
+
+    # This specific test can be deleted if it becomes trouble, probably
+    exact = log.([1/0.75, 1/0.75, 0.5, 2, 2/0.8/0.75, 5/14/2, 1.5*2, 0.5/0.8/0.75, 20/14/2, 1e-20])
+    @test objn_pd(exact, pass) ≈ 0 atol=1e-4  # Transformation should give zero objective at original values
+
+    obj = OptimizationFunction(objn_pd, AutoForwardDiff(chunksize=5)) # Length of 10: divide it nicely
+    opt = solve(OptimizationProblem(obj, pg, pass), optalg, f_abstol=1e-2)
+    vals = transform(big_trans, opt.u)
+    @test vals.shared.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.1
+    for (poi, sepi) in zip(pos, vals.separate)
+        @test sepi.Rp.R0 ≈ poi.Rp.R0 rtol=0.1
+        @test sepi.Rp.A1 ≈ poi.Rp.A1 rtol=0.3
+        @test sepi.Rp.A2 ≈ poi.Rp.A2 atol=0.6u"cm^-1"
+    end
+
+    # Check that the badprms path outputs NaNs as expected
+    badprms = x->true
+    @test all(isnan.(objn_pd(pg, pass; badprms)))
+
+    badprms = x->x.Kshf(pch(0)) < 100u"W/m^2/K" 
+    @test all(isnan.(objn_pd(pg, pass; badprms)))
 end
