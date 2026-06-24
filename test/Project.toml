@@ -13,11 +13,17 @@ TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
+Accessors = "0.1.44"
 Aqua = "0.8"
-LineSearches = "7.3"
+JET = "0.9 - 0.11"
+LineSearches = "7"
+LyoPronto = "0.4.2"
+NonlinearSolve = "4"
 OptimizationOptimJL = "0.4.6"
+SavitzkyGolay = "0.9"
 Test = "1"
+TransformVariables = "0.8.21"
 TypedTables = "1"
-
+Unitful = "1.28"
 [sources.LyoPronto]
 path = ".."

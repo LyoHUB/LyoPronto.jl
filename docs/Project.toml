@@ -16,8 +16,20 @@ TransformVariables = "84d833dd-6860-57f9-a1a7-6da5db126cff"
 TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 
 [compat]
-Plots = "1.41"
-OptimizationOptimJL = "0.4.6"
+Accessors = "0.1.44"
+CSV = "0.10.16"
+Documenter = "1.17.0"
+LaTeXStrings = "1.4.0"
+Latexify = "0.16.10"
+LineSearches = "7"
+Literate = "2"
+NonlinearSolve = "3,4"
+OptimizationOptimJL = "0.4"
+Plots = "1.41.2"
+SavitzkyGolay = "0.9.1"
+StatsPlots = "0.15"
+TransformVariables = "0.8.21"
+TypedTables = "1"
 
 [sources]
 LyoPronto = {path = ".."}
