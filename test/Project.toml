@@ -15,7 +15,7 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 [compat]
 Accessors = "0.1.44"
 Aqua = "0.8"
-JET = "0.9-0.11"
+JET = "0.9 - 0.11"
 LineSearches = "7"
 LyoPronto = "0.4.2"
 NonlinearSolve = "4"
