@@ -7,15 +7,17 @@
     n = length(y)
     sx, sy = x[offset:step:n], y[offset:step:n]
     # add an empty series with the correct type for legend markers
+    lw = get(plotattributes, :linewidth, :auto)
     markershape = get(plotattributes, :markershape, :auto)
+    visible_line = lw == :auto || lw > 0
     @series begin
-        seriestype := :path
+        seriestype := (visible_line ? :path : :scatter)
         markershape := markershape 
         x := [Inf]
         y := [Inf]
     end
     # add a series for the line, if it's not turned off
-    if haskey(plotattributes, :linewidth) && plotattributes[:linewidth] != :auto && plotattributes[:linewidth] > 0
+    if visible_line
         @series begin
             primary := false # no legend entry
             markershape := :none # ensure no markers
@@ -90,11 +92,13 @@ exptfplot
             label --> labels[i]
             seriescolor --> pal[i]
             if showline || get(plotattributes, :linewidth, 0) > 0
+                @info "A" step
                 seriestype := :samplemarkers
                 step := step
                 offset := step÷n *(i-1) + 1
                 return time[eachindex(T)], T
             else
+                @info "B" step
                 seriestype --> :scatter
                 offset = step÷n *(i-1) + 1
                 minlen = min(length(time), length(T))
@@ -512,7 +516,6 @@ exppplot
         @series begin
             seriestype --> :samplemarkers
             step --> length(p) ÷ 10
-            linewidth --> 2
             ylabel --> "Pressure"
             label --> defaultlabels[i]
             return t, p
