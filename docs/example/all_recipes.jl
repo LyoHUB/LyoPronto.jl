@@ -87,8 +87,8 @@ savefig("recipe_pressure_alt.svg"); #md #hide
 # ![](recipe_pressure_alt.svg) #md
 
 # ## Temperature plotting
-@df procdata exptfplot(:t, :T1, :T2, nmarks=40, sampmarks=true, linealpha=0.2)
-@df procdata exptvwplot!(:t, :T3, nmarks=30, sampmarks=true, linealpha=0.2)
+@df procdata exptfplot(:t, :T1, :T2, nmarks=40, showline=true, linealpha=0.2)
+@df procdata exptvwplot!(:t, :T3, nmarks=30, showline=true, linealpha=0.2)
 savefig("recipe_temp.svg"); #md #hide
 # ![](recipe_temp.svg) #md
 
@@ -230,7 +230,7 @@ sol_rf = solve(prob, Rodas3());
 # # Plot Recipes for Solution Objects
 
 # For conventional drying, we only need to plot temperatures of the frozen layer:
-modconvtplot(sol_conv, sampmarks=true)
+modconvtplot(sol_conv, showmarks=true)
 savefig("recipe_pikal.svg"); #md #hide
 # ![](recipe_pikal.svg) #md
 
@@ -240,7 +240,7 @@ savefig("recipe_multipikal.svg") #hide
 # ![](recipe_multipikal.svg) #md
 
 # For microwave-assisted drying, we also need to plot vial wall temperatures:
-modrftplot(sol_rf, sampmarks=true)
+modrftplot(sol_rf, showmarks=true)
 savefig("recipe_rf.svg"); #md #hide
 # ![](recipe_rf.svg) #md
 

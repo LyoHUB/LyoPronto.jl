@@ -150,17 +150,17 @@ exptvwplot
             markercolor --> :white
             markerstrokecolor --> pal[i]
             markerstrokewidth --> 1.5
+            minlen = min(length(time), length(T))
             if showline || get(plotattributes, :linewidth, 0) > 0
                 linestyle --> :dash
-                time_skip = time[begin:skip:end]
-                T_skip = T[begin:skip:end]
+                time_skip = time[begin:skip:minlen]
+                T_skip = T[begin:skip:minlen]
                 seriestype := :samplemarkers
                 step = (nmarks == Inf) ? 1 : (size(time_skip, 1) ÷ nmarks) 
                 step := step
                 offset := step÷n *(i-1) + 1
                 return time_skip, T_skip
             else
-                minlen = min(length(time), length(T))
                 seriestype --> :scatter
                 step = nmarks == Inf ? 1 : (size(time, 1) ÷ nmarks) 
                 offset = step÷n *(i-1) + 1
@@ -512,6 +512,7 @@ exppplot
         @series begin
             seriestype --> :samplemarkers
             step --> length(p) ÷ 10
+            linewidth --> 2
             ylabel --> "Pressure"
             label --> defaultlabels[i]
             return t, p
