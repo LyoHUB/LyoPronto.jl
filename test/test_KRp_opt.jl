@@ -72,11 +72,11 @@ end
 
     # Check that the badprms path outputs NaNs as expected
     badprms = x->true
-    @test isnan(obj_pd(pg, pass; badprms))
+    @test !isfinite(obj_pd(pg, pass; badprms))
 
     # Check that it also works if given a specific condition
     badprms = x->x.Kshf(pch(0)) < 100u"W/m^2/K" 
-    @test isnan(obj_pd(pg, pass; badprms))
+    @test !isfinite(obj_pd(pg, pass; badprms))
 end
 
 
@@ -143,8 +143,8 @@ end
 
     # Check that the badprms path outputs NaNs as expected
     badprms = x->true
-    @test all(isnan.(objn_pd(pg, pass; badprms)))
+    @test !any(isfinite.(objn_pd(pg, pass; badprms)))
 
     badprms = x->x.Kshf(pch(0)) < 100u"W/m^2/K" 
-    @test all(isnan.(objn_pd(pg, pass; badprms)))
+    @test !any(isfinite.(objn_pd(pg, pass; badprms)))
 end

@@ -217,7 +217,7 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit;
     tweight=1.0, verbose = false, Tvw_weight=1.0)
     if sol.retcode !== ReturnCode.Terminated || length(sol.u) <= 1
         verbose && @warn "ODE solve did not reach end of drying. Either parameters are bad, or tspan is not large enough." sol.retcode sol.prob.p.hf0 sol[end]
-        return NaN
+        return Inf
     end
     tmd = sol.t[end].*u"hr"
     nt = length(sol.t) - 1
@@ -289,13 +289,13 @@ function obj_expT(sol::ODESolution, pdfit::PrimaryDryFit;
     return ustrip(u"K^2", Tfobj + Tvw_weight*Tvwobj) + tweight*ustrip(u"hr^2", tobj)
 end
 
-obj_expT(sol::Val{NaN}, pdfit; kwargs...) = NaN
+obj_expT(sol::Val{NaN}, pdfit; kwargs...) = Inf
 function obj_expT(sol, pdfit; verbose=false, kwargs...) 
     verbose && @warn "`obj_expT` got passed improper args. Might not be a problem, but check." sol
     # In some cases, inputs are so bad it's not worth an ODE solve, so this method
     # provides an escape hatch for NaN returns instead of crashing.
-    if isnan(sol) 
-        return NaN
+    if !isfinite(sol) 
+        return Inf
     end
     error("Improper call to `obj_expT`.")
 end
@@ -346,7 +346,7 @@ function err_expT!(errs, sol::ODESolution, pdfit; tweight=1, verbose = false)
     # errs .= 0.0 # If indexing is handled correctly, this should not be necessary.
     if sol.retcode != ReturnCode.Terminated || length(sol.u) <= 2
         verbose && @info "ODE solve failed or incomplete, probably." sol.retcode sol[1, :]
-        errs .= NaN
+        errs .= Inf
         return
     end
     tmd = sol.t[end].*u"hr"
@@ -438,7 +438,8 @@ function err_expT!(errs, sol::ODESolution, pdfit; tweight=1, verbose = false)
     verbose && @info "loss call" tmd size(errs) sum(abs2.(errs))
     return nothing
 end
-err_expT!(errs, sol::Float64, pdfit; kwargs...) = isnan(sol) ? errs .= NaN : error("Unexpected state")
+err_expT!(errs, sol::Float64, pdfit; kwargs...) = isnan(sol) ? errs .= Inf : error("Unexpected state")
+err_expT!(errs, sol::Val{NaN}, pdfit; kwargs...) = errs .= Inf;
 
 """
     $(SIGNATURES)
@@ -448,7 +449,7 @@ $errexpT_doc
 function err_expT(sol, pdfit; tweight=1, verbose = false)
     if sol.retcode !== ReturnCode.Terminated || length(sol.u) <= 1
         verbose && @info "ODE solve failed or incomplete, probably." sol.retcode sol[1, :]
-        return [NaN]
+        return [Inf]
     end
     tmd = sol.t[end].*u"hr"
     nt = length(sol.t) - 1
