@@ -64,7 +64,11 @@ exptfplot
 @doc (@doc exptfplot) exptfplot!
 
 @userplot ExpTfPlot
-@recipe function f(tpe::ExpTfPlot; nmarks=Inf, showline=false, labsuffix = ", exp.")
+@recipe function f(tpe::ExpTfPlot; nmarks=Inf, showline=false, labsuffix = ", exp.", sampmarks=nothing)
+    if !isnothing(sampmarks)
+        Base.depwarn("The `sampmarks` keyword is deprecated and will be removed in a future release. Use `showline` instead.", :exptfplot; force=true)
+        showline = sampmarks
+    end
     time, Ts... = tpe.args
     step = (nmarks == Inf) ? 1 : (maximum([length(T) for T in Ts]) ÷ nmarks) 
     n = size(Ts, 1)
@@ -118,7 +122,11 @@ exptvwplot
 @doc (@doc exptvwplot) exptvwplot!
 
 @userplot ExpTvwPlot
-@recipe function f(tpev::ExpTvwPlot; nmarks=Inf, showline=true, skip=1, labsuffix=", exp.")
+@recipe function f(tpev::ExpTvwPlot; nmarks=Inf, showline=false, skip=1, labsuffix=", exp.", sampmarks=nothing)
+    if !isnothing(sampmarks)
+        Base.depwarn("The `sampmarks` keyword is deprecated and will be removed in a future release. Use `showline` instead.", :exptvwplot; force=true)
+        showline = sampmarks
+    end
     time, Ts... = tpev.args
     n = size(Ts, 1)
     # color = palette(:Blues_5)[end]
@@ -142,7 +150,6 @@ exptvwplot
             markercolor --> :white
             markerstrokecolor --> pal[i]
             markerstrokewidth --> 1.5
-            # TODO: try to remove this kwarg, clunky API
             if showline || get(plotattributes, :linewidth, 0) > 0
                 linestyle --> :dash
                 time_skip = time[begin:skip:end]
@@ -178,7 +185,11 @@ modconvtplot
 
 
 @userplot ModConvTPlot
-@recipe function f(tpmc::ModConvTPlot; showmarks=false, labsuffix = ", model")
+@recipe function f(tpmc::ModConvTPlot; showmarks=false, labsuffix = ", model", sampmarks=nothing)
+    if !isnothing(sampmarks)
+        Base.depwarn("The `sampmarks` keyword is deprecated and will be removed in a future release. Use `showmarks` instead.", :modconvtplot; force=true)
+        showmarks = sampmarks
+    end
     sols = tpmc.args
     # pal = palette(:Oranges_4).colors[end:-1:begin+1] # Requires Plots as dependency...
     pal = [
@@ -240,7 +251,11 @@ modrftplot
 @doc (@doc modrftplot) modrftplot!
 
 @userplot ModRFTPlot
-@recipe function f(tpmr::ModRFTPlot; showmarks=false, labsuffix = ", model", trimend=0)
+@recipe function f(tpmr::ModRFTPlot; showmarks=false, labsuffix = ", model", trimend=0, sampmarks=nothing)
+    if !isnothing(sampmarks)
+        Base.depwarn("The `sampmarks` keyword is deprecated and will be removed in a future release. Use `showmarks` instead.", :modrftplot; force=true)
+        showmarks = sampmarks
+    end
     sol = tpmr.args[1]
     showmarks = showmarks || get(plotattributes, :markershape, :none) != :none
     if showmarks
@@ -419,7 +434,9 @@ end
 @doc raw"""
     qrf_integrate(sol, RF_params)
 
-Compute the integral over time of each heat transfer mode in the lumped capacitance model.
+Compute the integral over time of each heat transfer mode in the lumped capacitance model. 
+RF_params should represent the same parameters used to generate the solution `sol`,
+which (if OrdinaryDiffEq doesn't change) can likely be accessed as `sol.prob.p`.
 
 Returns as a Dict{String, Quantity{...}}, with string keys `Qsub, Qshf, Qvwf, QRFf, QRFvw`.
 """
