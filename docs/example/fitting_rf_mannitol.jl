@@ -80,7 +80,7 @@ pch = RampedVariable(100u"mTorr")
 # so we will use the second-derivative test in Pirani-CM convergence. 
 t_end = identify_pd_end(lyo_pd.t, lyo_pd.pch_pir, Val(:der2))
 @df lyo_pd plot(:t, :pch_pir)
-@df plot!(:t, pch_pir_sm)
+@df lyo_pd plot!(:t, pch_pir_sm)
 tendplot!(t_end)
 
 
