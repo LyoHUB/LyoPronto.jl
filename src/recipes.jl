@@ -92,13 +92,11 @@ exptfplot
             label --> labels[i]
             seriescolor --> pal[i]
             if showline || get(plotattributes, :linewidth, 0) > 0
-                @info "A" step
                 seriestype := :samplemarkers
                 step := step
                 offset := step÷n *(i-1) + 1
                 return time[eachindex(T)], T
             else
-                @info "B" step
                 seriestype --> :scatter
                 offset = step÷n *(i-1) + 1
                 minlen = min(length(time), length(T))
