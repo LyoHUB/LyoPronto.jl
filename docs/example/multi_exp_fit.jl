@@ -83,30 +83,65 @@ poC = @set poA.Rp = RpC
 # Now, we need to simulate our three synthetic experiments.
 sols = [solve(ODEProblem(po), LyoPronto.odealg_chunk2) for po in [poA, poB, poC]]
 # Next, load our synthetic data into structs that communicate the fitting problem
-t = range(0.0u"hr", stop=maximum([sol.t[end] for sol in sols])*u"hr", step=1u"minute")
-fitdats = [PrimaryDryFit(t, (sol.(ustrip.(u"hr", t))[:,1],), t_end=sol.t[end]*u"hr") for sol in sols]
+t = range(0.0u"hr", stop=minimum([sol.t[end]-10 for sol in sols])*u"hr", step=30u"minute")
+t_ndim = ustrip.(u"hr", t)
+fitdats = [PrimaryDryFit(t, (sol(t_ndim)[2,t_ndim.<sol.t[end]]*u"K",), t_end=sol.t[end]*u"hr") for sol in sols]
 
-## plot(u"hr", u"°C")
-## for (fd, name, color) in zip(fitdats, ["A", "B", "C"], [:blue, :red, :green])
-##     plot!(fd)
-## end
-## plot!(legend=:bottomright)
-## savefig("fitdats.svg"); #md #hide
-## # ![](fitdats.svg) #md
+plot(u"hr", u"°C")
+for (fd, name, color) in zip(fitdats, ["A", "B", "C"], [:blue, :red, :green])
+    plot!(fd, c=color, label=name)
+end
+plot!(legend=:bottomright)
+savefig("fitdats.svg"); #md #hide
+# ![](fitdats.svg) #md
 
 # # Multi-experiment fitting
 # Now, we can set up a multi-experiment fitting problem. The idea is that we will fit the 
 # three experiments simultaneously, with a single $K_v$ and three different $R_p$ values. 
 # To express this, we will use the `TransformVariables` package to create a transformation 
 # that maps a flat vector of numbers to this set of parameters, grouped by experiment.
-# LyoPronto provides a function that will apply this transform, then map the parameters to 
-# a `ParamObjPikal` for each experiment, and then solve the ODEs and return the objective 
+# LyoPronto provides a function [`objn_pd`](@ref LyoPronto.objn_pd) that will apply this 
+# transform, then map the parameters to a `ParamObjPikal` for each experiment, and then 
+# solve the ODEs and return the objective 
 # function value.
 
 ## First, a transformation that maps 3 numbers to Rp. LyoPronto provides a convenience function
 trans_Rp = Rp_transform_basic(0.75R0, 0.75A1, 0.75A2)
+## Next, a transformation that maps 1 number to Kv. Another convenience function here
+trans_K = K_transform_basic(Kv.val)
 
-shared_trans = as((separate = as(Vector, trans_Rp, 4),
-      shared = as((;Kshf = trans_KRp.Kshf)),
+shared_trans = as((separate = as(Vector, trans_Rp, 3),
+      shared = trans_K,
       ))
+p0 = zeros(TransformVariables.dimension(shared_trans)) # Initial guess for optimization parameters
+
 objnf_pd = OptimizationFunction((x,y)->LyoPronto.objn_pd(x,y,tweight=5e-2), AutoForwardDiff())
+
+all_po = (poA, poB, poC)
+
+# We need to give all of the parameters, experiments, and this transformation to the problem:
+tpf = (shared_trans, all_po, fitdats)
+
+optalg = LBFGS(linesearch=LineSearches.BackTracking())
+opt = solve(OptimizationProblem(objnf_pd, p0, tpf), optalg)
+
+fitsols = gen_nsol_pd(opt.u, shared_trans, all_po)
+
+pls = map(fitsols, fitdats) do fitted, exp
+    plot(u"hr", u"degC")   
+    plot!(exp)
+    modconvtplot!(fitted)
+end
+plot(pls...)
+
+# Then, let's check how close the fitted values are to the true values.
+
+fit = transform(shared_trans, opt.u)
+println("Kv = $(fit.shared.Kshf.val)")
+# for (orig, fitted) in zip((RpA,RpB,RpC), fit.separate)
+#     println("Original: R0=$(orig.R0), A1=$(orig.A1), A2=$(orig.A2)")
+#     println("Fitted: R0=$(fitted.Rp.R0), A1=$(fitted.Rp.A1), A2=$(fitted.Rp.A2)")
+# end
+Table(fit.separate)
+
+

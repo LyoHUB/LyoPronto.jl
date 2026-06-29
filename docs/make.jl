@@ -10,7 +10,7 @@ for file in [
     "fitting_rf_mannitol.jl", 
     "all_recipes.jl", 
     "utilities.jl", 
-    # "multi_exp_fit.jl"
+    "multi_exp_fit.jl"
     ]
     Literate.markdown((@__DIR__)*"/example/$file", (@__DIR__)*"/src/generated", documenter=true)
 end
@@ -25,7 +25,7 @@ makedocs(;
         "Home" => "index.md",
         "Example, conventional lyo" => "generated/fitting_mannitol.md",
         "Example, microwave-assisted lyo" => "generated/fitting_rf_mannitol.md",
-        # "Example, multi-experiment fitting" => "generated/multi_exp_fit.md",
+        "Example, multi-experiment fitting" => "generated/multi_exp_fit.md",
         "Other tools" => "generated/utilities.md",
         "Plot recipes" => "generated/all_recipes.md",
         "Equipment capability estimation" => "eqcap.md",
