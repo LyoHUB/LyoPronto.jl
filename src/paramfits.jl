@@ -155,6 +155,12 @@ function obj_pd(fitlog, tpf; tweight=1.0, Tvw_weight=1.0, badprms=nothing, verbo
     return obj_expT(sol, tpf[3]; tweight, Tvw_weight, verbose)
 end
 
+"""
+    $(SIGNATURES)
+
+Calculate the sum of squared error (objective function) for fitting parameters to primary drying data.
+This directly calls [`gen_nsol_pd`](@ref), then [`obj_expT`](@ref), so see those docstrings.
+"""
 function objn_pd(fitlog, tpf; tweight=1.0, Tvw_weight=1.0, badprms=nothing, verbose=false)
     sols = gen_nsol_pd(fitlog, tpf...; badprms)
     obj = mapreduce(+, sols, tpf[3]) do sol, fitdat
