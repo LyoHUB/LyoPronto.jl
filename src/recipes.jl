@@ -9,10 +9,11 @@
     # add an empty series with the correct type for legend markers
     lw = get(plotattributes, :linewidth, :auto)
     markershape = get(plotattributes, :markershape, :auto)
-    visible_line = lw == :auto || lw > 0
+    visible_markers = markershape ∉ (:none, nothing) # if markershape isn't :none or nothing, it must be a symbol
+    visible_line = lw == :auto || lw > 0 # if linewidth isn't :auto, it must be a number
     @series begin
         seriestype := (visible_line ? :path : :scatter)
-        markershape := markershape 
+        markershape := (visible_markers ? markershape : :none)
         x := [Inf]
         y := [Inf]
     end
@@ -27,7 +28,7 @@
         end
     end
     # add a series for the sampled markers, if they aren't turned off
-    if markershape ∉ (:none, nothing)
+    if visible_markers
         @series begin
             primary := false
             seriestype := :scatter
@@ -39,8 +40,9 @@
 end
 
 const nmarks_doc = """
-`nmarks` is an integer, indicating how many points to plot with markers, so that the number
-of markers is reasonable even with many data points. To plot all points (default), pass `nmarks=Inf`.
+`nmarks` is an integer indicating how many points to plot with markers, so that the number
+of markers is reasonable even with many data points. To plot all points (default), pass 
+`nmarks=Inf`; to plot no points, pass `nmarks=0`.
 
 """
 const showline_doc = """
@@ -48,7 +50,7 @@ This recipe defaults to showing data points without a line, but a line can be ad
 
 """
 const showmarks_doc = """
-This recipe defaults to showing a line with no markers, but a line can be added by passing `showmarks=true` or specifying a `markershape` (or `ms`).
+This recipe defaults to showing a line with no markers, but markers can be added by passing `showmarks=true` or specifying a `markershape` (or `ms`).
 
 """
 
@@ -71,15 +73,25 @@ exptfplot
         Base.depwarn("The `sampmarks` keyword is deprecated and will be removed in a future release. Use `showline` instead.", :exptfplot; force=true)
         showline = sampmarks
     end
+    markers = (:circle, :square, :diamond, :hexagon)
     time, Ts... = tpe.args
-    step = (nmarks == Inf) ? 1 : (maximum([length(T) for T in Ts]) ÷ nmarks) 
+    step = if !isfinite(nmarks)
+        1 # If nmarks is Inf, we don't need to skip any points
+    elseif nmarks == 0
+        # If nmarks is 0, we don't want to plot any points, so set markers to :none
+        markers = (:none, :none, :none, :none)
+        1
+    else
+        # Skip points so that we only plot nmarks points, but at least 1 point
+        lens = [length(T) for T in Ts]
+        max(1, (maximum(lens) ÷ nmarks))
+    end
     n = size(Ts, 1)
     # pal = palette(:Blues_5,)[end:-1:begin] # Requires Plots for palette, so hard-code this default
     pal = [RGB{Float64}(0.031,0.318,0.612), 
            RGB{Float64}(0.192,0.51,0.741), 
            RGB{Float64}(0.42,0.682,0.839), 
            RGB{Float64}(0.741,0.843,0.906)]
-    markers = (:circle, :square, :diamond, :hexagon)
     
     if length(Ts) == 1
         labels = ["\$T_\\mathrm{f}\$"*labsuffix]
@@ -144,6 +156,17 @@ exptvwplot
     else
         labels = ["\$T_\\mathrm{vw$i}\$"*labsuffix for i in 1:n]
     end
+    step = if !isfinite(nmarks)
+        1 # If nmarks is Inf, we don't need to skip any points
+    elseif nmarks == 0
+        # If nmarks is 0, we don't want to plot any points, so set markers to :none
+        markers = (:none, :none, :none, :none)
+        1
+    else
+        lens = [length(T) for T in Ts]
+        # First get the number of actual points by dividing by `skip`, then divide by nmarks to get the step size
+        max(1, (maximum(lens ÷ skip) ÷ nmarks))
+    end
     for (i, T) in enumerate(Ts)
         @series begin
             markershape --> markers[i]
@@ -153,17 +176,17 @@ exptvwplot
             markerstrokecolor --> pal[i]
             markerstrokewidth --> 1.5
             minlen = min(length(time), length(T))
-            if showline || get(plotattributes, :linewidth, 0) > 0
+            if showline || get(plotattributes, :linewidth, 0) > 0 # Don't need to check for 
                 linestyle --> :dash
                 time_skip = time[begin:skip:minlen]
                 T_skip = T[begin:skip:minlen]
                 seriestype := :samplemarkers
-                step = (nmarks == Inf) ? 1 : (size(time_skip, 1) ÷ nmarks) 
-                step := step
+                step := step  
                 offset := step÷n *(i-1) + 1
                 return time_skip, T_skip
             else
                 seriestype --> :scatter
+                # Not using the :samplemarkers recipe, so manually skipping points to get nmarks
                 step = nmarks == Inf ? 1 : (size(time, 1) ÷ nmarks) 
                 offset = step÷n *(i-1) + 1
                 return time[offset:step:minlen], T[offset:step:minlen]
@@ -214,7 +237,7 @@ modconvtplot
             @series begin
                 seriestype := :samplemarkers
                 step := 20
-                offset = 10*(i-1)+1
+                offset := 10*(i-1)+1
                 markershape --> :auto
                 seriescolor --> pal[i]
                 label --> labels[i]
@@ -436,11 +459,11 @@ end
 @doc raw"""
     qrf_integrate(sol, RF_params)
 
-Compute the integral over time of each heat transfer mode in the lumped capacitance model. 
+Compute the integral over time of each heat transfer mode in the lumped capacitance model.
 RF_params should represent the same parameters used to generate the solution `sol`,
 which (if OrdinaryDiffEq doesn't change) can likely be accessed as `sol.prob.p`.
 
-Returns as a Dict{String, Quantity{...}}, with string keys `Qsub, Qshf, Qvwf, QRFf, QRFvw`.
+Returns a Dict{String, Quantity{...}}, with string keys `Qsub, Qshf, Qvwf, QRFf, QRFvw`.
 """
 function qrf_integrate(sol, RF_params)
 
