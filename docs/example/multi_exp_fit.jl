@@ -125,6 +125,12 @@ tpf = (shared_trans, all_po, fitdats)
 optalg = LBFGS(linesearch=LineSearches.BackTracking())
 opt = solve(OptimizationProblem(objnf_pd, p0, tpf), optalg)
 
+# Note that the results of this optimization problem are in a log space:
+# we will have to transform them back to our problem coordinates with the transformation
+# we constructed.
+
+# In practice, we generally want to compare the fit to the "experiment".
+
 fitsols = gen_nsol_pd(opt.u, shared_trans, all_po)
 
 pls = map(fitsols, fitdats) do fitted, exp
@@ -132,16 +138,22 @@ pls = map(fitsols, fitdats) do fitted, exp
     plot!(exp)
     modconvtplot!(fitted)
 end
-plot(pls...)
+plot(pls..., layout=(3,1), legend=:bottomright, size=(600,600))
 
-# Then, let's check how close the fitted values are to the true values.
+# Finally, let's check how close the fitted values are to the true values.
 
 fit = transform(shared_trans, opt.u)
 println("Kv = $(fit.shared.Kshf.val)")
-# for (orig, fitted) in zip((RpA,RpB,RpC), fit.separate)
-#     println("Original: R0=$(orig.R0), A1=$(orig.A1), A2=$(orig.A2)")
-#     println("Fitted: R0=$(fitted.Rp.R0), A1=$(fitted.Rp.A1), A2=$(fitted.Rp.A2)")
-# end
-Table(fit.separate)
+tab = map((RpA,RpB,RpC), fit.separate) do orig, fitted
+    R0_o = orig.R0
+    A1_o = orig.A1
+    A2_o = orig.A2
+    R0_f = fitted.Rp.R0
+    A1_f = fitted.Rp.A1
+    A2_f = fitted.Rp.A2
+    return (;R0_o, R0_f, A1_o, A1_f, A2_o, A2_f)
+end
+using PrettyTables
+pretty_table(HTML, Table(tab))
 
 
