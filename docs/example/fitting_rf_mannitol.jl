@@ -78,7 +78,7 @@ pch = RampedVariable(100u"mTorr")
 
 # We will also need to know when primary drying *actually* ends, 
 # so we will use the second-derivative test in Pirani-CM convergence. 
-# This identifies the end of primary drying as the minimum in second derivative,
+# This identifies the end of primary drying as the maximum in second derivative,
 # which generally occurs close to the convergence of the two pressure measurements.
 t_end = identify_pd_end(lyo_pd.t, lyo_pd.pch_pir, Val(:der2))
 @df lyo_pd plot(:t, :pch_pir)
