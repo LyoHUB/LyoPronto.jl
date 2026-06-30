@@ -11,6 +11,7 @@
     markershape = get(plotattributes, :markershape, :auto)
     visible_markers = markershape ∉ (:none, nothing) # if markershape isn't :none or nothing, it must be a symbol
     visible_line = lw == :auto || lw > 0 # if linewidth isn't :auto, it must be a number
+    @info "here" step offset
     @series begin
         seriestype := (visible_line ? :path : :scatter)
         markershape := (visible_markers ? markershape : :none)
@@ -165,7 +166,7 @@ exptvwplot
     else
         lens = [length(T) for T in Ts]
         # First get the number of actual points by dividing by `skip`, then divide by nmarks to get the step size
-        max(1, (maximum(lens ÷ skip) ÷ nmarks))
+        max(1, (maximum(lens)÷ skip ÷ nmarks))
     end
     for (i, T) in enumerate(Ts)
         @series begin
