@@ -144,7 +144,7 @@ savefig("recipe_pdfit.svg"); #md #hide
 fitdat_vw = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 13u"hr"],
                                     :T2[:t .< 13u"hr"]); 
                                     Tvws=:T3[:t .< 16u"hr"],)
-plot(fitdat_vw, nmarks=40)
+plot(fitdat_vw, nmarks=40, showline=true, linealpha=0.3)
 savefig("recipe_pdfitvw.svg"); #md #hide
 # ![](recipe_pdfitvw.svg) #md
 
@@ -155,7 +155,7 @@ plot(Tsh, tmax=5u"hr")
 savefig("recipe_rv.svg"); #md #hide
 # ![](recipe_rv.svg) #md
 
-plot(pch)
+plot(pch, ylim=(0u"mTorr", 150u"mTorr"))
 
 # # Example models
 # ## Conventional lyophilization
@@ -230,7 +230,7 @@ sol_rf = solve(prob, Rodas3());
 # # Plot Recipes for Solution Objects
 
 # For conventional drying, we only need to plot temperatures of the frozen layer:
-modconvtplot(sol_conv, showmarks=true)
+modconvtplot(sol_conv, showmarks=true, marker=:circle)
 savefig("recipe_pikal.svg"); #md #hide
 # ![](recipe_pikal.svg) #md
 
