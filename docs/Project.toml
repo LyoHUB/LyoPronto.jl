@@ -23,7 +23,6 @@ LaTeXStrings = "1.4.0"
 Latexify = "0.16.10"
 LineSearches = "7"
 Literate = "2"
-LyoPronto = "0.4.2"
 NonlinearSolve = "3,4"
 OptimizationOptimJL = "0.4"
 Plots = "1.41.2"
@@ -31,5 +30,6 @@ SavitzkyGolay = "0.9.1"
 StatsPlots = "0.15"
 TransformVariables = "0.8.21"
 TypedTables = "1"
+
 [sources]
 LyoPronto = {path = ".."}
