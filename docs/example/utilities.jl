@@ -142,7 +142,7 @@ plot!(Tsh3, lw=3, label="2 ramps")
 fitdat_all = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 15u"hr"],
                                     :T2[:t .< 13u"hr"],
                                     :T3[:t .< 16u"hr"]),)
-plot(fitdat_all, nmarks=30, sampmarks=true)
+plot(fitdat_all, nmarks=30, showline=true)
 
 # Note that in this plot, T1 rises after 13 hours--I have deliberately included that
 # to show what this will do in $R_p(h_d)$ space.
