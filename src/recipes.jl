@@ -11,7 +11,6 @@
     markershape = get(plotattributes, :markershape, :auto)
     visible_markers = markershape ∉ (:none, nothing) # if markershape isn't :none or nothing, it must be a symbol
     visible_line = lw == :auto || lw > 0 # if linewidth isn't :auto, it must be a number
-    @info "here" step offset
     @series begin
         seriestype := (visible_line ? :path : :scatter)
         markershape := (visible_markers ? markershape : :none)
