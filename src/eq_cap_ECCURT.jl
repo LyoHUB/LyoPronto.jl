@@ -17,7 +17,7 @@ expected units (mm for lengths, m^3 for volume) before calculation, and the resu
 have Unitful units as well. If provided with plain floats, plain floats will be returned.
 """
 
-VERSION >= v"1.11" && eval(Meta.parse("public eq_cap_pressure, eq_cap_line, eq_cap_line_new"))
+VERSION >= v"1.11" && eval(Meta.parse("public is_in_model_range, eq_cap_pressure, eq_cap_line, eq_cap_line_new"))
 
 const M_DOT = [0.1291, 0.4644, 0.7776, 1.1772]
 
@@ -25,6 +25,15 @@ const D_SAMPLE = [59.6, 98.0, 304.8] # mm
 const DA_SAMPLE = [2.24, 6.49, 21.75] # diameter / valve thickness (unitless)
 const L_SAMPLE = reverse([890.0, 441.0, 100.0]) # Reversed order, so increasing
 const VOLUME_SAMPLE = [0.092, 0.44]
+
+"""
+    $(SIGNATURES)
+
+Check whether the given geometry parameters are within the range of the original data used to generate the equipment capability curves.
+"""
+function is_in_model_range(d, vt, l, volume)
+    return (D_SAMPLE[1] <= d <= D_SAMPLE[end]) && (DA_SAMPLE[1] <= d/vt <= DA_SAMPLE[end]) && (L_SAMPLE[1] <= l <= L_SAMPLE[end]) && (VOLUME_SAMPLE[1] <= volume <= VOLUME_SAMPLE[end])
+end
 
 # First dimension: mdot sample points, written vectors in original MatLab
 # Second dimension: chamber size, f & g in original MatLab
@@ -114,7 +123,7 @@ $(UNITS_DOC)
 $(DIMS_DOC)
 """
 function eq_cap_line(d, vt, l, volume)
-    if ~(D_SAMPLE[1] <= d <= D_SAMPLE[end]) || ~(DA_SAMPLE[1] <= d/vt <= DA_SAMPLE[end]) || ~(L_SAMPLE[1] <= l <= L_SAMPLE[end]) || ~(VOLUME_SAMPLE[1] <= volume <= VOLUME_SAMPLE[end])
+    if !is_in_model_range(d, vt, l, volume)
         @warn "Input geometry parameters are outside the range of the original data, so extrapolation is being used. Results may be inaccurate."
     end
     alpha = alpha_ext(d, d/vt, l, volume)
@@ -170,7 +179,7 @@ $(UNITS_DOC)
 $(DIMS_DOC)
 """
 function eq_cap_pressures_new(d, vt, l, volume)
-    if ~(D_SAMPLE[1] <= d <= D_SAMPLE[end]) || ~(DA_SAMPLE[1] <= d/vt <= DA_SAMPLE[end]) || ~(L_SAMPLE[1] <= l <= L_SAMPLE[end]) || ~(VOLUME_SAMPLE[1] <= volume <= VOLUME_SAMPLE[end])
+    if !is_in_model_range(d, vt, l, volume)
         @warn "Input geometry parameters are outside the range of the original data, so extrapolation is being used. Results may be inaccurate."
     end
     pch = [pch_sep_interp[ii](volume, d, d/vt, l) for ii in axes(PCH_sep,1)]
