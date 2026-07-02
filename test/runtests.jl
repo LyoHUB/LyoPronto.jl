@@ -52,11 +52,11 @@ end
     validate_p = [45.6, 93.1, 140.5, 211.7]
     @test all(isapprox.(new_p, validate_p, atol=1.0))
 
-    @test  is_in_model_range( 120, 50, 300, 0.092)
-    @test !is_in_model_range(1200, 50, 300, 0.092)
-    @test !is_in_model_range( 120, 50, 300, 0.002)
-    @test !is_in_model_range( 120,500, 300, 0.092)
-    @test !is_in_model_range( 120, 50,  30, 0.092)
+    @test  ECCURT.is_in_model_range( 120, 50, 300, 0.092)
+    @test !ECCURT.is_in_model_range(1200, 50, 300, 0.092)
+    @test !ECCURT.is_in_model_range( 120, 50, 300, 0.002)
+    @test !ECCURT.is_in_model_range( 120,500, 300, 0.092)
+    @test !ECCURT.is_in_model_range( 120, 50,  30, 0.092)
 
     @test_warn "extrap" ECCURT.eq_cap_pressure(0.1, 120, 50, 30, 0.492)
 
