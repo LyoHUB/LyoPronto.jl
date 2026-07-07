@@ -24,9 +24,10 @@ using LaTeXStrings
 
 # # Read in process data
 
-## Data start at 8th row of CSV file.
-## This needs to point to the right file, which for documentation is kinda wonky
-file_loc = joinpath(@__DIR__, "..", "..", "example", "2024-06-04-10_MFD_AH.csv")
+doc_file_loc = joinpath(@__DIR__, "..", "..", "example", "2024-06-04-10_MFD_AH.csv") # md #hide
+file_loc = "./2024-06-04-10_MFD_AH.csv"
+cp(doc_file_loc, file_loc); #md #hide 
+## Data start at 7th row of CSV file.
 procdata_raw = CSV.read(file_loc, Table, header=7)
 ## MicroFD, used for this experiment, has a column indicating primary drying
 t = uconvert.(u"hr", procdata_raw.CycleTime .- procdata_raw.CycleTime[1])
@@ -37,8 +38,7 @@ for i in eachindex(t)[begin+1:end]
     end
 end
 
-cp(file_loc, "./2024-06-04-10_MFD_AH.csv"); #md #hide
-cp(file_loc[1:end-4] * ".yaml", "./2024-06-04-10_MFD_AH.yaml"); #md #hide
+cp(doc_file_loc[1:end-4] * ".yaml", "./2024-06-04-10_MFD_AH.yaml"); #md #hide
 # If you want to follow along exactly, you can download the CSV file 
 # [here](2024-06-04-10_MFD_AH.csv), and some metadata about the cycle 
 # [here](2024-06-04-10_MFD_AH.yaml).
@@ -68,7 +68,7 @@ t_end = identify_pd_end(pd_data.t, pd_data.pirani, Val(:onoff))
 
 # Plots provides a very convenient macro `@df` which inserts table columns into a function call,
 # which is very handy for plotting. Here this is combined with a recipe for plotting the pressure:
-@df pd_data exppplot(:t, :pirani, :cm, ("Pirani", "CM"))
+@df pd_data exppplot(:t, :pirani, :cm, ("Pirani", "CM"), legend=:left)
 tendplot!(t_end) # Use a custom recipe provided by LyoPronto for plotting t_end
 savefig("pirani.svg"); #md #hide
 # ![](pirani.svg) #md
@@ -86,6 +86,8 @@ savefig("exptemps.svg"); #md #hide
 
 twinx(plot())
 cycledataplot!(procdata, (:T1, :T2, :T3), :Tsh, (:pirani, :cm), pcolor=:green, nmarks=40)
+plot!(subplot=1, legend=:topright) # Move legends to not overlap
+plot!(subplot=2, ylim=(0, 200), legend=:right) # Set the pressure axis to highlight primary drying
 savefig("fullcycle.svg"); #md #hide
 # ![](fullcycle.svg) #md
 
