@@ -80,7 +80,7 @@ plot!(xlabel="p_{ch}", ylabel="\\dot{m}", unitformat=latexify)
 
 ## Checking range of model parameters
 Both [`ECCURT.eq_cap_line`](@ref) and [`ECCURT.eq_cap_line_new`](@ref) will emit a warning if the input lyophilizer geometry is outside the range of parameters with which this model was constructed. To programmatically check in advance whether a set of parameters is in range, the following function is provided:
-```docs; canonical=false
+```@docs; canonical=false
 ECCURT.is_in_model_range
 ```
 
