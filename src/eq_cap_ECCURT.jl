@@ -32,7 +32,15 @@ const VOLUME_SAMPLE = [0.092, 0.44]
 Check whether the given geometry parameters are within the range of the original data used to generate the equipment capability curves.
 """
 function is_in_model_range(d, vt, l, volume)
-    return (D_SAMPLE[1] <= d <= D_SAMPLE[end]) && (DA_SAMPLE[1] <= d/vt <= DA_SAMPLE[end]) && (L_SAMPLE[1] <= l <= L_SAMPLE[end]) && (VOLUME_SAMPLE[1] <= volume <= VOLUME_SAMPLE[end])
+    iszero(vt) && return false
+    return (D_SAMPLE[1] <= d <= D_SAMPLE[end]) && 
+        (DA_SAMPLE[1] <= d/vt <= DA_SAMPLE[end]) && 
+        (L_SAMPLE[1] <= l <= L_SAMPLE[end]) && 
+        (VOLUME_SAMPLE[1] <= volume <= VOLUME_SAMPLE[end])
+end
+function is_in_model_range(d::Quantity, vt::Quantity, l::Quantity, volume::Quantity)
+    return is_in_model_range(ustrip(u"mm", d), ustrip(u"mm", vt),
+                             ustrip(u"mm", l), ustrip(u"m^3", volume))
 end
 
 # First dimension: mdot sample points, written vectors in original MatLab
@@ -199,8 +207,9 @@ const sum_md = sum(M_DOT)
 Compute the equipment capability line for given geometry parameters using interpolation on 
 the pressures at the four mass flow rate sample points.
 
-That line can be evaluated at pressure `p`, as a float in mTorr or with Unitful pressure 
-to get the corresponding mass flow rate in kg/hr.
+The resulting object can be evaluated at pressure `p`, as a float in mTorr (if dimensions were given as 
+plain floats) or with Unitful pressure (if dimensions were given as quantities) to get the 
+corresponding mass flow rate in kg/hr.
 To invert a resulting `line`, access its slope with `line.k` (in kg/hr/mTorr) and its intercept with
 `line.b` (in kg/hr).
 

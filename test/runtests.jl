@@ -58,6 +58,9 @@ end
     @test !ECCURT.is_in_model_range( 120,500, 300, 0.092)
     @test !ECCURT.is_in_model_range( 120, 50,  30, 0.092)
 
+    @test  ECCURT.is_in_model_range(120u"mm", 50u"mm", 300u"mm", 0.092u"m^3")
+    @test !ECCURT.is_in_model_range(120u"mm", 50u"mm", 30u"mm", 0.092u"m^3")
+
     @test_warn "extrap" ECCURT.eq_cap_pressure(0.1, 120, 50, 30, 0.492)
 
     m_t = m_test*u"kg/hr"
