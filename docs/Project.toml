@@ -32,5 +32,6 @@ SavitzkyGolay = "0.9.1"
 StatsPlots = "0.15"
 TransformVariables = "0.8.21"
 TypedTables = "1"
+
 [sources]
 LyoPronto = {path = ".."}
