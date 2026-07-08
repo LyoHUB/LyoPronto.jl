@@ -96,7 +96,7 @@ end
 end
 
 po2 = @set po.Rp = RpFormFit(2.0u"cm^2*Torr*hr/g", 5.0u"cm*Torr*hr/g", 1.5u"cm^-1")
-po3 = @set po.Rp = RpFormFit(0.5u"cm^2*Torr*hr/g", 20.0u"cm*Torr*hr/g", 0.0u"cm^-1")
+po3 = @set po.Rp = RpFormFit(0.5u"cm^2*Torr*hr/g", 20.0u"cm*Torr*hr/g", 0.5u"cm^-1")
 
 pos = [po, po2, po3]
 pdfits = map(pos) do poi
@@ -128,11 +128,11 @@ end
     err = @inferred objn_pd(pg, pass)
 
     # This specific test can be deleted if it becomes trouble, probably
-    exact = log.([1/0.75, 1/0.75, 0.5, 2, 2/0.8/0.75, 5/14/2, 1.5*2, 0.5/0.8/0.75, 20/14/2, 1e-20])
+    exact = log.([1/0.75, 1/0.75, 0.5, 2, 2/0.8/0.75, 5/14/2, 1.5*2, 0.5/0.8/0.75, 20/14/2, .5*2])
     @test objn_pd(exact, pass) ≈ 0 atol=1e-4  # Transformation should give zero objective at original values
 
     obj = OptimizationFunction(objn_pd, AutoForwardDiff(chunksize=5)) # Length of 10: divide it nicely
-    opt = solve(OptimizationProblem(obj, pg, pass), optalg, f_abstol=1e-2)
+    opt = solve(OptimizationProblem(obj, pg, pass), optalg, f_abstol=1e-6)
     vals = transform(big_trans, opt.u)
     @test vals.shared.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.1
     for (poi, sepi) in zip(pos, vals.separate)
