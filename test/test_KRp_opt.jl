@@ -33,7 +33,7 @@ po = ParamObjPikal((
 base_sol = solve(ODEProblem(po), LyoPronto.odealg_chunk2)
 
 t = base_sol.t*u"hr"
-T = base_sol[2,:]*u"K"
+T = base_sol[2,begin:end-2]*u"K"
 t_end = t[end]
 pdfit = PrimaryDryFit(t, T; t_end)
 
@@ -51,8 +51,8 @@ pdfit = PrimaryDryFit(t, T; t_end)
     @test all(opt.u .!= 0)
     @test vals.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.3
     @test vals.Rp.R0 ≈ R0 rtol=0.1
-    @test vals.Rp.A1 ≈ A1 rtol=0.3
-    @test vals.Rp.A2 ≈ A2 rtol=0.5
+    @test vals.Rp.A1 ≈ A1 rtol=0.2
+    @test vals.Rp.A2 ≈ A2 rtol=0.2
 end
 
 @testset "Only Rp" begin
@@ -66,9 +66,9 @@ end
     obj = OptimizationFunction(obj_pd, AutoForwardDiff(chunksize=3))
     opt = solve(OptimizationProblem(obj, pg, pass), optalg)
     vals = transform(tr, opt.u)
-    @test vals.Rp.R0 ≈ R0 rtol=0.1
-    @test vals.Rp.A1 ≈ A1 rtol=0.2
-    @test vals.Rp.A2 ≈ A2 rtol=0.5
+    @test vals.Rp.R0 ≈ R0 rtol=1e-2
+    @test vals.Rp.A1 ≈ A1 rtol=1e-2
+    @test vals.Rp.A2 ≈ A2 rtol=1e-2
 
     # Check that the badprms path outputs NaNs as expected
     badprms = x->true
@@ -90,19 +90,19 @@ end
     opt = solve(NonlinearLeastSquaresProblem(nls, pg, pass), GaussNewton(), reltol=1e-10, abstol=1e-10)
     vals = transform(tr, opt.u)
     @test vals.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.1
-    @test vals.Rp.R0 ≈ R0 rtol=0.1
-    @test vals.Rp.A1 ≈ A1 rtol=0.1
-    @test vals.Rp.A2 ≈ A2 rtol=0.3
+    @test vals.Rp.R0 ≈ R0 rtol=1e-2
+    @test vals.Rp.A1 ≈ A1 rtol=1e-2
+    @test vals.Rp.A2 ≈ A2 rtol=1e-2
 end
 
-po2 = @set po.Rp = RpFormFit(2u"cm^2*Torr*hr/g", 5u"cm*Torr*hr/g", 1.5u"cm^-1")
-po3 = @set po.Rp = RpFormFit(0.5u"cm^2*Torr*hr/g", 20u"cm*Torr*hr/g", 0.0u"cm^-1")
+po2 = @set po.Rp = RpFormFit(2.0u"cm^2*Torr*hr/g", 5.0u"cm*Torr*hr/g", 1.5u"cm^-1")
+po3 = @set po.Rp = RpFormFit(0.5u"cm^2*Torr*hr/g", 20.0u"cm*Torr*hr/g", 0.5u"cm^-1")
 
 pos = [po, po2, po3]
 pdfits = map(pos) do poi
     base_sol = solve(ODEProblem(poi), LyoPronto.odealg_chunk2)
     t = base_sol.t*u"hr"
-    T = base_sol[2,:]*u"K"
+    T = base_sol[2,begin:end-2]*u"K" # Leave the last couple temperatures out, to imitate real life
     t_end = t[end]
     pdfit = PrimaryDryFit(t, T; t_end)
 end
@@ -116,8 +116,8 @@ end
 
 
 
-    pg = fill(0.0, TransformVariables.dimension(big_trans))
-    @test_broken @inferred gen_nsol_pd(pg, big_trans, pos)
+    pg = fill(0.5, TransformVariables.dimension(big_trans))
+    @inferred gen_nsol_pd(pg, big_trans, pos)
     sols = gen_nsol_pd(pg, big_trans, pos)
     @testset "Different solution" begin
         for sol in sols
@@ -125,20 +125,20 @@ end
         end
     end
     pass = (big_trans, pos, pdfits)
-    # err = @inferred objn_pd(pg, pass)
+    err = @inferred objn_pd(pg, pass)
 
     # This specific test can be deleted if it becomes trouble, probably
-    exact = log.([1/0.75, 1/0.75, 0.5, 2, 2/0.8/0.75, 5/14/2, 1.5*2, 0.5/0.8/0.75, 20/14/2, 1e-20])
+    exact = log.([1/0.75, 1/0.75, 0.5, 2, 2/0.8/0.75, 5/14/2, 1.5*2, 0.5/0.8/0.75, 20/14/2, .5*2])
     @test objn_pd(exact, pass) ≈ 0 atol=1e-4  # Transformation should give zero objective at original values
 
     obj = OptimizationFunction(objn_pd, AutoForwardDiff(chunksize=5)) # Length of 10: divide it nicely
-    opt = solve(OptimizationProblem(obj, pg, pass), optalg, f_abstol=1e-2)
+    opt = solve(OptimizationProblem(obj, pg, pass), optalg, f_abstol=1e-6)
     vals = transform(big_trans, opt.u)
     @test vals.shared.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.1
     for (poi, sepi) in zip(pos, vals.separate)
-        @test sepi.Rp.R0 ≈ poi.Rp.R0 rtol=0.1
-        @test sepi.Rp.A1 ≈ poi.Rp.A1 rtol=0.3
-        @test sepi.Rp.A2 ≈ poi.Rp.A2 atol=0.6u"cm^-1"
+        @test sepi.Rp.R0 ≈ poi.Rp.R0 rtol=1e-1
+        @test sepi.Rp.A1 ≈ poi.Rp.A1 rtol=1e-1
+        @test sepi.Rp.A2 ≈ poi.Rp.A2 atol=0.2u"cm^-1"
     end
 
     # Check that the badprms path outputs NaNs as expected
