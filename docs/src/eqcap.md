@@ -1,11 +1,18 @@
 # Estimating Equipment Capability
 
-The EC-CURT model, published by [Kazarin et al in 2021](https://link.springer.com/10.1208/s12249-021-02167-8), provides a compact way to get a first estimate of the equipment capability line. This equipment capability limit determines one edge of the design space for the primary drying stage of lyophilization.
-This model is constructed by measuring equipment capability for 3 lyophilizers of various sizes, validating CFD calculations with those limits, then doing CFD calculations on a 3x3x3x2 experimental design: to evaluate on other lyophilizer geometries, a multilinear interpolation is used across this range of conditions. For full details, consult the article.
+The EC-CURT model, published by [Kazarin et al in 2021](https://doi.org/10.1208/s12249-021-02167-8), provides a compact way to get a first estimate of the equipment capability line. This equipment capability limit determines one edge of the design space for the primary drying stage of lyophilization. At a given pressure, this equipment limit is an upper bound on sublimation flux. In many cases, this limit is set by choked flow in the duct from the lyophilizer's main chamber to its condenser; this limit varies approximately linearly with pressure. 
+
+
+The resulting line is given the form $m_\mathrm{flux} = k p_\mathrm{ch} + b$; the EC-CURT model returns the slope $k$ and intercept $b$, given the chamber volume, duct length, duct diameter, and valve thickness (within the duct), as shown in the schematic below. The parameters of this line are often given other names in literature; for example, in [the Python version of LyoPRONTO](https://lyopronto.geddes.rcac.purdue.edu) the slope is $b$ and the intercept is $a$.
+
+![](lyophilizer_dims.svg)
+
+The model was constructed by measuring equipment capability for 3 lyophilizers of varying size, validating CFD calculations with those measured limits, then doing CFD calculations on a 3x3x3x2 grid in the space of various lyophilizer dimensions: to evaluate on other lyophilizer geometries, a multilinear interpolation is used across this range of conditions. For full details, consult the article.
+For some lyophilizers at some operating conditions, the condenser's capacity or flow effects around the condenser may be a stricter limitation; the EC-CURT model does not cover that regime.
 
 ## Close translation
 
-A numerical implementation in MATLAB for the EC-CURT model was provided in the supplementary information. The CFD data (chamber pressures at all conditions) were translated from there into Julia and provided as part of LyoPronto.jl.
+A numerical implementation in MATLAB for the EC-CURT model was provided in the supplementary information of [the original article](https://doi.org/10.1208/s12249-021-02167-8). The CFD data (chamber pressures at all conditions) were translated from there into Julia and provided as part of LyoPronto.jl.
 
 ```@docs; canonical=false
 ECCURT.eq_cap_line
@@ -70,3 +77,20 @@ plot!([Inf], [Inf], c=:gray, linestyle=:dash, lw=3, label="New interp")
 # Last tinkering
 plot!(xlabel="p_{ch}", ylabel="\\dot{m}", unitformat=latexify)
 ```
+
+## Checking range of model parameters
+Both [`ECCURT.eq_cap_line`](@ref) and [`ECCURT.eq_cap_line_new`](@ref) will emit a warning if the input lyophilizer geometry is outside the range of parameters with which this model was constructed. To programmatically check in advance whether a set of parameters is in range, the following function is provided:
+```@docs; canonical=false
+ECCURT.is_in_model_range
+```
+
+The range of geometries for interpolation is:
+
+|  | Lower limit | Upper limit |
+|----|----|-----|
+| Duct diameter | 59.6 mm | 304.8 mm |
+| Ratio of duct diameter to valve thickness | 2.24 | 21.75
+| Duct length | 100 mm | 890 mm |
+| Chamber volume | 0.092 m$^3$ | 0.44 m$^3$ |
+
+Outside of these ranges, the model uses linear extrapolation. This likely still yield useful results when the geometry of interest is only a little outside the range, but is not validated in the original study.
