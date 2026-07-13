@@ -29,7 +29,7 @@ file_loc = "./2024-06-04-10_MFD_AH.csv"
 cp(doc_file_loc, file_loc); #md #hide 
 ## Data start at 7th row of CSV file.
 procdata_raw = CSV.read(file_loc, Table, header=7)
-## MicroFD, used for this experiment, has a column indicating primary drying
+## Convert time stamps to time counting from zero
 t = uconvert.(u"hr", procdata_raw.CycleTime .- procdata_raw.CycleTime[1])
 ## At midnight, timestamps revert to zero, so catch that case
 for i in eachindex(t)[begin+1:end]
@@ -58,8 +58,9 @@ procdata = map(procdata_raw) do row
 end
 procdata = Table(procdata, (;t)) # Append time to table
 
-## Count time from the beginning of experiment
+## MicroFD, used for this experiment, has a column indicating primary drying
 pd_data = filter(row->row.phase == 4, procdata)
+## Count time from the beginning of experiment
 pd_data.t .-= pd_data.t[1]
 
 # ## Identify one definition of end of primary drying with Savitzky-Golay filter
