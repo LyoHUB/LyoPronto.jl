@@ -47,7 +47,7 @@ Uses a table from a SCHOTT manual, stored internally in a CSV.
 
 function select_size(vialsize::String)
     if vialsize ∉ VIAL_DIMS.Size
-        error("bad vial size passed: $vialsize")
+        throw(ArgumentError("bad vial size passed: $vialsize"))
     end
     return VIAL_DIMS[vialsize]
 end
