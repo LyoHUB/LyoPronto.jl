@@ -192,7 +192,7 @@ function ODEProblem(po::ParamObjPikal; u0=calc_u0(po), tspan=(0.0, 1000.0))
     tstops = get_tstops(po)
     t0 = get_t0(po)
     @reset tspan[1] = t0 
-    return ODEProblem(lyo_1d_dae_f, u0, tspan, po; 
+    return ODEProblem{true, SciMLBase.FullSpecialize}(lyo_1d_dae_f, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback, initializealg=BrownFullBasicInit(),
         dt=0.1)
 end
