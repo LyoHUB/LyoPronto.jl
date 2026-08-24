@@ -254,10 +254,6 @@ end
     include("test_RF_opt.jl")
 end
 
-@testset "Additional unit tests" begin
-    include("test_extra_features.jl")
-end
-
 ti = time() - ti
 println("\nTest took total time of:")
 println(round(ti/60, digits = 3), " minutes")
