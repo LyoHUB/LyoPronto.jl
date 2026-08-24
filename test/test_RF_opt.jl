@@ -1,7 +1,8 @@
 using TransformVariables
 using OptimizationOptimJL
+using Optim: BFGS
 using LineSearches
-optalg = LBFGS(linesearch=LineSearches.BackTracking())
+optalg = BFGS(linesearch=LineSearches.BackTracking())
 
 vialsize = "6R"
 rad_i, rad_o = get_vial_radii(vialsize)
