@@ -14,8 +14,8 @@ using TransformVariables
 # We import it with OptimizationOptimJL to specify Optim as a backend.
 # LineSearches gives a little more granular control over solver algorithms for Optim.
 using OptimizationOptimJL
-using Optim: BFGS
 using LineSearches
+using ADTypes: AutoForwardDiff
 # Or, instead of using a scalar optimization package, we can use a least-squares solver.
 using NonlinearSolve
 # Plots is a frontend for several plotting packages, and its companion package StatsPlots has a very nice macro I like. 
@@ -194,7 +194,7 @@ pass = (trans_KRp, po, fitdat_all)
 ## The objective function will be obj_pd, which is compatible with automatic differentiation
 obj = OptimizationFunction(obj_pd, AutoForwardDiff())
 ## Solve the optimization problem
-optalg = BFGS(linesearch=LineSearches.BackTracking())
+optalg = Optim.BFGS(linesearch=LineSearches.BackTracking())
 @time opt = solve(OptimizationProblem(obj, pg, pass), optalg)
 
 # This works, but by using a scalar objective function, we throw away part of the 
