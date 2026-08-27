@@ -95,8 +95,8 @@ end
     @test vals.Rp.A2 ≈ A2 rtol=1e-2
 end
 
-po2 = @set po.Rp = RpFormFit(2.0u"cm^2*Torr*hr/g", 5.0u"cm*Torr*hr/g", 1.5u"cm^-1")
-po3 = @set po.Rp = RpFormFit(0.5u"cm^2*Torr*hr/g", 20.0u"cm*Torr*hr/g", 0.5u"cm^-1")
+po2 = @set po.Rp = RpFormFit(2.0u"cm^2*Torr*hr/g", 5.0u"cm*Torr*hr/g", 0.5u"cm^-1")
+po3 = @set po.Rp = RpFormFit(0.5u"cm^2*Torr*hr/g", 50.0u"cm*Torr*hr/g", 3.0u"cm^-1")
 
 pos = [po, po2, po3]
 pdfits = map(pos) do poi
@@ -107,14 +107,11 @@ pdfits = map(pos) do poi
     pdfit = PrimaryDryFit(t, T; t_end)
 end
 
-
 @testset "Fit with shared Kv, distinct Rp" begin
     big_trans = as((; 
         shared = K_transform_basic(Kshf(pch(0))*0.75),
         separate = as(Vector, Rp_transform_basic(R0*0.75, A1*2, A2*0.5), 3)
     ))
-
-
 
     pg = fill(0.5, TransformVariables.dimension(big_trans))
     @inferred gen_nsol_pd(pg, big_trans, pos)
@@ -128,7 +125,7 @@ end
     err = @inferred objn_pd(pg, pass)
 
     # This specific test can be deleted if it becomes trouble, probably
-    exact = log.([1/0.75, 1/0.75, 0.5, 2, 2/0.8/0.75, 5/14/2, 1.5*2, 0.5/0.8/0.75, 20/14/2, .5*2])
+    exact = log.([1/0.75, 1/0.75, 0.5, 2, 2/0.8/0.75, 5/14/2, 0.5*2, 0.5/0.8/0.75, 50/14/2, 3.0*2])
     @test objn_pd(exact, pass) ≈ 0 atol=1e-4  # Transformation should give zero objective at original values
 
     obj = OptimizationFunction(objn_pd, AutoForwardDiff(chunksize=5)) # Length of 10: divide it nicely
