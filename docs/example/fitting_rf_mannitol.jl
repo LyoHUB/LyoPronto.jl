@@ -4,6 +4,7 @@ using LyoPronto
 # NonlinearSolve and TransformVariables are used for parameter fitting
 using NonlinearSolve
 using TransformVariables
+using ADTypes: AutoForwardDiff
 
 # CSV and TypedTables load and store experimental data
 using TypedTables, CSV

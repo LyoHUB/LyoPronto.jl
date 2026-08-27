@@ -171,6 +171,76 @@ end
     @test 50u"hr" < identify_pd_end(d, Val(:der2)) < 100u"hr"
 end
 
+vialsize = "6R"
+rad_i, rad_o = get_vial_radii(vialsize)
+Ap = π*rad_i^2
+Av = π*rad_o^2
+csolid = 0.06u"g/mL"
+ρsolution = 1u"g/mL"
+R0 = 0.8u"cm^2*Torr*hr/g"
+A1 = 14.0u"cm*Torr*hr/g"
+A2 = 1.0u"1/cm"
+Rp = RpFormFit(R0, A1, A2)
+Vfill = 3u"mL"
+pch = RampedVariable(70u"mTorr")
+Tsh = RampedVariable([-15u"°C", 10u"°C"].|>u"K", 0.5u"K/minute")
+Kshf = RpFormFit(2.75e-4u"cal/s/K/cm^2", 8.93e-4u"cal/s/K/cm^2/Torr", 0.46u"1/Torr")
+hf0 = Vfill/Ap
+po = ParamObjPikal((
+    (Rp, hf0, csolid, ρsolution),
+    (Kshf, Av, Ap),
+    (pch, Tsh)
+))
+
+@testset "Rp estimation and calc_hRp_T" begin
+    # Build a small Pikal ParamObj similar to other tests
+
+    sol = solve(ODEProblem(po), LyoPronto.odealg_chunk2)
+    t = sol.t*u"hr"
+    T = sol[2,1:end-2]*u"K"
+    pdfit = PrimaryDryFit(t, T; t_end = t[end])
+
+    hd, Rpvals = calc_hRp_T(po, pdfit)
+    @test length(hd) == length(Rpvals) > 0
+
+    @test all(.≈(Rpvals, Rp.(hd), atol=1e-2u"cm^2*Torr*hr/g"))
+end
+
+@testset "Vial geometry helpers" begin
+    # Thickness for known vial size and shapes/outlines
+    @test get_vial_radii("6R")[2] - get_vial_radii("6R")[1] == 1.0u"mm"
+    @test_throws ArgumentError get_vial_radii("5R") # nonexistent vial size
+
+    dims = get_vial_shape("6R")
+    vpoints, fpoints = make_outlines(dims, 1u"mL")
+    @test !isempty(vpoints) && !isempty(fpoints)
+end
+
+@testset "Low-level calc_md_Q branches" begin
+    # negative Tf should return NaNs
+    u = [0.0, -10.0] # hf, Tf (unitless)
+    dmdt, Q = LyoPronto.calc_md_Q(u, po, 0)
+    @test isnan(ustrip(u"kg/s", dmdt)) && isnan(ustrip(u"W", Q))
+
+    # extremely small Rp should also trigger NaN path
+    smallRp = x->1e-6u"hr*cm^2*Torr/g"
+    po2 = ParamObjPikal(( (smallRp, hf0, csolid, ρsolution), (Kshf, Av, Ap), (pch, Tsh) ))
+    u2 = [0.1, 250.0]
+    dmdt2, Q2 = LyoPronto.calc_md_Q(u2, po2, 0)
+    @test isnan(ustrip(u"kg/s", dmdt2))
+end
+
+@testset "Dielectric correlation" begin
+    # Zero frequency should give zero loss
+    @test LyoPronto.eppf(200u"K", 0u"Hz") == 0.0
+    val = LyoPronto.eppf(200u"K", 10u"GHz")
+    @test isfinite(val) && val > 0.0
+    # Loss should increase with temperature & frequency in the tested range
+    @test LyoPronto.eppf(258u"K", 10u"GHz") > val
+    @test LyoPronto.eppf(258u"K", 18u"GHz") > val
+
+    #TODO get correlation values from original paper and test against them
+end
 
 @testset "Simulation test against Python results: sucrose conventional" begin
     include("test_sucrose.jl")

@@ -15,6 +15,7 @@ using TransformVariables
 # LineSearches gives a little more granular control over solver algorithms for Optim.
 using OptimizationOptimJL
 using LineSearches
+using ADTypes: AutoForwardDiff
 # Plots is a frontend for several plotting packages, and its companion package StatsPlots has a very nice macro I like. 
 using Plots
 using StatsPlots: @df
@@ -122,7 +123,7 @@ all_po = (poA, poB, poC)
 # We need to give all of the parameters, experiments, and this transformation to the problem:
 tpf = (shared_trans, all_po, fitdats)
 
-optalg = LBFGS(linesearch=LineSearches.BackTracking())
+optalg = Optim.BFGS(linesearch=LineSearches.BackTracking())
 opt = solve(OptimizationProblem(objnf_pd, p0, tpf), optalg)
 
 # Note that the results of this optimization problem are in a log space:
