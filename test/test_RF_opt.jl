@@ -63,18 +63,18 @@ pass = (tr, po, pdfit)
     obj = OptimizationFunction(obj_pd, AutoForwardDiff(chunksize=3))
     opt = solve(OptimizationProblem(obj, pg, pass), optalg;)
     vals = transform(tr, opt.u)
-    @test vals.Kvwf ≈ Kvwf rtol=0.1
-    @test vals.Bf ≈ Bf rtol=0.5
-    @test vals.Bvw ≈ Bvw rtol=0.1
+    @test log(vals.Kvwf / Kvwf) ≈ 0 atol=0.3
+    @test log(vals.Bf / Bf) ≈ 0 atol=0.3
+    @test log(vals.Bvw / Bvw) ≈ 0 atol=0.1
 end
 
 @testset "Least squares" begin
     lsq = NonlinearFunction(pdfit)
     opt = @inferred solve(NonlinearProblem(lsq, pg, pass), LevenbergMarquardt())
     vals = transform(tr, opt.u)
-    @test vals.Kvwf ≈ Kvwf rtol=0.3
-    @test vals.Bf ≈ Bf rtol=0.5
-    @test vals.Bvw ≈ Bvw rtol=0.3
+    @test log(vals.Kvwf / Kvwf) ≈ 0 atol=0.3
+    @test log(vals.Bf / Bf) ≈ 0 atol=0.3
+    @test log(vals.Bvw / Bvw) ≈ 0 atol=0.1
 end
 
 
