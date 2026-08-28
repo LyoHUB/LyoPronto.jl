@@ -29,9 +29,12 @@ using LinearAlgebra: Diagonal
 
 abstract type ParamObj end
 
-const odealg_chunk1 = Rodas5P(autodiff=AutoForwardDiff(chunksize=1))
-const odealg_chunk2 = Rodas5P(autodiff=AutoForwardDiff(chunksize=2))
-const odealg_chunk3 = Rodas5P(autodiff=AutoForwardDiff(chunksize=3))
+get_odealg(chunksize=2) = Rodas5P(autodiff=AutoForwardDiff(;chunksize))
+export get_odealg
+
+const odealg_chunk1 = get_odealg(1)
+const odealg_chunk2 = get_odealg(2)
+const odealg_chunk3 = get_odealg(3)
 
 include("structs.jl")
 include("rf_lumcap_model.jl")
