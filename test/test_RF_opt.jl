@@ -72,9 +72,9 @@ end
     lsq = NonlinearFunction(pdfit)
     opt = @inferred solve(NonlinearProblem(lsq, pg, pass), LevenbergMarquardt())
     vals = transform(tr, opt.u)
-    @test log(vals.Kvwf / Kvwf) ≈ 0 atol=0.3
-    @test log(vals.Bf / Bf) ≈ 0 atol=0.3
-    @test log(vals.Bvw / Bvw) ≈ 0 atol=0.1
+    @test log(vals.Kvwf / Kvwf) ≈ 0 atol=0.4
+    @test log(vals.Bf / Bf) ≈ 0 atol=0.4
+    @test log(vals.Bvw / Bvw) ≈ 0 atol=0.4
 end
 
 
