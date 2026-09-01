@@ -24,7 +24,7 @@ Kshf_f = RpFormFit(KC, KP, KD)
 # Geometry
 hf0 = Vfill/Ap
 mf0 = Vfill * ρsolution
-# RF fit parameters (dummy values)
+# RF fit parameters (base to which we will fit)
 Bf = 2.0e7u"Ω/m^2"
 Bvw = 0.9e7u"Ω/m^2"
 Kvwf = 1.0e-3u"cal/s/K/cm^2"
@@ -32,7 +32,7 @@ Kvwf = 1.0e-3u"cal/s/K/cm^2"
 f_RF = 8u"GHz"
 pch = RampedVariable(100u"mTorr")
 Tsh = RampedVariable([233.15u"K", 283.15u"K"], 0.5u"K/minute",)
-P_per_vial = RampedVariable(10u"W"/17 * 0.54) # actual power / vial
+P_per_vial = RampedVariable(0.5u"W") 
 
 po = ParamObjRF((
     (Rp, hf0, csolid, ρsolution),
@@ -46,8 +46,10 @@ po = ParamObjRF((
 base_sol = solve(ODEProblem(po), LyoPronto.odealg_chunk3)
 
 t = base_sol.t*u"hr"
-Tf = base_sol[2,:]*u"K"
-Tvw = base_sol[3,:]*u"K"
+keep = findall(diff(base_sol.t) .> .01)
+t = base_sol.t[keep]*u"hr"
+Tf = base_sol[2,keep]*u"K"
+Tvw = base_sol[3,keep]*u"K"
 t_end = t[end]
 pdfit = PrimaryDryFit(t, Tf, Tvw, t_end)
 
@@ -56,12 +58,12 @@ pg = fill(1.0, 3)
 sol = @inferred gen_sol_pd(pg, tr, po)
 @test sol != base_sol
 pass = (tr, po, pdfit)
-# err = @inferred obj_pd(pg, pass)
 
 @testset "Optimization" begin
     err = @inferred obj_pd(pg, pass)
     obj = OptimizationFunction(obj_pd, AutoForwardDiff(chunksize=3))
     opt = solve(OptimizationProblem(obj, pg, pass), optalg;)
+    @test SciMLBase.successful_retcode(opt)
     vals = transform(tr, opt.u)
     @test vals.Kvwf ≈ Kvwf rtol=0.1
     @test vals.Bf ≈ Bf rtol=0.5
@@ -71,6 +73,7 @@ end
 @testset "Least squares" begin
     lsq = NonlinearFunction(pdfit)
     opt = @inferred solve(NonlinearProblem(lsq, pg, pass), LevenbergMarquardt())
+    @test SciMLBase.successful_retcode(opt)
     vals = transform(tr, opt.u)
     @test vals.Kvwf ≈ Kvwf rtol=0.3
     @test vals.Bf ≈ Bf rtol=0.5
