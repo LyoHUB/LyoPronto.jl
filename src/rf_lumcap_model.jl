@@ -42,25 +42,6 @@ See [`RpFormFit`](@ref) and [`RampedVariable`](@ref) for convenience types that 
     current version; they will be removed in a future version.
 """
 
-"""
-    $(SIGNATURES)
-
-Compute the right-hand-side function for the ODEs making up the lumped-capacitance microwave-assisted model.
-
-The optional argument `qret` defaults to `Val(false)`; if set to `Val(true)`, the function returns
-`[Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw]` with `Q_...` as Unitful quantities in watts. 
-The extra results are helpful in investigating the significance of the various heat transfer 
-modes, but are not necessary in the ODE integration.
-
-`du` refers to `[dmf/dt, dTf/dt, dTvw/dt]`, with `u = [mf, Tf, Tvw]`.
-`u` is taken without units but assumed to have the units of `[g, K, K]` (which is internally added).
-`tn` is assumed to be in hours (internally added), so `dudt` is returned with assumed units `[g/hr, K/hr, K/hr]` to be consistent.
-
-Use the `ParamObjRF` type to hold the parameters. 
-$(RF_PARAMS_DOC)
-
-"""
-
 
 """
     $(SIGNATURES)
@@ -75,24 +56,14 @@ Returns a named tuple with the following fields, all as Unitful quantities:
 - `Q_RF_vw`: volumetric heating of vial wall (W)
 - `Q_shw`: heat transfer from shelf to vial wall (W)
 """
-@inline function calc_md_Q_rf(u, params, tn)
+@inline function calc_md_Q_rf(u, po, tn)
     # Unpack all the parameters
-    if params isa ParamObjRF
-        (;Rp, hf0, csolid, ρsolution,
-        Kshf, Av, Ap,
-        pch, Tsh, P_per_vial, 
-        mf0, cpf, mv, cpv,
-        f_RF, eppf, eppvw,
-        Kvwf, Bf, Bvw) = params
-    # TODO: remove this branch, possibly as a breaking change or at least a deprecation warning
-    else
-        Rp, hf0, csolid, ρsolution = params[1]
-        Kshf, Av, Ap, = params[2]
-        pch, Tsh, P_per_vial = params[3] 
-        mf0, cpf, mv, cpv = params[4]
-        f_RF, eppf, eppvw = params[5]
-        Kvwf, Bf, Bvw = params[6]
-    end
+    (;Rp, hf0, csolid, ρsolution,
+    Kshf, Av, Ap,
+    pch, Tsh, P_per_vial, 
+    mf0, mv,
+    f_RF, eppf, eppvw,
+    Kvwf, Bf, Bvw) = po
     # Dimensionalize the state variables
     t = tn*u"hr" 
     m_f = u[1]*u"g"
@@ -167,12 +138,6 @@ function lumped_cap_rf!(du, u, params, tn, qret = Val(false))
     du[1] = ustrip(u"g/hr", dm_f)
     du[2] = ustrip(u"K/hr", dT_f)
     du[3] = ustrip(u"K/hr", dT_vw)
-    
-    if qret isa Val{true}
-        return uconvert.(u"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw])
-    else
-        return nothing
-    end
 end
 
 @concrete terse struct ParamObjRF <: ParamObj
@@ -190,14 +155,12 @@ end
     cpf
     mv
     cpv
-    Arad
     f_RF
     eppf
     eppvw
     Kvwf
     Bf
     Bvw
-    alpha
 end
 
 @doc """
@@ -214,41 +177,12 @@ $(RF_PARAMS_DOC)
 ParamObjRF
 
 function ParamObjRF(tuptup::Tuple) 
-    if (length(tuptup[4]) == 4 && length(tuptup[6]) == 3)
-        return ParamObjRF(tuptup[1]..., tuptup[2]...,
-                    tuptup[3]..., tuptup[4]..., missing,
-                    tuptup[5]..., tuptup[6]..., missing,)
-    elseif length(tuptup[6]) == 3
-        Base.depwarn("ParamObjRF will no longer accept the `Arad` and `alpha` parameters in a future version.", :ParamObjRF)
-        return ParamObjRF(tuptup[1]..., tuptup[2]...,
-                    tuptup[3]..., tuptup[4]...,
-                    tuptup[5]..., tuptup[6]..., missing,)
-    else
-        Base.depwarn("ParamObjRF will no longer accept the `Arad` and `alpha` parameters in a future version.", :ParamObjRF)
-        return ParamObjRF(tuptup[1]..., tuptup[2]...,
-                    tuptup[3]..., tuptup[4]...,
-                    tuptup[5]..., tuptup[6]...,)
+    if length.(tuptup) != [4, 3, 3, 4, 3, 3] 
+        @warn "ParamObjRF tuple-of-tuple structure is wrong. Attempting to construct anyway."
     end
-end
-Base.size(po::ParamObjRF) = (6,)
-
-function Base.getindex(po::ParamObjRF, i)
-    Base.depwarn("Indexing into a ParamObjRF is deprecated; use destructuring with named fields instead.", Symbol("Base.getindex"))
-    if i == 1
-        return (po.Rp, po.hf0, po.csolid, po.ρsolution)
-    elseif i == 2
-        return (po.Kshf, po.Av, po.Ap)
-    elseif i==3 
-        return (po.pch, po.Tsh, po.P_per_vial)
-    elseif i == 4
-        return (po.mf0, po.cpf, po.mv, po.cpv, po.Arad)
-    elseif i == 5
-        return (po.f_RF, po.eppf, po.eppvw)
-    elseif i == 6
-        return (po.Kvwf, po.Bf, po.Bvw, po.alpha)
-    else
-        error(BoundsError, "Attempt to access LyoPronto.ParamsObjRF at index $i. Only indices 1 to 6 allowed")
-    end
+    return ParamObjRF(tuptup[1]..., tuptup[2]...,
+                tuptup[3]..., tuptup[4]...,
+                tuptup[5]..., tuptup[6]...,)
 end
 
 function calc_u0(po::ParamObjRF)
