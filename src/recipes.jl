@@ -467,35 +467,23 @@ Returns a Dict{String, Quantity{...}}, with string keys `Qsub, Qshf, Qvwf, QRFf,
 """
 function qrf_integrate(sol, RF_params)
 
-    # # This attempt currently falls down because it tries to materialize a zero vector and can't put zeros into a Unitful array
-    # integrand = (u,t,integ) -> lumped_cap_rf(u, RF_params, t, energy_output=true)[2]
-    # ex_res = integrand(sol.u0, 0, nothing)
-    # integ_values = IntegrandValuesSum(ex_res)
-    # integ_callback = IntegratingSumCallback(integrand, integ_values, ex_res.*0)
-    # cbs = CallbackSet(integ_callback, end_drying_callback)
-    # prob = ODEProblem(lumped_cap_rf, sol.u0, (0, 1e10), RF_params; callback=cbs)
-    # sol = solve(prob, Rodas3(autodiff=false))
-
+    # Using an IntegratingSumCallback would be more elegant, but at last attempt
+    # it struggled with unitful values in the arrays.
     # So we do a manual Riemann integration on the solution output
-    Qcontrib = map(sol.t) do ti
-        lumped_cap_rf!([0.0, 0.0, 0.0], sol(ti), RF_params, ti, Val(true))
-    end
-    Qcontrib = hcat(Qcontrib...)
-    Qsub = Qcontrib[1,:]
-    Qshf = Qcontrib[2,:]
-    Qvwf = Qcontrib[3,:]
-    QRFf = Qcontrib[4,:]
-    QRFvw = Qcontrib[5,:]
+    history = Table(map(sol.t) do ti
+        calc_md_Q_rf(sol(ti), RF_params, ti)
+    end)
 
     t = sol.t*u"hr"
-    weights = fill(t[1], length(sol.t))
-    dt = (t[begin+1:end] .- t[begin:end-1])
+    weights = fill(first(t), length(sol.t))
+    dt = diff(t)
     weights[begin:end-1] += dt./2
     weights[begin+1:end] += dt./2
 
-    qinteg = map([Qsub, Qshf, Qvwf, QRFf, QRFvw]) do q
-        sum(q .* weights)
+    qinteg = map([:Q_sub, :Q_shf, :Q_vwf, :Q_RF_f, :Q_RF_vw]) do q
+        sum(getproperty.(history, q) .* weights) |> u"W*hr"
     end
+    # TODO: consider returning differently
     return Dict("Qsub"=>qinteg[1], 
                 "Qshf"=>qinteg[2],
                 "Qvwf"=>qinteg[3],
