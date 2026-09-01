@@ -42,6 +42,25 @@ See [`RpFormFit`](@ref) and [`RampedVariable`](@ref) for convenience types that 
     current version; they will be removed in a future version.
 """
 
+"""
+    $(SIGNATURES)
+
+Compute the right-hand-side function for the ODEs making up the lumped-capacitance microwave-assisted model.
+
+The optional argument `qret` defaults to `Val(false)`; if set to `Val(true)`, the function returns
+`[Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw]` with `Q_...` as Unitful quantities in watts. 
+The extra results are helpful in investigating the significance of the various heat transfer 
+modes, but are not necessary in the ODE integration.
+
+`du` refers to `[dmf/dt, dTf/dt, dTvw/dt]`, with `u = [mf, Tf, Tvw]`.
+`u` is taken without units but assumed to have the units of `[g, K, K]` (which is internally added).
+`tn` is assumed to be in hours (internally added), so `dudt` is returned with assumed units `[g/hr, K/hr, K/hr]` to be consistent.
+
+Use the `ParamObjRF` type to hold the parameters. 
+$(RF_PARAMS_DOC)
+
+"""
+
 
 """
     $(SIGNATURES)
@@ -65,6 +84,7 @@ Returns a named tuple with the following fields, all as Unitful quantities:
         mf0, cpf, mv, cpv,
         f_RF, eppf, eppvw,
         Kvwf, Bf, Bvw) = params
+    # TODO: remove this branch, possibly as a breaking change or at least a deprecation warning
     else
         Rp, hf0, csolid, ρsolution = params[1]
         Kshf, Av, Ap, = params[2]
@@ -199,10 +219,12 @@ function ParamObjRF(tuptup::Tuple)
                     tuptup[3]..., tuptup[4]..., missing,
                     tuptup[5]..., tuptup[6]..., missing,)
     elseif length(tuptup[6]) == 3
+        Base.depwarn("ParamObjRF will no longer accept the `Arad` and `alpha` parameters in a future version.", :ParamObjRF)
         return ParamObjRF(tuptup[1]..., tuptup[2]...,
                     tuptup[3]..., tuptup[4]...,
                     tuptup[5]..., tuptup[6]..., missing,)
     else
+        Base.depwarn("ParamObjRF will no longer accept the `Arad` and `alpha` parameters in a future version.", :ParamObjRF)
         return ParamObjRF(tuptup[1]..., tuptup[2]...,
                     tuptup[3]..., tuptup[4]...,
                     tuptup[5]..., tuptup[6]...,)
@@ -211,6 +233,7 @@ end
 Base.size(po::ParamObjRF) = (6,)
 
 function Base.getindex(po::ParamObjRF, i)
+    Base.depwarn("Indexing into a ParamObjRF is deprecated; use destructuring with named fields instead.", Symbol("Base.getindex"))
     if i == 1
         return (po.Rp, po.hf0, po.csolid, po.ρsolution)
     elseif i == 2
