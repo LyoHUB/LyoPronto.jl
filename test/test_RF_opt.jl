@@ -66,18 +66,18 @@ pass = (tr, po, pdfit)
     @test SciMLBase.successful_retcode(opt)
     vals = transform(tr, opt.u)
     @test vals.Kvwf ≈ Kvwf rtol=0.1
-    @test vals.Bf ≈ Bf rtol=0.5
+    @test vals.Bf ≈ Bf rtol=0.1
     @test vals.Bvw ≈ Bvw rtol=0.1
 end
 
 @testset "Least squares" begin
     lsq = NonlinearFunction(pdfit)
-    opt = @inferred solve(NonlinearProblem(lsq, pg, pass), LevenbergMarquardt())
+    opt = @inferred solve(NonlinearLeastSquaresProblem(lsq, pg, pass), LevenbergMarquardt())
     @test SciMLBase.successful_retcode(opt)
     vals = transform(tr, opt.u)
-    @test vals.Kvwf ≈ Kvwf rtol=0.3
-    @test vals.Bf ≈ Bf rtol=0.5
-    @test vals.Bvw ≈ Bvw rtol=0.3
+    @test vals.Kvwf ≈ Kvwf rtol=0.2
+    @test vals.Bf ≈ Bf rtol=0.2
+    @test vals.Bvw ≈ Bvw rtol=0.2
 end
 
 
