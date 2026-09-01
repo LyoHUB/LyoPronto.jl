@@ -36,10 +36,11 @@ const odealg_chunk1 = get_odealg(1)
 const odealg_chunk2 = get_odealg(2)
 const odealg_chunk3 = get_odealg(3)
 
-include("structs.jl")
-include("rf_lumcap_model.jl")
+include("sim_helps.jl")
 include("pikal_model.jl")
+include("rf_lumcap_model.jl")
 include("paramfits.jl")
+include("transform_maps.jl")
 include("recipes.jl")
 include("cycle_time.jl")
 include("get_vial_dims.jl")
@@ -53,23 +54,26 @@ export RpFormFit, RampedVariable, ConstPhysProp, PrimaryDryFit
 export end_drying_callback
 export calc_u0, get_tstops
 # conventional lyo
-export lyo_1d_dae_f
+export lyo_1d_dae_f, calc_md_Q
 export ParamObjPikal
 export RpEstimator, calc_hRp_T
 # RF lyo
-export lumped_cap_rf!
+export lumped_cap_rf!, calc_md_Q_rf
 export ParamObjRF
-# parameter fitting tools
-export gen_sol_pd, obj_pd, gen_nsol_pd, objn_pd
+# raw parameter fitting tools
+export obj_expT, err_expT, err_expT!, num_errs
+# transforms
 export KRp_transform_basic, K_transform_basic, Rp_transform_basic, KBB_transform_basic
 export KBB_transform_bounded
-export obj_expT, err_expT, err_expT!, num_errs, nls_pd, nls_pd!
-# plotting tools (mostly already done by macros)
+# simulation helpers which take transforms
+export gen_sol_pd, obj_pd, gen_nsol_pd, objn_pd, nls_pd, nls_pd!
+# plotting tools (mostly already exported by macros)
 export qrf_integrate
 # End of primary drying
 export identify_pd_end
 # Vial dimensions
 export get_vial_radii, get_vial_mass, get_vial_shape, make_outlines
+# Equipment capability
 export ECCURT
 
 
