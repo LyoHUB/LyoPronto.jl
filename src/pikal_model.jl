@@ -42,7 +42,7 @@ This allows assessment of the model's outputs without needing to rewrite the mod
     hd = hf0 - hf
     # escape hatch: unphysical temperatures or Rp too small can cause DAE convergence failure
     if Tf < 0.0u"K" || Rp(hd) < 1e-4u"hr*cm^2*Torr/g"
-        return NaN*u"kg/s", NaN*u"W"
+        return (; md=NaN*u"kg/s", Q_shf=NaN*u"W")
     end
 
     pchl = pch(td)
@@ -50,7 +50,7 @@ This allows assessment of the model's outputs without needing to rewrite the mod
     Tsub = Tf - Qshf/k_ice/Ap*hf
     delta_p = calc_psub(Tsub)-pch(td)
     md = Ap*(delta_p)/Rp(hd) |> u"g/hr"
-    return md, Qshf
+    return (; md, Q_shf)
 end
 
 @doc raw"""
@@ -136,21 +136,6 @@ ParamObjPikal
 function ParamObjPikal(tuptup) 
     return ParamObjPikal(tuptup[1]..., tuptup[2]..., tuptup[3]...)
 end
-
-function Base.getindex(p::ParamObjPikal, i::Int)
-    if i == 1
-        return (p.Rp, p.hf0, p.csolid, p.ρsolution)
-    elseif i == 2
-        return (p.Kshf, p.Av, p.Ap)
-    elseif i == 3
-        return (p.pch, p.Tsh)
-    else
-        error(BoundsError, "Attempt to access LyoPronto.ParamsObjPikal at index $i. Only indices 1 to 3 allowed")
-    end
-end
-Base.size(::ParamObjPikal) = (3,)
-Base.length(::ParamObjPikal) = 3
-
 
 # -------------------------------------------
 # Define how a ParamObjPikal maps to an ODEProblem
