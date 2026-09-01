@@ -213,7 +213,7 @@ Evaluate an objective function which compares model solution computed by `sol` t
 - `tweight = 1` gives the weighting (in K^2/hr^2) of the total drying time in the objective, as compared to the temperature error.
 - `Tvw_weight = 1` gives the weighting of Tvw in the objective, as compared to Tf.
 
-Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable in `sol` is assumed to be temperature, as is true for the lumped capacitance model (see [ParamObjRF`](@ref).
+Note that if `pdfit` has vial wall temperatures (i.e. `ismissing(pdfit.Tvws) == false`), the third-index variable in `sol` is assumed to be temperature, as is true for the lumped capacitance model (see [`ParamObjRF`](@ref).
 
 If there are multiple series of `Tf` in `pdfit`, squared error is computed for each separately then summed; likewise for `Tvw`.
 
