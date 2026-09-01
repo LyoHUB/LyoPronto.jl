@@ -1,39 +1,40 @@
 
-"""
-    end_cond(u, t, integ)
-
-Compute the end condition for primary drying (that `mf` or `hf` approaches zero).
-"""
-end_cond(u, t, integ) = u[1] - 1e-10 # When reaches 1e-10, is basically zero
-"""
-A callback for use in simulating either the Pikal or RF model.
-
-Terminates the time integration when [`end_cond`](@ref) evaluates to `true`.
-"""
-const end_drying_callback = ContinuousCallback(end_cond, terminate!, save_positions=(true, false))
-
 # -------------------------------------------
 # Incorporate the nonlinear algebraic part in a DAE formulation.
 # This has the advantage that, afterward, temperatures can be cheaply interpolated by builtin solutions
+
+const PIKAL_PARAM_DOC = """
+`params` is a `ParamObjPikal`, which can be constructed with the following form (helping with readability):
+```
+params = ParamObjPikal((
+    (Rp, hf0, csolid, ρsolution),
+    (Kshf, Av, Ap),
+    (pch, Tsh) ,
+))
+```
+where those listed following are callables returning `Quantity`s, and the rest are `Quantity`s.
+See [`RpFormFit`](@ref LyoPronto.RpFormFit) and [`RampedVariable`](@ref LyoPronto.RampedVariable) for convenience types that can help with the callables.
+- `Rp(x)` with `x` a length returns mass transfer resistance (as a Unitful quantity)
+- `Kshf(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
+- `Tsh(t)`, `pch(t)` return shelf temperature and chamber pressure respectively at time `t`.
+"""
+
+
 """
     $(SIGNATURES)
 
-With the Pikal model, compute the mass flow at `u=[hf, Tf]`, time `t`, and conditions `po`.
-Ideally `po` should be a `ParamObjPikal`.
+With the Pikal model, compute model quantities at `u=[hf, Tf]`, time `t`, and conditions `po`.
 
-This gets used inside the DAE solve, but for consistency is provided separately so to avoid
-the risk of making unit mistakes.
+`po` should be a [`ParamObjPikal`](@ref); the return will be a named tuple with Unitful quantities in the following fields:
+- `md`: mass flow rate (g/hr)
+- `Q_shf`: heat transfer from shelf to product (W)
+
+This allows assessment of the model's outputs without needing to rewrite the model equations.
 """
-function calc_md_Q(u, po, t)
+@inline function calc_md_Q(u, po, t)
 
-    if po isa ParamObj
-        (; Rp, hf0, csolid, ρsolution,
-        Kshf, Av, Ap, pch, Tsh) = po
-    else
-        Rp, hf0, csolid, ρsolution = po[1]
-        Kshf, Av, Ap = po[2]
-        pch, Tsh = po[3]
-    end
+    (; Rp, hf0, csolid, ρsolution,
+    Kshf, Av, Ap, pch, Tsh) = po
 
     td = t*u"hr" # Dimensional time
     hf = u[1]*u"cm"
@@ -41,15 +42,15 @@ function calc_md_Q(u, po, t)
     hd = hf0 - hf
     # escape hatch: unphysical temperatures or Rp too small can cause DAE convergence failure
     if Tf < 0.0u"K" || Rp(hd) < 1e-4u"hr*cm^2*Torr/g"
-        return NaN*u"kg/s", NaN*u"W"
+        return (; md=NaN*u"kg/s", Q_shf=NaN*u"W")
     end
 
     pchl = pch(td)
-    Qshf = Av*Kshf(pchl)*(Tsh(td) - Tf)
+    Qshf = Av*Kshf(pchl)*(Tsh(td) - Tf) |> u"W"
     Tsub = Tf - Qshf/k_ice/Ap*hf
     delta_p = calc_psub(Tsub)-pch(td)
-    dmdt = - Ap*(delta_p)/Rp(hd)
-    return dmdt, Qshf
+    md = - Ap*(delta_p)/Rp(hd) |> u"g/hr"
+    return (; md, Q_shf)
 end
 
 @doc raw"""
@@ -85,31 +86,19 @@ end
 
 const lyo_1d_mm = Diagonal([1.0, 0.0])
 
-@doc raw"""
-    lyo_1d_dae_f = ODEFunction(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
+"""
+    lyo_1d_dae_f = ODEFunction(lyo_1d_dae!, mass_matrix=Diagonal([1.0, 0.0]))
 
 Compute the right hand side function for the Pikal model.
 
 The DAE system which is the Pikal model (1 ODE, one nonlinear algebraic equation for pseudosteady conditions)
 is here treated as a constant-mass-matrix implicit ODE system.
-The implementation is in [`lyo_1d_dae!`](@ref)
+The implementation is in [`lyo_1d_dae!`](@ref) and [`calc_md_Q`](@ref).
 
 The initial conditions `u0 = [h_f, Tf]` should be unitless, but are internally assigned to be in `[cm, K]`.
 The unitless time is taken to be in hours, so derivatives are given in unitless `[cm/hr, K/hr]`.
 
-`params` is a `ParamObjPikal`, which can be constructed with the following form (helping with readability):
-```
-params = ParamObjPikal((
-    (Rp, hf0, csolid, ρsolution),
-    (Kshf, Av, Ap),
-    (pch, Tsh) ,
-))
-```
-where those listed following are callables returning `Quantity`s, and the rest are `Quantity`s.
-See [`RpFormFit`](@ref LyoPronto.RpFormFit) and [`RampedVariable`](@ref LyoPronto.RampedVariable) for convenience types that can help with the callables.
-- `Rp(x)` with `x` a length returns mass transfer resistance (as a Unitful quantity)
-- `Kshf(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
-- `Tsh(t)`, `pch(t)` return shelf temperature and chamber pressure respectively at time `t`.
+$(PIKAL_PARAM_DOC)
 """
 const lyo_1d_dae_f = ODEFunction{true, SciMLBase.AutoSpecialize}(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
 
@@ -137,6 +126,8 @@ end
     $(TYPEDEF)
 
 The `ParamObjPikal` type is a container for the parameters used in the Pikal model.
+
+$(PIKAL_PARAM_DOC)
 """
 ParamObjPikal
 
@@ -145,46 +136,15 @@ function ParamObjPikal(tuptup)
     return ParamObjPikal(tuptup[1]..., tuptup[2]..., tuptup[3]...)
 end
 
-function Base.getindex(p::ParamObjPikal, i::Int)
-    if i == 1
-        return (p.Rp, p.hf0, p.csolid, p.ρsolution)
-    elseif i == 2
-        return (p.Kshf, p.Av, p.Ap)
-    elseif i == 3
-        return (p.pch, p.Tsh)
-    else
-        error(BoundsError, "Attempt to access LyoPronto.ParamsObjPikal at index $i. Only indices 1 to 3 allowed")
-    end
-end
-Base.size(::ParamObjPikal) = (3,)
-Base.length(::ParamObjPikal) = 3
+# -------------------------------------------
+# Define how a ParamObjPikal maps to an ODEProblem
 
+# Define how u0, tstops, and initial time should be calculated for a given ParamObjPikal
 function calc_u0(po::ParamObjPikal)
-    # return ustrip(u"cm", u"K"),[po.hf0, po.Tsh(0u"s")])
     return [ustrip(u"cm", po.hf0), ustrip(u"K", float(po.Tsh(0u"s")))]
-end
-extract_ts(rv::RampedVariable{true, T1, T2, T3, T4}; un=u"hr") where {T1, T2, T3, T4} = ustrip.(un, float.(rv.timestops))
-extract_ts(rv::RampedVariable{false, T1, T2, T3, T4}; un=u"hr") where {T1, T2, T3, T4} = [0.0]
-extract_ts(interp::DataInterpolations.AbstractInterpolation; un=u"hr") = ustrip.(un, float.(interp.t))
-extract_ts(a::Any) = [0.0]
-function get_tstops(controls::Tuple)
-    # tstops = [0.0]
-    tstops = mapreduce(extract_ts, vcat, controls)
-    # tstops = vcat(tstops, newstops)
-    sort!(tstops); unique!(tstops)
-    return tstops
 end
 function get_tstops(po::ParamObjPikal)
     get_tstops((po.Tsh, po.pch))
-end
-
-function get_t0(Tsh, pch)
-    if calc_psub(Tsh(0u"s")) < pch(0u"s")
-        t0 = find_zero(t -> ustrip(u"Pa", calc_psub(Tsh(t*u"hr")) - pch(t*u"hr")), (0.0, ustrip(u"hr", Tsh.timestops[end])))
-        return t0 * 1.001 # Go slightly after the zero, to ensure stability
-    else
-        return 0.0
-    end
 end
 get_t0(po::ParamObjPikal) = get_t0(po.Tsh, po.pch)
 
@@ -278,6 +238,18 @@ function ODEProblem(re::RpEstimator{false}; u0=[0.0,0], tspan=(get_t0(re), ustri
     return ODEProblem(dae_Rpf, u0, tspan, re; tstops=ustrip.(u"hr", re.Tf_interp.t), initializealg=BrownFullBasicInit())
 end
 
+"""
+    $(SIGNATURES)
+
+For experimental conditions given by a `po` and experimental data given by `pdf`, 
+compute the effective \$R_p\$ and dry layer height \$h_d\$ over time.
+
+Since `po` is a a `ParamObjPikal`, you will need to construct that object--the value of \$R_p\$ 
+will not be used here, so set it to any dummy value. 
+
+If `pdf` has multiple temperature series, pass an index `i` to select which series to use. 
+Otherwise, the first series will be used.
+"""
 function calc_hRp_T(po::ParamObjPikal, pdf::PrimaryDryFit; i=nothing)
     re = RpEstimator(po, pdf)
     if re isa RpEstimator{true}

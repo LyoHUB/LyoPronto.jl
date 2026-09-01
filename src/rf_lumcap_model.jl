@@ -44,7 +44,7 @@ See [`RpFormFit`](@ref) and [`RampedVariable`](@ref) for convenience types that 
 
 
 """
-    $(SIGNATURE)
+    $(SIGNATURES)
 
 Compute the mass flow and  heat transfer terms for the lumped-capacitance microwave-assisted model.
 
