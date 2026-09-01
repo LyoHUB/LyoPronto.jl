@@ -350,6 +350,7 @@ function err_expT!(errs, sol::ODESolution, pdfit; tweight=1, verbose = false)
         error("Wrong length of cached residual vector.")
     end
     # errs .= 0.0 # If indexing is handled correctly, this should not be necessary.
+    not_avail_err = 0.0 # an error value to return for points where the solution is unavailable, e.g. if the model dries faster
     if sol.retcode != ReturnCode.Terminated || length(sol.u) <= 2
         verbose && @info "ODE solve failed or incomplete, probably." sol.retcode sol[1, :]
         errs .= Inf
@@ -389,9 +390,9 @@ function err_expT!(errs, sol::ODESolution, pdfit; tweight=1, verbose = false)
     # errs = mapreduce(vcat, pdfit.Tfs, pdfit.Tf_iend) do Tf, itf
         trim = min(itf, length(Tfmd))
         Tferrs = (Tf[i_solstart:trim] .- Tfmd[begin:trim-i_solstart+1])/sqrt(trim-i_solstart+1)
-        errs[last_ind+1:last_ind+i_solstart] .= 0.0
+        errs[last_ind+1:last_ind+i_solstart] .= not_avail_err
         errs[last_ind+i_solstart:last_ind+trim] .= ustrip.(u"K", Tferrs)
-        errs[last_ind+trim+1:last_ind+itf] .= 0.0
+        errs[last_ind+trim+1:last_ind+itf] .= not_avail_err
         last_ind += itf
     end
 
@@ -414,15 +415,15 @@ function err_expT!(errs, sol::ODESolution, pdfit; tweight=1, verbose = false)
             for (Tvw, itvw) in zip(pdfit.Tvws, pdfit.Tvw_iend) 
                 trim = min(itvw, length(Tvwmd))
                 Tvw_errs = (Tvw[i_solstart:trim] .- Tvwmd[begin:trim-i_solstart+1])/sqrt(trim-i_solstart+1)
-                errs[last_ind+1:last_ind+i_solstart] .= 0.0
+                errs[last_ind+1:last_ind+i_solstart] .= not_avail_err
                 errs[last_ind+i_solstart:last_ind+trim] .= ustrip.(u"K", Tvw_errs)
-                errs[last_ind+trim+1:last_ind+itvw] .= 0.0
+                errs[last_ind+trim+1:last_ind+itvw] .= not_avail_err
                 last_ind += itvw
             end
         end
     end
 
-    # Concatenate end time to array, if present
+    # Add end time at end of array, if present
     if !ismissing(pdfit.t_end)
         if pdfit.t_end isa Tuple # See if is inside window and scale appropriately
             mid_t = (pdfit.t_end[1] + pdfit.t_end[2]) / 2.0

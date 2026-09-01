@@ -18,6 +18,29 @@ const Bi_samp = 10.0 .^range(-2, 5, length=71)
 const S_samp = shapefac.(Bi_samp)
 const S_interp = LinearInterpolation(S_samp, Bi_samp, extrapolation=ExtrapolationType.Linear)
 
+const RF_PARAMS_DOC = """
+
+```
+params = ParamObjRF((   
+    (Rp, hf0, cSolid, ρsolution),
+    (Kshf_f, Av, Ap),
+    (pch, Tsh, P_per_vial),
+    (mf0, cpf, mv, cpv, Arad),
+    (f_RF, eppf, eppvw),
+    (Kvwf, Bf, Bvw, alpha),
+))
+```
+
+The parameters should all be Unitful quantities with appropriate dimensions, with some exceptions which are callables returning quantities.
+See [`RpFormFit`](@ref) and [`RampedVariable`](@ref) for convenience types that can help with these cases.
+- `Rp(x)` with `x` a length returns mass transfer resistance (as a Unitful quantity)
+- `Kshf_f(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
+- `Tsh(t)`, `pch(t)`, `P_per_vial(t)` return shelf temperature, chamber pressure, and microwave power respectively at time `t`.
+
+- `Arad` and `alpha` were used in a prior version of the model, and are not used in the 
+    current version; they will be removed in a future version.
+"""
+
 """
     $(SIGNATURES)
 
@@ -32,30 +55,9 @@ modes, but are not necessary in the ODE integration.
 `u` is taken without units but assumed to have the units of `[g, K, K]` (which is internally added).
 `tn` is assumed to be in hours (internally added), so `dudt` is returned with assumed units `[g/hr, K/hr, K/hr]` to be consistent.
 
-It is recommended to use the `ParamObjRF` type to hold the parameters, since it allows some
-more convenient access to the parameters, but they can be given in the form of a 
-tuple-of-tuples:
-```
-params = (   
-    (Rp, hf0, cSolid, ρsolution),
-    (Kshf_f, Av, Ap),
-    (pch, Tsh, P_per_vial),
-    (mf0, cpf, mv, cpv, Arad),
-    (f_RF, eppf, eppvw),
-    (Kvwf, Bf, Bvw, alpha),
-)
-```
-This tuple-of-tuples structure is also used in an extra constructor for the `ParamObjRF` type.
+Use the `ParamObjRF` type to hold the parameters. 
+$(RF_PARAMS_DOC)
 
-These should all be Unitful quantities with appropriate dimensions, with some exceptions which are callables returning quantities.
-See [`RpFormFit`](@ref) and [`RampedVariable`](@ref) for convenience types that can help with these cases.
-- `Rp(x)` with `x` a length returns mass transfer resistance (as a Unitful quantity)
-- `Kshf_f(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
-- `Tsh(t)`, `pch(t)`, `P_per_vial(t)` return shelf temperature, chamber pressure, and microwave power respectively at time `t`.
-
-- `Arad` and `alpha` are used only in prior versions of the model, and can be left out.
-This is my updated version of the model.
-LC3: Q_shw evaluated with Kshf; shape factor included; α=0
 """
 function lumped_cap_rf!(du, u, params, tn, qret = Val(false))
     # Unpack all the parameters
@@ -66,6 +68,7 @@ function lumped_cap_rf!(du, u, params, tn, qret = Val(false))
         mf0, cpf, mv, cpv,
         f_RF, eppf, eppvw,
         Kvwf, Bf, Bvw) = params
+    # TODO: remove this branch, possibly as a breaking change or at least a deprecation warning
     else
         Rp, hf0, csolid, ρsolution = params[1]
         Kshf, Av, Ap, = params[2]
@@ -165,6 +168,12 @@ end
     $(TYPEDEF)
 
 The `ParamObjRF` type is a container for the parameters used in the RF model.
+
+
+Since it has many fields, the recommended constructor accepts a tuple of tuples, 
+as follows:
+
+$(RF_PARAMS_DOC)
 """
 ParamObjRF
 
@@ -174,10 +183,12 @@ function ParamObjRF(tuptup::Tuple)
                     tuptup[3]..., tuptup[4]..., missing,
                     tuptup[5]..., tuptup[6]..., missing,)
     elseif length(tuptup[6]) == 3
+        Base.depwarn("ParamObjRF will no longer accept the `Arad` and `alpha` parameters in a future version.", :ParamObjRF)
         return ParamObjRF(tuptup[1]..., tuptup[2]...,
                     tuptup[3]..., tuptup[4]...,
                     tuptup[5]..., tuptup[6]..., missing,)
     else
+        Base.depwarn("ParamObjRF will no longer accept the `Arad` and `alpha` parameters in a future version.", :ParamObjRF)
         return ParamObjRF(tuptup[1]..., tuptup[2]...,
                     tuptup[3]..., tuptup[4]...,
                     tuptup[5]..., tuptup[6]...,)
@@ -186,6 +197,7 @@ end
 Base.size(po::ParamObjRF) = (6,)
 
 function Base.getindex(po::ParamObjRF, i)
+    Base.depwarn("Indexing into a ParamObjRF is deprecated; use destructuring with named fields instead.", Symbol("Base.getindex"))
     if i == 1
         return (po.Rp, po.hf0, po.csolid, po.ρsolution)
     elseif i == 2
