@@ -25,9 +25,9 @@ Kshf_f = RpFormFit(KC, KP, KD)
 hf0 = Vfill/Ap
 mf0 = Vfill * ρsolution
 # RF fit parameters (base to which we will fit)
-Bf = 2.0e7u"Ω/m^2"
-Bvw = 0.9e7u"Ω/m^2"
-Kvwf = 1.0e-3u"cal/s/K/cm^2"
+Bf = 5.0e8u"Ω/m^2"
+Bvw = 9.0e6u"Ω/m^2"
+Kvwf = 20.0u"W/K/m^2"
 # Controllable inputs
 f_RF = 8u"GHz"
 pch = RampedVariable(100u"mTorr")
@@ -66,18 +66,18 @@ pass = (tr, po, pdfit)
     @test SciMLBase.successful_retcode(opt)
     vals = transform(tr, opt.u)
     @test vals.Kvwf ≈ Kvwf rtol=0.1
-    @test vals.Bf ≈ Bf rtol=0.5
+    @test vals.Bf ≈ Bf rtol=0.1
     @test vals.Bvw ≈ Bvw rtol=0.1
 end
 
 @testset "Least squares" begin
     lsq = NonlinearFunction(pdfit)
-    opt = @inferred solve(NonlinearProblem(lsq, pg, pass), LevenbergMarquardt())
+    opt = @inferred solve(NonlinearLeastSquaresProblem(lsq, pg, pass), LevenbergMarquardt())
     @test SciMLBase.successful_retcode(opt)
     vals = transform(tr, opt.u)
-    @test vals.Kvwf ≈ Kvwf rtol=0.3
-    @test vals.Bf ≈ Bf rtol=0.5
-    @test vals.Bvw ≈ Bvw rtol=0.3
+    @test vals.Kvwf ≈ Kvwf rtol=0.2
+    @test vals.Bf ≈ Bf rtol=0.2
+    @test vals.Bvw ≈ Bvw rtol=0.2
 end
 
 

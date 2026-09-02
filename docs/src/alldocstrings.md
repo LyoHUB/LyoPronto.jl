@@ -31,7 +31,7 @@ Pages = ["get_vial_dims.jl"]
 ## Model Equations
 ```@autodocs
 Modules = [LyoPronto]
-Pages = ["model.jl"]
+Pages = ["model.jl"] # Matches both pikal_model and rf_lumcap_model
 ```
 
 ## Physical Properties
