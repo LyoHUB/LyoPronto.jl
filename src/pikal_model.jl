@@ -46,8 +46,8 @@ This allows assessment of the model's outputs without needing to rewrite the mod
     end
 
     pchl = pch(td)
-    Qshf = Av*Kshf(pchl)*(Tsh(td) - Tf) |> u"W"
-    Tsub = Tf - Qshf/k_ice/Ap*hf
+    Q_shf = Av*Kshf(pchl)*(Tsh(td) - Tf) |> u"W"
+    Tsub = Tf - Q_shf/k_ice/Ap*hf
     delta_p = calc_psub(Tsub)-pch(td)
     md = - Ap*(delta_p)/Rp(hd) |> u"g/hr"
     return (; md, Q_shf)
@@ -70,17 +70,18 @@ function lyo_1d_dae!(du, u, params, t)
     end
     # This logic is carried out in a separate function,
     # so that it can be reused after the fact for computing mass flow.
-    dmdt, Qshf = calc_md_Q(u, params, t)
+    (;md, Q_shf) = calc_md_Q(u, params, t)
+    dmdt = md
     if isnan(dmdt)
         du .= NaN
         return nothing
     end
-    Qsub = uconvert(u"W", dmdt*ΔHsub)
+    Q_sub = uconvert(u"W", dmdt*ΔHsub)
 
     dhf_dt = min(0.0u"cm/hr", dmdt/(ρsolution-csolid)/Ap |> u"cm/hr") # Cap dhf_dt at 0: no desublimation
 
     du[1] = ustrip(u"cm/hr", dhf_dt)
-    du[2] = ustrip(u"W", Qsub + Qshf)
+    du[2] = ustrip(u"W", Q_sub + Q_shf)
     return nothing
 end
 
