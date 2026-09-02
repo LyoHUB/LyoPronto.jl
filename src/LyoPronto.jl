@@ -37,9 +37,9 @@ const odealg_chunk2 = get_odealg(2)
 const odealg_chunk3 = get_odealg(3)
 
 include("sim_helps.jl")
+include("paramfits.jl")
 include("pikal_model.jl")
 include("rf_lumcap_model.jl")
-include("paramfits.jl")
 include("transform_maps.jl")
 include("recipes.jl")
 include("cycle_time.jl")
@@ -54,11 +54,11 @@ export RpFormFit, RampedVariable, ConstPhysProp, PrimaryDryFit
 export end_drying_callback
 export calc_u0, get_tstops
 # conventional lyo
-export lyo_1d_dae_f, calc_md_Q
+export lyo_1d_dae_f # calc_md_Q is public, not exported
 export ParamObjPikal
 export RpEstimator, calc_hRp_T
 # RF lyo
-export lumped_cap_rf!, calc_md_Q_rf
+export lumped_cap_rf! # calc_md_Q_rf is public, not exported
 export ParamObjRF
 # raw parameter fitting tools
 export obj_expT, err_expT, err_expT!, num_errs
