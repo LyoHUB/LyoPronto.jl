@@ -72,23 +72,23 @@ all_po = (poA, poB, poC)</code></pre><pre class="documenter-example-output"><cod
 optalg = Optim.BFGS(linesearch=LineSearches.BackTracking())
 opt = solve(OptimizationProblem(objnf_pd, p0, tpf), optalg)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
 u: 10-element Vector{Float64}:
-  0.28769889411188676
-  0.28767030097787394
-  0.28765934405330396
-  0.9808366441212684
- -0.40548927378557276
- -0.40555847637434356
- -0.40604709961467317
-  0.9810424135321459
-  1.3866063671857467
-  6.111670393576028e-8</code></pre><p>Note that the results of this optimization problem are in a log space: we will have to transform them back to our problem coordinates with the transformation we constructed.</p><p>In practice, we generally want to compare the fit to the &quot;experiment&quot;.</p><pre><code class="language-julia hljs">fitsols = gen_nsol_pd(opt.u, shared_trans, all_po)
+  0.2876998865057704
+  0.2876689069720046
+  0.28765542885341044
+  0.9808373360131888
+ -0.40549122273519056
+ -0.4055670838382811
+ -0.40604706555609466
+  0.9810427228099522
+  1.3866055270380506
+  6.637099561457107e-8</code></pre><p>Note that the results of this optimization problem are in a log space: we will have to transform them back to our problem coordinates with the transformation we constructed.</p><p>In practice, we generally want to compare the fit to the &quot;experiment&quot;.</p><pre><code class="language-julia hljs">fitsols = gen_nsol_pd(opt.u, shared_trans, all_po)
 
 pls = map(fitsols, fitdats) do fitted, exp
     plot(u&quot;hr&quot;, u&quot;degC&quot;)
     plot!(exp)
     modconvtplot!(fitted)
 end
-plot(pls..., layout=(3,1), legend=:bottomright, size=(600,600))</code></pre><img src="357a66ec.svg" alt="Example block output"/><p>Finally, let&#39;s check how close the fitted values are to the true values.</p><pre><code class="language-julia hljs">fit = transform(shared_trans, opt.u)
+plot(pls..., layout=(3,1), legend=:bottomright, size=(600,600))</code></pre><img src="51730ad6.svg" alt="Example block output"/><p>Finally, let&#39;s check how close the fitted values are to the true values.</p><pre><code class="language-julia hljs">fit = transform(shared_trans, opt.u)
 println(&quot;Kv = $(fit.shared.Kshf.val)&quot;)
 tab = map((RpA,RpB,RpC), fit.separate) do orig, fitted
     R0_o = orig.R0
@@ -122,19 +122,19 @@ pretty_table(HTML, Table(tab))</code></pre><table>
   <tbody>
     <tr class = "dataRow">
       <td style = "text-align: right;">0.8 hr cm^2 Torr g^-1</td>
-      <td style = "text-align: right;">0.800013 hr cm^2 Torr g^-1</td>
+      <td style = "text-align: right;">0.800014 hr cm^2 Torr g^-1</td>
       <td style = "text-align: right;">14.0 hr cm Torr g^-1</td>
       <td style = "text-align: right;">13.9998 hr cm Torr g^-1</td>
       <td style = "text-align: right;">1.0 cm^-1</td>
-      <td style = "text-align: right;">0.999977 cm^-1</td>
+      <td style = "text-align: right;">0.999973 cm^-1</td>
     </tr>
     <tr class = "dataRow">
       <td style = "text-align: right;">1.6 hr cm^2 Torr g^-1</td>
       <td style = "text-align: right;">1.60001 hr cm^2 Torr g^-1</td>
       <td style = "text-align: right;">7.0 hr cm Torr g^-1</td>
-      <td style = "text-align: right;">6.99983 hr cm Torr g^-1</td>
+      <td style = "text-align: right;">6.99982 hr cm Torr g^-1</td>
       <td style = "text-align: right;">0.5 cm^-1</td>
-      <td style = "text-align: right;">0.499953 cm^-1</td>
+      <td style = "text-align: right;">0.499949 cm^-1</td>
     </tr>
     <tr class = "dataRow">
       <td style = "text-align: right;">0.4 hr cm^2 Torr g^-1</td>
@@ -142,8 +142,8 @@ pretty_table(HTML, Table(tab))</code></pre><table>
       <td style = "text-align: right;">28.0 hr cm Torr g^-1</td>
       <td style = "text-align: right;">28.006 hr cm Torr g^-1</td>
       <td style = "text-align: right;">3.0 cm^-1</td>
-      <td style = "text-align: right;">3.00094 cm^-1</td>
+      <td style = "text-align: right;">3.00093 cm^-1</td>
     </tr>
   </tbody>
 </table>
-<hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../fitting_rf_mannitol/">« Example, microwave-assisted lyo</a><a class="docs-footer-nextpage" href="../utilities/">Other tools »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Wednesday 2 September 2026 14:30">Wednesday 2 September 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+<hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../fitting_rf_mannitol/">« Example, microwave-assisted lyo</a><a class="docs-footer-nextpage" href="../utilities/">Other tools »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Thursday 3 September 2026 01:36">Thursday 3 September 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
