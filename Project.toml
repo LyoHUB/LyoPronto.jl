@@ -1,6 +1,6 @@
 name = "LyoPronto"
 uuid = "86014da0-a5b3-40a4-ad76-3e66dfc3e269"
-version = "0.4.4"
+version = "0.4.5"
 authors = ["Isaac Wheeler <ickaser@gmail.com>"]
 
 [deps]
@@ -39,8 +39,8 @@ DocStringExtensions = "0.9"
 Interpolations = "0.16.2"
 LinearAlgebra = "1"
 NonlinearSolve = "4.9"
-OrdinaryDiffEqNonlinearSolve = "1, 2"
-OrdinaryDiffEqRosenbrock = "1, 2"
+OrdinaryDiffEqNonlinearSolve = "2.9.6"
+OrdinaryDiffEqRosenbrock = "2.7.1"
 PrecompileTools = "1"
 RecipesBase = "1"
 Reexport = "1"
