@@ -3,16 +3,22 @@
 CurrentModule = LyoPronto
 ```
 
-## Types
+## Simulation Helps
 ```@autodocs
 Modules = [LyoPronto]
-Pages = ["structs.jl"]
+Pages = ["sim_helps.jl"]
+```
+
+## Experiment Examination
+```@autodocs
+Modules = [LyoPronto]
+Pages = ["cycle_time.jl"]
 ```
 
 ## Parameter Fitting
 ```@autodocs
 Modules = [LyoPronto]
-Pages = ["paramfits.jl", "cycle_time.jl"]
+Pages = ["paramfits.jl", "transform_maps.jl"]
 ```
 
 ## Plot Recipes

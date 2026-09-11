@@ -10,7 +10,8 @@ for file in [
     "fitting_rf_mannitol.jl", 
     "all_recipes.jl", 
     "utilities.jl", 
-    "multi_exp_fit.jl"
+    "multi_exp_fit.jl",
+    "extending_models.jl",
     ]
     Literate.markdown((@__DIR__)*"/example/$file", (@__DIR__)*"/src/generated", documenter=true)
 end
