@@ -54,6 +54,7 @@ export RpFormFit, RampedVariable, ConstPhysProp, PrimaryDryFit
 export end_drying_callback
 export calc_u0, get_tstops
 export calc_md_Q
+export summary_md_Q
 # conventional lyo
 export lyo_1d_dae_f 
 export ParamObjPikal

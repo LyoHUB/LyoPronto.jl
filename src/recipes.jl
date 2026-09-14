@@ -1,4 +1,14 @@
 
+"""
+    $(SIGNATURES)
+
+This function makes a `Table` of the results of [`calc_md_Q`](@ref) at all of the
+given `ODESolution`'s time points.
+"""
+function summary_md_Q(sol::ODESolution)
+    Table(calc_md_Q.(sol.u, (sol.prob.p,), sol.t), t=sol.t*u"hr")
+end
+
 # This is a plot recipe used to add markers only every so often along the series.
 # e.g. if you have 100 data points but only want 10 markers, this will help.
 # This is used inside many of the below plot recipes.
