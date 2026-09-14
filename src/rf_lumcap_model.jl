@@ -93,7 +93,7 @@ Returns a named tuple with the following fields, all as Unitful quantities:
 - `Q_RF_vw`: volumetric heating of vial wall (W)
 - `Q_shw`: heat transfer from shelf to vial wall (W)
 """
-@inline function calc_md_Q_rf(u, po, tn)
+@inline function calc_md_Q(u, po::ParamObjRF, tn)
     # Unpack all the parameters
     (;Rp, hf0, csolid, ρsolution,
     Kshf, Av, Ap,
@@ -141,7 +141,7 @@ end
 
 Compute the right-hand-side function for the ODEs making up the lumped-capacitance microwave-assisted model.
 
-To access the values of the various heat transfer terms, use `[calc_md_Q_rf](@ref)` to compute them; that function is used internally by this function.
+To access the values of the various heat transfer terms, use `[calc_md_Q](@ref)` to compute them; that function is used internally by this function.
 
 `du` refers to `[dmf/dt, dTf/dt, dTvw/dt]`, with `u = [mf, Tf, Tvw]`.
 `u` is taken without units but assumed to have the units of `[g, K, K]` (which is internally added).
@@ -151,10 +151,10 @@ Use the `ParamObjRF` type to hold the parameters.
 $(RF_PARAMS_DOC)
 
 """
-function lumped_cap_rf!(du, u, params, tn, qret = Val(false))
+function lumped_cap_rf!(du, u, params::ParamObjRF, tn, qret = Val(false))
 
     # Compute heat transfer rates
-    (; md, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw) = calc_md_Q_rf(u, params, tn)
+    (; md, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw) = calc_md_Q(u, params, tn)
     mflow = md
 
     (; csolid, ρsolution,

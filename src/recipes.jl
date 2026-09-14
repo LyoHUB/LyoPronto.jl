@@ -465,13 +465,13 @@ which (if OrdinaryDiffEq doesn't change) can likely be accessed as `sol.prob.p`.
 
 Returns a Dict{String, Quantity{...}}, with string keys `Qsub, Qshf, Qvwf, QRFf, QRFvw`.
 """
-function qrf_integrate(sol, RF_params)
+function qrf_integrate(sol, RF_params::ParamObjRF)
 
     # Using an IntegratingSumCallback would be more elegant, but at last attempt
     # it struggled with unitful values in the arrays.
     # So we do a manual Riemann integration on the solution output
     history = Table(map(sol.t) do ti
-        calc_md_Q_rf(sol(ti), RF_params, ti)
+        calc_md_Q(sol(ti), RF_params, ti)
     end)
 
     t = sol.t*u"hr"

@@ -49,7 +49,7 @@ With the Pikal model, compute model quantities at `u=[hf, Tf]`, time `t`, and co
 
 This allows assessment of the model's outputs without needing to rewrite the model equations.
 """
-@inline function calc_md_Q(u, po, t)
+@inline function calc_md_Q(u, po::ParamObjPikal, t)
 
     (; Rp, hf0, csolid, ρsolution,
     Kshf, Av, Ap, pch, Tsh) = po
@@ -80,12 +80,7 @@ See [`lyo_1d_dae_f`](@ref) for the wrapped version, which is more fully document
 function lyo_1d_dae!(du, u, params, t)
     
     # Need a handful of parameters in this function.
-    if params isa ParamObj
-        (; csolid, ρsolution, Ap) = params
-    else
-        csolid, ρsolution = params[1][3:4]
-        Ap = params[2][3]
-    end
+    (; csolid, ρsolution, Ap) = params
     # This logic is carried out in a separate function,
     # so that it can be reused after the fact for computing mass flow.
     (; md, Q_shf) = calc_md_Q(u, params, t)
