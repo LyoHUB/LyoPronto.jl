@@ -1,7 +1,8 @@
 [deps]
-Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
+Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+ConcreteStructs = "2569d6c7-a4a2-43d3-a901-331e8e4be471"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 Latexify = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
@@ -17,9 +18,12 @@ StatsPlots = "f3b207a7-027a-5e70-b257-86293d7955fd"
 TransformVariables = "84d833dd-6860-57f9-a1a7-6da5db126cff"
 TypedTables = "9d95f2ec-7b3d-5a63-8d20-e2491e220bb9"
 
+[sources]
+LyoPronto = {path = ".."}
+
 [compat]
-Accessors = "0.1.44"
 ADTypes = "1"
+Accessors = "0.1.44"
 CSV = "0.10.16"
 Documenter = "1.17.0"
 LaTeXStrings = "1.4.0"
@@ -34,6 +38,3 @@ SavitzkyGolay = "0.9.1"
 StatsPlots = "0.15"
 TransformVariables = "0.8.21"
 TypedTables = "1"
-
-[sources]
-LyoPronto = {path = ".."}

@@ -29,6 +29,8 @@ using LineSearches
 using ADTypes: AutoForwardDiff
 using Plots
 using Accessors
+using LinearAlgebra: Diagonal
+using ConcreteStructs: @concrete
 
 # ---
 
@@ -78,30 +80,19 @@ using Accessors
 
 # The corresponding struct looks like:
 
-# ```julia
-# @concrete terse struct ParamObjPikalMW <: ParamObj
-#     Rp
-#     hf0
-#     csolid
-#     ρsolution
-#     Kshf
-#     Av
-#     Ap
-#     pch
-#     Tsh
-#     P_mw
-#     α_mw
-# end
-# ```
-
-# A tuple-of-tuples constructor and `Base.getindex` are also provided so that the fitting 
-# machinery can access parameters by group index.
-
-# ### For your model
-
-# Design your parameter groups to match the physical meaning of your model. The number and 
-# composition of groups is up to you—just be consistent between the struct, the constructor, 
-# and `getindex`.
+@concrete terse struct ParamObjPikalMW <: LyoPronto.ParamObj
+    Rp
+    hf0
+    csolid
+    ρsolution
+    Kshf
+    Av
+    Ap
+    pch
+    Tsh
+    P_mw
+    α_mw
+end
 
 # ---
 
@@ -111,7 +102,12 @@ using Accessors
 
 # - `du` is the output derivative vector (modified in-place).
 # - `u` is the current state vector (unitless).
-# - `params` is your `ParamObj` instance (or a tuple-of-tuples).
+#   - The first element of `u` and `du` should be your process completion variable, e.g. 
+#     still-frozen product, that goes to 0 as drying completes.
+#   - The second element of `u` and `du` should be a temperature which you want compared to 
+#     experiment, e.g. the bottom center temperature where a thermocouple would be placed.
+#     In the Pikal model this is determined algebraically
+# - `params` is your `ParamObj` instance.
 # - `t` is the current time (unitless, in hours).
 
 # ### Unit conventions
@@ -130,36 +126,37 @@ using Accessors
 
 # Following the Pikal model pattern, the physics is split into two functions:
 
-# 1. A **helper function** (`calc_md_Q_mw`) that computes the physical quantities 
+# 1. A method for the **helper function** [`calc_md_Q`](@ref), dispatched on the new 
+#    `ParamObjPikalMW` type, that computes physical quantities 
 #    (mass flow, heat transfer terms) and returns them as a named tuple. This function 
 #    can be reused independently for diagnostics or post-solution analysis.
 # 2. The **RHS function** (`pikal_mw!`) that calls the helper, then writes derivatives 
-#    to `du`.
+#    and algebraic residuals to `du`.
 
-# #### Helper: `calc_md_Q_mw`
+# #### Helper: `calc_md_Q`
 
 # This function unpacks parameters, dimensionalizes state and time, computes all heat 
 # and mass transfer terms, and returns a named tuple.
 
-@inline function calc_md_Q_mw(u, po, t)
-    (;Rp, hf0, csolid, ρsolution, Kshf, Av, Ap, pch, Tsh, P_mw, α_mw) = po
+# It is *very important* that this be dispatched on the new parameter struct (`ParamObjPikalMW`
+# in this case) to ensure it is not mixed up with the function as defined for other sets of 
+# model equations.
+
+@inline function calc_md_Q(u, po::ParamObjPikalMW, t)
+    (;Rp, hf0, Kshf, Av, Ap, pch, Tsh, P_mw, α_mw) = po
     
     td = t * u"hr"
     hf = u[1] * u"cm"
     Tf = u[2] * u"K"
     hd = hf0 - hf
-    
-    # Shelf heat transfer
+    ## Shelf heat transfer
     Q_shf = Kshf(pch(td)) * Av * (Tsh(td) - Tf) |> u"W"
-    
-    # Microwave heating (NEW term)
+    ## Microwave heating (NEW term)
     Q_mw = P_mw * Ap * (1 - exp(-α_mw * hf)) |> u"W"
-    
-    # Sublimation mass transfer
+    ## Sublimation mass transfer
     Tsub = Tf - Q_shf / k_ice / Ap * hf
     delta_p = calc_psub(Tsub) - pch(td)
     md = -Ap * delta_p / Rp(hd) |> u"g/hr"
-    
     return (; md, Q_shf, Q_mw)
 end
 
@@ -169,12 +166,9 @@ end
 
 function pikal_mw!(du, u, params, t)
     (;md, Q_shf, Q_mw) = calc_md_Q_mw(u, params, t)
-    
     (; csolid, ρsolution, Ap) = params
-    
     Q_sub = uconvert(u"W", md * ΔHsub)
     dhf_dt = min(0.0u"cm/hr", md / (ρsolution - csolid) / Ap |> u"cm/hr")
-    
     du[1] = ustrip(u"cm/hr", dhf_dt)
     du[2] = ustrip(u"W", Q_sub + Q_shf + Q_mw)
 end
@@ -263,21 +257,14 @@ end
 trans_K = K_transform_basic(5.0u"W/m^2/K")
 # Maps a scalar to (; Kshf = ConstPhysProp(5.0u"W/m^2/K"))
 
-# For multi-experiment fitting, combine transforms with `as`:
-
-shared_trans = as((
-    separate = as(Vector, trans_Rp, 3),  # 3 separate Rp sets
-    shared = trans_K,                    # 1 shared Kv
-))
-
-# ### Adding transforms for new parameters
-
 # To add a transform for a new parameter, compose `TVScale` and `TVExp` (or `TVLogistic`):
 
-using TransformVariables: TVScale, TVExp
-my_param_transform = as((; 
-    myParam = TVScale(myParamGuess) ∘ TVExp() 
-))
+# ```julia
+# using TransformVariables: TVScale, TVExp
+# my_param_transform = as((; 
+#     myParam = TVScale(myParamGuess) ∘ TVExp() 
+# ))
+# ```
 
 # The `TVExp()` ensures the parameter stays positive; `TVScale` sets the scale from a guess.
 
@@ -288,8 +275,8 @@ my_param_transform = as((;
 
 # 1. Call `transform(tr, fitlog)` to get a `NamedTuple` of parameters.
 # 2. Call `setproperties(po, fitprm)` to merge fitted params into the base `ParamObj`.
-# 3. Call `ODEProblem(new_po)` to construct and solve the ODE.
-# 4. Compare the solution to `PrimaryDryFit` data.
+# 3. Call `ODEProblem(new_po)` to construct the ODE, then solve the ODE.
+# 4. Compare the solution to data in a `PrimaryDryFit` .
 
 # Because `setproperties` (from `ConstructionBase`) works on any struct, and `ODEProblem` 
 # dispatches on your `ParamObj` subtype, **no additional code is needed** for fitting to work.
@@ -309,15 +296,17 @@ my_param_transform = as((;
 
 # Plots cycle parameter ramps (shelf temperature, chamber pressure, etc.).
 
-# To add a recipe for your model's solution, define:
+# The plot recipe [`modconvtplot`](@ref) will plot the 2nd variable of your state vector `u`
+# (defined for the ODE RHS function) as a temperature. If your 
 
-@recipe function f(::Type{Val{:pikal_mw_sol}}, sol)
-    # Return plotting data from the ODE solution
-    @series begin
-        label := "Tf"
-        sol.t, sol[:, 2]
-    end
-end
+## using RecipesBase
+## @recipe function f(::Type{Val{:pikal_mw_sol}}, sol)
+##     # Return plotting data from the ODE solution
+##     @series begin
+##         label := "Tf"
+##         sol.t, sol[:, 2]
+##     end
+## end
 
 # ---
 
