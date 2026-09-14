@@ -157,10 +157,17 @@ end
 # ----------------------------------------------
 # Helpers for getting time stops and initial time
 
+"""
+    $(SIGNATURES)
+"""
 extract_ts(rv::RampedVariable{true, T1, T2, T3, T4}; un=u"hr") where {T1, T2, T3, T4} = ustrip.(un, float.(rv.timestops))
 extract_ts(rv::RampedVariable{false, T1, T2, T3, T4}; un=u"hr") where {T1, T2, T3, T4} = [0.0]
 extract_ts(interp::DataInterpolations.AbstractInterpolation; un=u"hr") = ustrip.(un, float.(interp.t))
 extract_ts(a::Any) = [0.0]
+
+"""
+    $(SIGNATURES)
+"""
 function get_tstops(controls::Tuple)
     # tstops = [0.0]
     tstops = mapreduce(extract_ts, vcat, controls)
