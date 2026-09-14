@@ -1,8 +1,4 @@
 
-# -------------------------------------------
-# Incorporate the nonlinear algebraic part in a DAE formulation.
-# This has the advantage that, afterward, temperatures can be cheaply interpolated by builtin solutions
-
 const PIKAL_PARAM_DOC = """
 `params` is a `ParamObjPikal`, which can be constructed with the following form (helping with readability):
 ```
@@ -18,6 +14,28 @@ See [`RpFormFit`](@ref LyoPronto.RpFormFit) and [`RampedVariable`](@ref LyoPront
 - `Kshf(p)` with `p` a pressure returns heat transfer coefficient (as a Unitful quantity).
 - `Tsh(t)`, `pch(t)` return shelf temperature and chamber pressure respectively at time `t`.
 """
+
+@concrete terse struct ParamObjPikal <: ParamObj
+    Rp
+    hf0
+    csolid
+    ρsolution
+    Kshf
+    Av
+    Ap
+    pch
+    Tsh
+end
+
+@doc """
+    $(TYPEDEF)
+
+The `ParamObjPikal` type is a container for the parameters used in the Pikal model.
+
+$(PIKAL_PARAM_DOC)
+"""
+ParamObjPikal
+
 
 
 """
@@ -111,27 +129,6 @@ const lyo_1d_dae_f = ODEFunction{true, SciMLBase.AutoSpecialize}(lyo_1d_dae!, ma
 #     (pch, Tsh) ,
 # )
 # ```
-@concrete terse struct ParamObjPikal <: ParamObj
-    Rp
-    hf0
-    csolid
-    ρsolution
-    Kshf
-    Av
-    Ap
-    pch
-    Tsh
-end
-
-@doc """
-    $(TYPEDEF)
-
-The `ParamObjPikal` type is a container for the parameters used in the Pikal model.
-
-$(PIKAL_PARAM_DOC)
-"""
-ParamObjPikal
-
 # This constructor takes the legacy tuple of tuples form I used and unpacks it
 function ParamObjPikal(tuptup) 
     return ParamObjPikal(tuptup[1]..., tuptup[2]..., tuptup[3]...)

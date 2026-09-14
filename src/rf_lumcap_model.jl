@@ -43,6 +43,43 @@ See [`RpFormFit`](@ref) and [`RampedVariable`](@ref) for convenience types that 
 """
 
 
+@concrete terse struct ParamObjRF <: ParamObj
+    Rp
+    hf0
+    csolid
+    ρsolution
+    Kshf
+    Av
+    Ap
+    pch
+    Tsh
+    P_per_vial
+    mf0
+    cpf
+    mv
+    cpv
+    f_RF
+    eppf
+    eppvw
+    Kvwf
+    Bf
+    Bvw
+end
+
+@doc """
+    $(TYPEDEF)
+
+The `ParamObjRF` type is a container for the parameters used in the RF model.
+
+
+Since it has many fields, the recommended constructor accepts a tuple of tuples, 
+as follows, to help avoid ordering mistakes:
+
+$(RF_PARAMS_DOC)
+"""
+ParamObjRF
+
+
 """
     $(SIGNATURES)
 
@@ -139,43 +176,6 @@ function lumped_cap_rf!(du, u, params, tn, qret = Val(false))
     du[2] = ustrip(u"K/hr", dT_f)
     du[3] = ustrip(u"K/hr", dT_vw)
 end
-
-@concrete terse struct ParamObjRF <: ParamObj
-    Rp
-    hf0
-    csolid
-    ρsolution
-    Kshf
-    Av
-    Ap
-    pch
-    Tsh
-    P_per_vial
-    mf0
-    cpf
-    mv
-    cpv
-    f_RF
-    eppf
-    eppvw
-    Kvwf
-    Bf
-    Bvw
-end
-
-@doc """
-    $(TYPEDEF)
-
-The `ParamObjRF` type is a container for the parameters used in the RF model.
-
-
-Since it has many fields, the recommended constructor accepts a tuple of tuples, 
-as follows, to help avoid ordering mistakes:
-
-$(RF_PARAMS_DOC)
-"""
-ParamObjRF
-
 function ParamObjRF(tuptup::Tuple) 
     if length.(tuptup) != [4, 3, 3, 4, 3, 3] 
         @warn "ParamObjRF tuple-of-tuple structure is wrong. Attempting to construct anyway."
