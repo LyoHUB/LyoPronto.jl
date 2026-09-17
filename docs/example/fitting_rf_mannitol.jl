@@ -8,6 +8,7 @@ using ADTypes: AutoForwardDiff
 
 # CSV and TypedTables load and store experimental data
 using TypedTables, CSV
+using Dates: DateTime
 
 # Plots is a frontend to several plotting packages, defaulting to GR
 using Plots
@@ -36,7 +37,7 @@ filesdir = joinpath(@__DIR__, "..", "..", "example")
 
 dat1 = CSV.read(joinpath(filesdir, "2023-03-02_RF_Mannitol_temperature.csv"), Table)
 dat2 = CSV.read(joinpath(filesdir, "2023-03-02_RF_Mannitol_process.csv"), Table,
-    comment="#", stripwhitespace=true, dateformat="mm/dd/yyyy H:M:S")
+    comment="#", stripwhitespace=true)
 
 cp(joinpath(filesdir, "2023-03-02_RF_Mannitol_temperature.csv"), "./2023-03-02_RF_Mannitol_temperature.csv"); #md #hide
 cp(joinpath(filesdir, "2023-03-02_RF_Mannitol_process.csv"), "./2023-03-02_RF_Mannitol_process.csv"); #md #hide
@@ -46,7 +47,7 @@ cp(joinpath(filesdir, "2023-03-02_RF_Mannitol_process.csv"), "./2023-03-02_RF_Ma
 time1 = dat1.var"Elapsed [s]"
 
 lyo_full_pre = map(dat2) do row
-    nt = (tstamp = row.Timestamp,
+    nt = (tstamp = DateTime(row.Timestamp, "mm/dd/yyyy H:M:S"),
           pch_sp = row.var"SPLYO.VACUUM_SP.F_CV"*u"mTorr",
           pch_pir = row.var"SPLYO.CHAMBER_PIRANI.F_CV"*u"mTorr",
           pch_cm = row.var"SPLYO.CHAMBER_CM.F_CV"*u"mTorr",
