@@ -470,9 +470,15 @@ function qrf_integrate(sol, RF_params)
     # Using an IntegratingSumCallback would be more elegant, but at last attempt
     # it struggled with unitful values in the arrays.
     # So we do a manual Riemann integration on the solution output
-    history = Table(map(sol.t) do ti
-        calc_md_Q_rf(sol(ti), RF_params, ti)
-    end)
+    Qcontrib = map(sol.t) do ti
+        lumped_cap_rf!([0.0, 0.0, 0.0], sol(ti), RF_params, ti, Val(true))
+    end
+    Qcontrib = hcat(Qcontrib...)
+    Qsub = Qcontrib[1,:]
+    Qshf = Qcontrib[2,:]
+    Qvwf = Qcontrib[3,:]
+    QRFf = Qcontrib[4,:]
+    QRFvw = Qcontrib[5,:]
 
     t = sol.t*u"hr"
     weights = fill(first(t), length(sol.t))
@@ -480,8 +486,8 @@ function qrf_integrate(sol, RF_params)
     weights[begin:end-1] += dt./2
     weights[begin+1:end] += dt./2
 
-    qinteg = map([:Q_sub, :Q_shf, :Q_vwf, :Q_RF_f, :Q_RF_vw]) do q
-        sum(getproperty.(history, q) .* weights) |> u"W*hr"
+    qinteg = map([Qsub, Qshf, Qvwf, QRFf, QRFvw]) do q
+        sum(q .* weights)
     end
     # TODO: consider returning differently
     return Dict("Qsub"=>qinteg[1], 
