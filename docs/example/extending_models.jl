@@ -124,19 +124,19 @@ end
 
 function ParamObjPikalMagic(tuple_of_tuples::Tuple) 
     # Check that the proper number of parameters is given
-    length(tuple_of_tuples[1]) == 4 && error("Wrong tuple order given to constructor")
-    length(tuple_of_tuples[2]) == 3 && error("Wrong tuple order given to constructor")
-    length(tuple_of_tuples[3]) == 3 && error("Wrong tuple order given to constructor")
+    length(tuple_of_tuples[1]) == 4 || error("Wrong tuple order given to constructor")
+    length(tuple_of_tuples[2]) == 3 || error("Wrong tuple order given to constructor")
+    length(tuple_of_tuples[3]) == 3 || error("Wrong tuple order given to constructor")
     # Construct the object
     popm = ParamObjPikalMagic(tuple_tuples[1]...,
         tuple_of_tuples[2]...,
         tuple_of_tuples[3]...)
     # Validate that callable parameters are actually callable and return correct dimensions
-    popm.Rp(1u"cm") isa Unitful.Velocity && error("Rp does not return a mass transfer resistance")
-    popm.Kshf(1u"Torr") * u"m^2"*u"K" isa Unitful.Power && error("Kshf does not return heat transfer coeff")
-    popm.pch(1.0u"hr") isa Unitful.Pressure && error("pch does not return a pressure")
-    popm.Tsh(1.0u"hr") isa Unitful.Temperature && error("Tsh does not return an absolute temperature")
-    popm.Q_magic(1.0u"hr") isa Unitful.Power && error("Q_magic does not return power")
+    popm.Rp(1u"cm") isa Unitful.Velocity || error("Rp does not return a mass transfer resistance")
+    popm.Kshf(1u"Torr") * u"m^2"*u"K" isa Unitful.Power || error("Kshf does not return heat transfer coeff")
+    popm.pch(1.0u"hr") isa Unitful.Pressure || error("pch does not return a pressure")
+    popm.Tsh(1.0u"hr") isa Unitful.Temperature || error("Tsh does not return an absolute temperature")
+    popm.Q_magic(1.0u"hr") isa Unitful.Power || error("Q_magic does not return power")
     # Finally, return the object
     return popm
 end
