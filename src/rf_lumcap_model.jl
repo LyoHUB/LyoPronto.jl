@@ -194,7 +194,7 @@ $(RF_PARAMS_DOC)
 ParamObjRF
 
 function ParamObjRF(tuptup::Tuple) 
-        if (length(tuptup[4]) == 4 && length(tuptup[6]) == 3)
+    if (length(tuptup[4]) == 4 && length(tuptup[6]) == 3)
         return ParamObjRF(tuptup[1]..., tuptup[2]...,
                     tuptup[3]..., tuptup[4]..., missing,
                     tuptup[5]..., tuptup[6]..., missing,)
@@ -226,9 +226,6 @@ function Base.getindex(po::ParamObjRF, i)
     else
         error(BoundsError, "Attempt to access LyoPronto.ParamsObjRF at index $i. Only indices 1 to 6 allowed")
     end
-    return ParamObjRF(tuptup[1]..., tuptup[2]...,
-                tuptup[3]..., tuptup[4]...,
-                tuptup[5]..., tuptup[6]...,)
 end
 
 function calc_u0(po::ParamObjRF)

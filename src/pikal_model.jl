@@ -50,7 +50,7 @@ This allows assessment of the model's outputs without needing to rewrite the mod
     Tsub = Tf - Qshf/k_ice/Ap*hf
     delta_p = calc_psub(Tsub)-pch(td)
     md = Ap*(delta_p)/Rp(hd) |> u"g/hr"
-    return md, Q_shf
+    return md, Qshf
 end
 
 @doc raw"""
