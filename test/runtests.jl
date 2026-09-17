@@ -31,6 +31,13 @@ end
     @test Tsh(Inf*u"s") == 248.15u"K"
     @test Tsh(10u"minute") == 238.15u"K"
     @test Tsh(20u"minute") == 248.15u"K"
+    # Reversed setpoints
+    Tsh = RampedVariable([248.15, 228.15]u"K", 1u"K/minute")
+    @test_throws DimensionError Tsh(0) 
+    @test Tsh(0u"s") == 248.15u"K"
+    @test Tsh(Inf*u"s") == 228.15u"K"
+    @test Tsh(10u"minute") == 238.15u"K"
+    @test Tsh(20u"minute") == 228.15u"K"
     P_per_vial = @test_logs (:warn, "Ramp rate given with probably the wrong sign, changing its sign") RampedVariable([40u"W", 20u"W", 10u"W"], [1u"W/minute", Inf*u"W/minute"], [1u"hr"])
     @test_throws DimensionError P_per_vial(0)
     @test P_per_vial(0u"s") == 40u"W"

@@ -108,7 +108,7 @@ function RampedVariable(setpts, ramprate)
         @error "Number of set points should be 1 more than ramps, since initial is included"
     end
     timestops = fill(0.0*setpts[1]/ramprate[1], 2)
-    timestops[2] = timestops[1] + (setpts[2]-setpts[1])/ramprate
+    timestops[2] = timestops[1] + abs((setpts[2]-setpts[1])/ramprate)
     RampedVariable{true}(setpts, [ramprate], nothing, timestops)
 end
 
