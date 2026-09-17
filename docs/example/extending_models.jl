@@ -23,6 +23,7 @@
 # The following imports are used throughout this document.
 
 using LyoPronto
+using Unitful
 using TransformVariables
 using OptimizationOptimJL
 using LineSearches
@@ -122,26 +123,45 @@ end
 # validation:
 
 function ParamObjPikalMagic(tuple_of_tuples::Tuple) 
+    # Check that the proper number of parameters is given
     length(tuple_of_tuples[1]) == 4 && error("Wrong tuple order given to constructor")
     length(tuple_of_tuples[2]) == 3 && error("Wrong tuple order given to constructor")
     length(tuple_of_tuples[3]) == 3 && error("Wrong tuple order given to constructor")
+    # Construct the object
     popm = ParamObjPikalMagic(tuple_tuples[1]...,
-    tuple_of_tuples[2]...,
-    tuple_of_tuples[3]...)
-    popm.pch(1.0u"hr") + 0.0u"Pa" && error("pch does not return a pressure")
-    popm.Tsh(1.0u"hr") + 0.0u"K" && error("Tsh does not return an absolute temperature")
-    popm.Q_magic(1.0u"hr") + 0.0u"W" && error("Q_magic does not return power")
+        tuple_of_tuples[2]...,
+        tuple_of_tuples[3]...)
+    # Validate that callable parameters are actually callable and return correct dimensions
+    popm.Rp(1u"cm") isa Unitful.Velocity && error("Rp does not return a mass transfer resistance")
+    popm.Kshf(1u"Torr") * u"m^2"*u"K" isa Unitful.Power && error("Kshf does not return heat transfer coeff")
+    popm.pch(1.0u"hr") isa Unitful.Pressure && error("pch does not return a pressure")
+    popm.Tsh(1.0u"hr") isa Unitful.Temperature && error("Tsh does not return an absolute temperature")
+    popm.Q_magic(1.0u"hr") isa Unitful.Power && error("Q_magic does not return power")
+    # Finally, return the object
     return popm
 end
 
 # This constructor would be used as follows: 
-# ```julia
-# popm = ParamObjPikalMagic((
-#     (Rp, hf0, csolid, ρsolution,),
-#     (Kshf, Av, Ap, ),
-#     (pch, Tsh, Q_magic,),
-# ))
-# ```
+
+## Specify cycle conditions and formulation properties
+Rp = RpFormFit(1.0u"cm^2*Torr*hr/g", 14.0u"cm*Torr*hr/g", 1.0u"cm^-1")
+Kshf = ConstPhysProp(25.0u"W/m^2/K") # Kshf needs to be callable
+Av = π*(1.1u"cm")^2
+Ap = π*(1.0u"cm")^2
+Vfill = 3.0u"mL"
+hf0 = Vfill/Ap |> u"cm"
+csolid = 0.05u"g/mL" # 5% solution
+ρsolution = 1.0u"g/mL" 
+pch = RampedVariable(100u"mTorr")
+Tsh = RampedVariable([233.15, 263.15]u"K", 1.0u"K/minute")
+Q_magic = RampedVariable([0.5, 0.1]u"W", 0.4u"W/hour")
+
+## Construct the object
+popm = ParamObjPikalMagic((
+    (Rp, hf0, csolid, ρsolution,),
+    (Kshf, Av, Ap, ),
+    (pch, Tsh, Q_magic,),
+))
 
 
 # ---
