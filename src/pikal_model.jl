@@ -118,14 +118,14 @@ const lyo_1d_dae_f = ODEFunction{true, SciMLBase.AutoSpecialize}(lyo_1d_dae!, ma
 
 
 # ```
-# params = (
+# params = ((
 #     (Rp, hf0, csolid, ρsolution),
 #     (Kshf, Av, Ap),
 #     (pch, Tsh) ,
-# )
+# ))
 # ```
 # This constructor takes the legacy tuple of tuples form I used and unpacks it, then validates it
-function ParamObjPikal(tuptup) 
+function ParamObjPikal(tuptup::Tuple) 
     length.(tuptup) == (4, 3, 2) || error("Wrong tuple-of-tuples structure")
     po = ParamObjPikal(tuptup[1]..., tuptup[2]..., tuptup[3]...)
     po.Rp(1u"cm") isa Unitful.Velocity || error("Rp does not return a mass transfer resistance")
