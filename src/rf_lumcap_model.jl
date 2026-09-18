@@ -80,16 +80,19 @@ $(RF_PARAMS_DOC)
 ParamObjRF
 
 function ParamObjRF(tuptup::Tuple) 
-    length.(tuptup) == (4, 3, 3, 4, 3, 3) && error("ParamObjRF tuple-of-tuple structure is wrong.")
+    # Check the proper number of fields
+    length.(tuptup) == (4, 3, 3, 4, 3, 3) || error("ParamObjRF tuple-of-tuple structure is wrong.")
+    # Create the object
     po = ParamObjRF(tuptup[1]..., tuptup[2]...,
                 tuptup[3]..., tuptup[4]...,
                 tuptup[5]..., tuptup[6]...,)
+    # Check that callables return proper outputs
+    po.Kshf(1u"Torr") * u"m^2"*u"K" isa Unitful.Power || error("Kshf does not return heat transfer coeff")
     # Note that, odd though it sounds, Rp does have dimensions of velocity
     po.Rp(1u"cm") isa Unitful.Velocity || error("Rp does not return a mass transfer resistance")
-    po.Kshf(1u"Torr") * u"m^2"*u"K" isa Unitful.Power || error("Kshf does not return heat transfer coeff")
     po.pch(1.0u"hr") isa Unitful.Pressure || error("pch does not return a pressure")
     po.Tsh(1.0u"hr") isa Unitful.Temperature || error("Tsh does not return an absolute temperature")
-    
+    return po 
 end
 
 
@@ -214,7 +217,7 @@ Compute the integral over time of each heat transfer mode in the lumped capacita
 RF_params should represent the same parameters used to generate the solution `sol`,
 which (if OrdinaryDiffEq doesn't change) can likely be accessed as `sol.prob.p`.
 
-Returns a Dict{String, Quantity{...}}, with string keys `Qsub, Qshf, Qvwf, QRFf, QRFvw`.
+Returns a Dict{String, Quantity{...}}, with string keys `Qsub, Qshf, Qvwf, QRFf, QRFvw, Qshw`.
 """
 function qrf_integrate(sol, RF_params::ParamObjRF)
 
@@ -231,7 +234,8 @@ function qrf_integrate(sol, RF_params::ParamObjRF)
     weights[begin:end-1] += dt./2
     weights[begin+1:end] += dt./2
 
-    qinteg = map([:Q_sub, :Q_shf, :Q_vwf, :Q_RF_f, :Q_RF_vw]) do q
+    names = [:Q_sub, :Q_shf, :Q_vwf, :Q_RF_f, :Q_RF_vw, :Q_shw]
+    qinteg = map(names) do q
         sum(getproperty.(history, q) .* weights) |> u"W*hr"
     end
     # TODO: consider returning differently
@@ -239,5 +243,6 @@ function qrf_integrate(sol, RF_params::ParamObjRF)
                 "Qshf"=>qinteg[2],
                 "Qvwf"=>qinteg[3],
                 "QRFf"=>qinteg[4],
-                "QRFvw"=>qinteg[5])
+                "QRFvw"=>qinteg[5],
+                "Qshw"=>qinteg[6])
 end
