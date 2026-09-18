@@ -36,6 +36,17 @@ $(PIKAL_PARAM_DOC)
 """
 ParamObjPikal
 
+# This constructor takes the legacy tuple of tuples form I used and unpacks it, then validates it
+function ParamObjPikal(tuptup::Tuple) 
+    length.(tuptup) == (4, 3, 2) || error("Wrong tuple-of-tuples structure")
+    po = ParamObjPikal(tuptup[1]..., tuptup[2]..., tuptup[3]...)
+    # Note that, odd though it sounds, Rp does have dimensions of velocity
+    po.Rp(1.0u"cm") isa Unitful.Velocity || error("Rp does not return a mass transfer resistance")
+    po.Kshf(1.0u"Torr") * u"m^2"*u"K" isa Unitful.Power || error("Kshf does not return heat transfer coeff")
+    po.pch(1.0u"hr") isa Unitful.Pressure || error("pch does not return a pressure")
+    po.Tsh(1.0u"hr") isa Unitful.Temperature || error("Tsh does not return an absolute temperature")
+    return po
+end
 
 
 """
@@ -117,23 +128,6 @@ $(PIKAL_PARAM_DOC)
 const lyo_1d_dae_f = ODEFunction{true, SciMLBase.AutoSpecialize}(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
 
 
-# ```
-# params = ((
-#     (Rp, hf0, csolid, ρsolution),
-#     (Kshf, Av, Ap),
-#     (pch, Tsh) ,
-# ))
-# ```
-# This constructor takes the legacy tuple of tuples form I used and unpacks it, then validates it
-function ParamObjPikal(tuptup::Tuple) 
-    length.(tuptup) == (4, 3, 2) || error("Wrong tuple-of-tuples structure")
-    po = ParamObjPikal(tuptup[1]..., tuptup[2]..., tuptup[3]...)
-    po.Rp(1u"cm") isa Unitful.Velocity || error("Rp does not return a mass transfer resistance")
-    po.Kshf(1u"Torr") * u"m^2"*u"K" isa Unitful.Power || error("Kshf does not return heat transfer coeff")
-    po.pch(1.0u"hr") isa Unitful.Pressure || error("pch does not return a pressure")
-    po.Tsh(1.0u"hr") isa Unitful.Temperature || error("Tsh does not return an absolute temperature")
-    return po
-end
 
 # -------------------------------------------
 # Define how a ParamObjPikal maps to an ODEProblem

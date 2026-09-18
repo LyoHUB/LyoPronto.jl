@@ -466,40 +466,6 @@ end
     end
 end
 
-@doc raw"""
-    qrf_integrate(sol, RF_params)
-
-Compute the integral over time of each heat transfer mode in the lumped capacitance model.
-RF_params should represent the same parameters used to generate the solution `sol`,
-which (if OrdinaryDiffEq doesn't change) can likely be accessed as `sol.prob.p`.
-
-Returns a Dict{String, Quantity{...}}, with string keys `Qsub, Qshf, Qvwf, QRFf, QRFvw`.
-"""
-function qrf_integrate(sol, RF_params::ParamObjRF)
-
-    # Using an IntegratingSumCallback would be more elegant, but at last attempt
-    # it struggled with unitful values in the arrays.
-    # So we do a manual Riemann integration on the solution output
-    history = Table(map(sol.t) do ti
-        calc_md_Q(sol(ti), RF_params, ti)
-    end)
-
-    t = sol.t*u"hr"
-    weights = fill(first(t), length(sol.t))
-    dt = diff(t)
-    weights[begin:end-1] += dt./2
-    weights[begin+1:end] += dt./2
-
-    qinteg = map([:Q_sub, :Q_shf, :Q_vwf, :Q_RF_f, :Q_RF_vw]) do q
-        sum(getproperty.(history, q) .* weights) |> u"W*hr"
-    end
-    # TODO: consider returning differently
-    return Dict("Qsub"=>qinteg[1], 
-                "Qshf"=>qinteg[2],
-                "Qvwf"=>qinteg[3],
-                "QRFf"=>qinteg[4],
-                "QRFvw"=>qinteg[5])
-end
 
 """
     pressurenames(name)

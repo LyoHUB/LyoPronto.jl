@@ -26,9 +26,9 @@ params = ParamObjRF((
     (Rp, hf0, cSolid, ρsolution),
     (Kshf_f, Av, Ap),
     (pch, Tsh, P_per_vial),
-    (mf0, cpf, mv, cpv, Arad),
+    (mf0, cpf, mv, cpv),
     (f_RF, eppf, eppvw),
-    (Kvwf, Bf, Bvw, alpha),
+    (Kvwf, Bf, Bvw),
 ))
 ```
 
@@ -78,6 +78,19 @@ as follows, to help avoid ordering mistakes:
 $(RF_PARAMS_DOC)
 """
 ParamObjRF
+
+function ParamObjRF(tuptup::Tuple) 
+    length.(tuptup) == (4, 3, 3, 4, 3, 3) && error("ParamObjRF tuple-of-tuple structure is wrong.")
+    po = ParamObjRF(tuptup[1]..., tuptup[2]...,
+                tuptup[3]..., tuptup[4]...,
+                tuptup[5]..., tuptup[6]...,)
+    # Note that, odd though it sounds, Rp does have dimensions of velocity
+    po.Rp(1u"cm") isa Unitful.Velocity || error("Rp does not return a mass transfer resistance")
+    po.Kshf(1u"Torr") * u"m^2"*u"K" isa Unitful.Power || error("Kshf does not return heat transfer coeff")
+    po.pch(1.0u"hr") isa Unitful.Pressure || error("pch does not return a pressure")
+    po.Tsh(1.0u"hr") isa Unitful.Temperature || error("Tsh does not return an absolute temperature")
+    
+end
 
 
 """
@@ -129,11 +142,12 @@ Returns a named tuple with the following fields, all as Unitful quantities:
     Qppp_RF_vw = 2*pi*f_RF*e_0*eppvw*P_per_vial(t)*Bvw # W / m^3
     Q_RF_f = Qppp_RF_f*Ap*h_f |> u"W" # W
     Q_RF_vw = Qppp_RF_vw*V_vial |> u"W"# W
+    Q_sub = mflow*ΔHsub # Sublimation
     # Check that total volumetric heating is less than input power
     if Q_RF_f + Q_RF_vw > P_per_vial(t) && t == 0u"hr"
         @warn "Energy balance of EM terms not satisfied." Q_RF_f Q_RF_vw P_per_vial(t)
     end
-    return (; md=mflow, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw)
+    return (; md=mflow, Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw)
 end
 
 """
@@ -151,7 +165,7 @@ Use the `ParamObjRF` type to hold the parameters.
 $(RF_PARAMS_DOC)
 
 """
-function lumped_cap_rf!(du, u, params::ParamObjRF, tn, qret = Val(false))
+function lumped_cap_rf!(du, u, params::ParamObjRF, tn)
 
     # Compute heat transfer rates
     (; md, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw) = calc_md_Q(u, params, tn)
@@ -176,14 +190,6 @@ function lumped_cap_rf!(du, u, params::ParamObjRF, tn, qret = Val(false))
     du[2] = ustrip(u"K/hr", dT_f)
     du[3] = ustrip(u"K/hr", dT_vw)
 end
-function ParamObjRF(tuptup::Tuple) 
-    if length.(tuptup) != [4, 3, 3, 4, 3, 3] 
-        @warn "ParamObjRF tuple-of-tuple structure is wrong. Attempting to construct anyway."
-    end
-    return ParamObjRF(tuptup[1]..., tuptup[2]...,
-                tuptup[3]..., tuptup[4]...,
-                tuptup[5]..., tuptup[6]...,)
-end
 
 function calc_u0(po::ParamObjRF)
     Tsh0_nd = ustrip(u"K", float(po.Tsh(0u"s")))
@@ -198,4 +204,40 @@ function ODEProblem(po::ParamObjRF; u0 = calc_u0(po), tspan=(0.0, 400.0))
     tstops = get_tstops(po)
     return ODEProblem{true, SciMLBase.FullSpecialize}(lumped_cap_rf!, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback, dt=0.1)
+end
+
+
+@doc raw"""
+    qrf_integrate(sol, RF_params)
+
+Compute the integral over time of each heat transfer mode in the lumped capacitance model.
+RF_params should represent the same parameters used to generate the solution `sol`,
+which (if OrdinaryDiffEq doesn't change) can likely be accessed as `sol.prob.p`.
+
+Returns a Dict{String, Quantity{...}}, with string keys `Qsub, Qshf, Qvwf, QRFf, QRFvw`.
+"""
+function qrf_integrate(sol, RF_params::ParamObjRF)
+
+    # Using an IntegratingSumCallback would be more elegant, but at last attempt
+    # it struggled with unitful values in the arrays.
+    # So we do a manual Riemann integration on the solution output
+    history = Table(map(sol.t) do ti
+        calc_md_Q(sol(ti), RF_params, ti)
+    end)
+
+    t = sol.t*u"hr"
+    weights = fill(first(t), length(sol.t))
+    dt = diff(t)
+    weights[begin:end-1] += dt./2
+    weights[begin+1:end] += dt./2
+
+    qinteg = map([:Q_sub, :Q_shf, :Q_vwf, :Q_RF_f, :Q_RF_vw]) do q
+        sum(getproperty.(history, q) .* weights) |> u"W*hr"
+    end
+    # TODO: consider returning differently
+    return Dict("Qsub"=>qinteg[1], 
+                "Qshf"=>qinteg[2],
+                "Qvwf"=>qinteg[3],
+                "QRFf"=>qinteg[4],
+                "QRFvw"=>qinteg[5])
 end

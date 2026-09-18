@@ -147,8 +147,9 @@ function ParamObjPikalStopper(tuple_of_tuples::Tuple)
         tuple_of_tuples[3]...,
         tuple_of_tuples[4]...)
     ## Validate that callable parameters are actually callable and return correct dimensions
-    popm.Rp(1u"cm") isa Unitful.Velocity || error("Rp does not return a mass transfer resistance")
-    popm.Kshf(1u"Torr") * u"m^2"*u"K" isa Unitful.Power || error("Kshf does not return heat transfer coeff")
+    ## Note that, odd though it sounds, Rp does have dimensions of velocity
+    popm.Rp(1.0u"cm") isa Unitful.Velocity || error("Rp does not return a mass transfer resistance")
+    popm.Kshf(1.0u"Torr") * u"m^2"*u"K" isa Unitful.Power || error("Kshf does not return heat transfer coeff")
     popm.pch(1.0u"hr") isa Unitful.Pressure || error("pch does not return a pressure")
     popm.Tsh(1.0u"hr") isa Unitful.Temperature || error("Tsh does not return an absolute temperature")
     ## Finally, return the object
