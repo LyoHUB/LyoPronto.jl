@@ -147,11 +147,11 @@ Tsh = RampedVariable(uconvert.(u"K", [T_shelf_0, T_shelf_final]), ramp_rate)
 ## But for now, treat it as a constant guess
 Kshf = ConstPhysProp(5.0u"W/m^2/K")
 
-po = ParamObjPikal([
+po = ParamObjPikal((
     (Rp, hf0, csolid, ρsolution),
     (Kshf, Av, Ap),
     (pch, Tsh)
-]);
+));
 
 # As a sanity check, run the model to see that temperatures are in the right ballpark.
 # Plot it with a recipe that attaches correct units.

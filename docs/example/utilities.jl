@@ -85,11 +85,11 @@ Kshf = ConstPhysProp(13.9u"W/m^2/K")
 Vfill = 3u"mL"
 hf0 = Vfill / Ap
 
-po = ParamObjPikal([
+po = ParamObjPikal((
     (Rp, hf0, csolid, ρsolution),
     (Kshf, Av, Ap),
     (pch, Tsh)
-]);
+));
 
 prob = ODEProblem(po)
 sol_conv = solve(prob, Rodas3());

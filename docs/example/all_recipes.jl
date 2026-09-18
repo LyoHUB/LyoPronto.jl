@@ -181,11 +181,11 @@ hf0 = Vfill / Ap
 
 ## Cycle parameters
 
-po = ParamObjPikal([
+po = ParamObjPikal((
     (Rp, hf0, csolid, ρsolution),
     (Kshf, Av, Ap),
     (pch, Tsh)
-]);
+));
 
 prob = ODEProblem(po)
 sol_conv = solve(prob, Rodas3());

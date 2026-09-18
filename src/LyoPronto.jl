@@ -53,12 +53,14 @@ export RpFormFit, RampedVariable, ConstPhysProp, PrimaryDryFit
 # simulation helpers
 export end_drying_callback
 export calc_u0, get_tstops
+export calc_md_Q
+export summary_md_Q
 # conventional lyo
-export lyo_1d_dae_f # calc_md_Q is public, not exported
+export lyo_1d_dae_f 
 export ParamObjPikal
 export RpEstimator, calc_hRp_T
 # RF lyo
-export lumped_cap_rf! # calc_md_Q_rf is public, not exported
+export lumped_cap_rf! 
 export ParamObjRF
 # raw parameter fitting tools
 export obj_expT, err_expT, err_expT!, num_errs
