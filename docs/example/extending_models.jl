@@ -34,15 +34,16 @@ using LinearAlgebra: Diagonal
 using ConcreteStructs: @concrete
 using RecipesBase
 
+# We will be adding methods to the following functions, so import them (rather than `using`).
+import LyoPronto: calc_md_Q, get_tstops, calc_u0, ODEProblem
+
 # ---
 
 # # 0. Write the model equations
 
 # Before you implement a new model, you should have a clear idea of what it is.
-# For this example, we will be using the following modification of the conventional Pikal 
-# model for sublimation, where we add a "magic heating" term $Q_\mathrm{magic}$ that is 
-# added directly to our energy balance--"magic" because it neglects all of the subtleties
-# that would need to be considered for any realistic heating source.
+# For this example, we will be using the following simple modification of the conventional Pikal 
+# model for sublimation, where we add a pressure-dependent stopper resistance $R_s$ to $R_p$.
 
 # Heat transfer from shelf to bottom to sublimation front:
 # ```math
@@ -53,13 +54,16 @@ using RecipesBase
 # ```
 # Mass transfer:
 # ```math
-# \dot{m} = \frac{A_p}{R_p} (p_\mathrm{sub}(T_\mathrm{sub}) - p_\mathrm{ch}) 
+# \begin{aligned}
+# R_s &= R_{s0} (1 + a*p_\mathrm{ch}) \\
+# \dot{m} &= \frac{A_p}{R_s + R_p} (p_\mathrm{sub}(T_\mathrm{sub}) - p_\mathrm{ch}) 
+# \end{aligned}
 # ```
 # Overall pseudosteady energy balance and differential equation for drying progress:
 # ```math
 # \begin{aligned}
-# \frac{d h_f}{dt} &= \frac{\dot{m}}{A_p (\rho_\mathrm{solution} - c_\mathrm{solids})} \\
-# 0 &= Q_\mathrm{shf} + Q_\mathrm{magic} - \dot{m} \Delta H_\mathrm{sub}
+# 0 &= Q_\mathrm{shf}  - \dot{m} \Delta H_\mathrm{sub} \\
+# \frac{d h_f}{dt} &= \frac{\dot{m}}{A_p (\rho_\mathrm{solution} - c_\mathrm{solids})}
 # \end{aligned}
 # ```
 
@@ -101,12 +105,14 @@ using RecipesBase
 # repeatedly. The `terse` keyword avoids printing all the type parameters when structs are 
 # shown in the REPL.
 
-# ### Example: `ParamObjPikalMagic`
+# ### Example: `ParamObjPikalStopper`
 
 # Here is a struct with all the parameters we need:
 
-@concrete terse struct ParamObjPikalMagic <: LyoPronto.ParamObj
+@concrete terse struct ParamObjPikalStopper <: LyoPronto.ParamObj
     Rp
+    Rs0
+    a
     hf0
     csolid
     ρsolution
@@ -115,26 +121,36 @@ using RecipesBase
     Ap
     pch
     Tsh
-    Q_magic
 end
 
 # It can be helpful to define and document a helper constructor that makes sure users 
 # put these parameters in the correct order, like the following which does a little 
 # validation:
 
-function ParamObjPikalMagic(tuple_of_tuples::Tuple) 
+"""
+    ParamObjPikalStopper
+
+Recommended constructor, with tuple of tuples:
+    ParamObjPikalStopper((
+        (Rp, Rs0, a),
+        (hf0, csolid, ρsolution),
+        (Kshf, Av, Ap),
+        (pch, Tsh)
+        ))
+"""
+function ParamObjPikalStopper(tuple_of_tuples::Tuple) 
     ## Check that the proper number of parameters is given
-    length.(tuple_of_tuples) == (4, 3, 3) || error("Wrong tuple order given to constructor")
+    length.(tuple_of_tuples) == (3, 3, 3, 2) || error("Wrong tuple order given to constructor")
     ## Construct the object
-    popm = ParamObjPikalMagic(tuple_of_tuples[1]...,
+    popm = ParamObjPikalStopper(tuple_of_tuples[1]...,
         tuple_of_tuples[2]...,
-        tuple_of_tuples[3]...)
+        tuple_of_tuples[3]...,
+        tuple_of_tuples[4]...)
     ## Validate that callable parameters are actually callable and return correct dimensions
     popm.Rp(1u"cm") isa Unitful.Velocity || error("Rp does not return a mass transfer resistance")
     popm.Kshf(1u"Torr") * u"m^2"*u"K" isa Unitful.Power || error("Kshf does not return heat transfer coeff")
     popm.pch(1.0u"hr") isa Unitful.Pressure || error("pch does not return a pressure")
     popm.Tsh(1.0u"hr") isa Unitful.Temperature || error("Tsh does not return an absolute temperature")
-    popm.Q_magic(1.0u"hr") isa Unitful.Power || error("Q_magic does not return power")
     ## Finally, return the object
     return popm
 end
@@ -143,22 +159,24 @@ end
 
 ## Specify cycle conditions and formulation properties
 Rp = RpFormFit(1.0u"cm^2*Torr*hr/g", 14.0u"cm*Torr*hr/g", 1.0u"cm^-1")
+Rs0 = 0.1u"cm^2*Torr*hr/g"
+a = 1e-2u"mTorr^-1"
 Kshf = ConstPhysProp(25.0u"W/m^2/K") # Kshf needs to be callable
 Av = π*(1.1u"cm")^2
 Ap = π*(1.0u"cm")^2
-Vfill = 3.0u"mL"
+Vfill = 5.0u"mL"
 hf0 = Vfill/Ap |> u"cm"
 csolid = 0.05u"g/mL" # 5% solution
 ρsolution = 1.0u"g/mL" 
 pch = RampedVariable(100u"mTorr")
-Tsh = RampedVariable([233.15, 263.15]u"K", 1.0u"K/minute")
-Q_magic = RampedVariable([0.5, 0.1]u"W", 0.4u"W/hr")
+Tsh = RampedVariable([243.15, 263.15]u"K", 1.0u"K/minute")
 
 ## Construct the object
-popm = ParamObjPikalMagic((
-    (Rp, hf0, csolid, ρsolution,),
+popm = ParamObjPikalStopper((
+    (Rp, Rs0, a),
+    (hf0, csolid, ρsolution,),
     (Kshf, Av, Ap, ),
-    (pch, Tsh, Q_magic,),
+    (pch, Tsh,),
 ))
 
 
@@ -185,7 +203,7 @@ popm = ParamObjPikalMagic((
 # - **Derivatives** `du` should be stripped back to unitless values matching the implicit units: 
 #   `du[2] = ustrip(u"K/hr", dTf)`.
 
-# ### Example: `pikal_mw!`
+# ### Example: `pikal_stopper!`
 
 # The extended Pikal model has two state variables: `[hf, Tf]` (remaining frozen layer 
 # thickness, product temperature). It is implemented as a DAE (differential-algebraic 
@@ -195,10 +213,10 @@ popm = ParamObjPikalMagic((
 # Following the Pikal model pattern, the physics is split into two functions:
 
 # 1. A method for the **helper function** [`calc_md_Q`](@ref), dispatched on the new 
-#    `ParamObjPikalMagic` type, that computes physical quantities 
+#    `ParamObjPikalStopper` type, that computes physical quantities 
 #    (mass flow, heat transfer terms) and returns them as a named tuple. This function 
 #    can be reused independently for diagnostics or post-solution analysis.
-# 2. The **RHS function** (`pikal_mw!`) that calls the helper, then writes derivatives 
+# 2. The **RHS function** (`pikal_stopper!`) that calls the helper, then writes derivatives 
 #    and algebraic residuals to `du`.
 
 # #### Helper: `calc_md_Q`
@@ -206,7 +224,7 @@ popm = ParamObjPikalMagic((
 # This function unpacks parameters, dimensionalizes state and time, computes all heat 
 # and mass transfer terms, and returns a named tuple.
 
-# It is *very important* that this be dispatched on the new parameter struct (`ParamObjPikalMagic`
+# It is *very important* that this be dispatched on the new parameter struct (`ParamObjPikalStopper!`
 # in this case) to ensure it is not mixed up with the function as defined for other sets of 
 # model equations.
 
@@ -217,43 +235,44 @@ popm = ParamObjPikalMagic((
 # and `Tf`, but if you are interested in plotting it, you can keep your plotting logic in 
 # sync with the model logic by returning `Tsub` in the named tuple here.
 
-@inline function calc_md_Q(u, po::ParamObjPikalMagic, t)
-    (;Rp, hf0, Kshf, Av, Ap, pch, Tsh) = po
+@inline function LyoPronto.calc_md_Q(u, po::ParamObjPikalStopper, t)
+    (;Rp, Rs0, a, hf0, Kshf, Av, Ap, pch, Tsh) = po
     
     td = t * u"hr"
     hf = u[1] * u"cm"
     Tf = u[2] * u"K"
     hd = hf0 - hf
-    ## Shelf heat transfer
     Q_shf = Kshf(pch(td)) * Av * (Tsh(td) - Tf) |> u"W"
-    ## Microwave heating (NEW term)
-    Q_magic = po.Q_magic(t) |> u"W"
+    Tsub = Tf - (Q_shf) / LyoPronto.k_ice / Ap * hf
     ## Sublimation mass transfer
-    Tsub = Tf - Q_shf / k_ice / Ap * hf
-    delta_p = calc_psub(Tsub) - pch(td)
-    md = -Ap * delta_p / Rp(hd) |> u"g/hr"
-    return (; md, Q_shf, Q_mw, Tsub) # Only `md` and `Q_shf` are crucial to the RHS function
+    delta_p = LyoPronto.calc_psub(Tsub) - pch(td)
+    Rs = Rs0*(1 + a*pch(td))
+    md = Ap * delta_p / (Rs + Rp(hd)) |> u"g/hr"
+    return (; md, Q_shf, Rp=Rp(hd), Rs, Tsub) # Only `md` and `Q_shf` are crucial to the RHS function
 end
 
-# #### RHS: `pikal_mw!`
+# #### RHS: `pikal_stopper!`
 
 # The RHS function calls the helper, then computes and writes the derivative and residuals.
 
-function pikal_mw!(du, u, params, t)
-    (;md, Q_shf, Q_mw) = calc_md_Q_mw(u, params, t)
+function pikal_stopper!(du, u, params, t)
+    (;md, Q_shf) = calc_md_Q(u, params, t)
     (; csolid, ρsolution, Ap) = params
+    dmdt = -md # md > 0, dmdt < 0
 
-    Q_sub = uconvert(u"W", md * ΔHsub)
-    dhf_dt = min(0.0u"cm/hr", md / (ρsolution - csolid) / Ap |> u"cm/hr")
+    Q_sub = uconvert(u"W", dmdt * LyoPronto.ΔHsub)
+    ## Clamp dhf_dt to prevent positive values
+    dhf_dt = min(0.0u"cm/hr", dmdt / (ρsolution - csolid) / Ap |> u"cm/hr")
 
     du[1] = ustrip(u"cm/hr", dhf_dt)
-    du[2] = ustrip(u"W", Q_sub + Q_shf + Q_mw)
+    du[2] = ustrip(u"W", Q_sub + Q_shf) # Qsub < 0
+    return nothing
 end
 
 # Because this modeal is a DAE system, wrap the RHS in an `ODEFunction` with a `Diagonal` mass matrix, with entries
 # of `1.0` for differential equations and `0.0` for algebraic equations. 
 
-const pikal_mw_f = ODEFunction(pikal_mw!, mass_matrix=Diagonal([1.0, 0.0]))
+const pikal_stopper_f = ODEFunction(pikal_stopper!, mass_matrix=Diagonal([1.0, 0.0]))
 
 # ### For your model
 
@@ -282,8 +301,8 @@ const pikal_mw_f = ODEFunction(pikal_mw!, mass_matrix=Diagonal([1.0, 0.0]))
 # `BrownFullBasicInit()`, will treat the initial conditions for algebraic variables as 
 # a guess, so algebraic variables need not be exact for this function.
 
-function calc_u0(po::ParamObjPikalMagic)
-    return [ustrip(u"cm", po.hf0), ustrip(u"K", float(po.Tsh(0u"s")))]
+function LyoPronto.calc_u0(po::ParamObjPikalStopper)
+    return [ustrip(u"cm", po.hf0), ustrip(u"K", float(po.Tsh(0u"s")))-1]
 end
 
 # #### `get_tstops(po::YourParamObj)`
@@ -296,8 +315,8 @@ end
 # which identifies all the corners of a [`RampedVariable`](@ref) and all the time points of a 
 # [`LinearInterpolation`](https://docs.sciml.ai/DataInterpolations/stable/methods/#Linear-Interpolation).
 
-function get_tstops(po::ParamObjPikalMagic)
-    get_tstops((po.Tsh, po.pch, po.Q_magic))
+function LyoPronto.get_tstops(po::ParamObjPikalStopper)
+    get_tstops((po.Tsh, po.pch))
 end
 
 
@@ -311,10 +330,10 @@ end
 # importantly it avoids some kinds of problems with automatic differentation (particularly
 # [this issue](https://github.com/SciML/OrdinaryDiffEq.jl/issues/3381), at time of writing).
 
-function ODEProblem(po::ParamObjPikalMagic; u0=calc_u0(po), tspan=(0.0, 1000.0))
+function LyoPronto.ODEProblem(po::ParamObjPikalStopper; u0=calc_u0(po), tspan=(0.0, 1000.0))
     tstops = get_tstops(po)
     return ODEProblem{true, SciMLBase.FullSpecialize}(
-        pikal_mw_f, u0, tspan, po;
+        pikal_stopper_f, u0, tspan, po;
         tstops=tstops, callback=end_drying_callback,
         initializealg=BrownFullBasicInit(), dt=0.1
     )
@@ -332,6 +351,11 @@ end
 # - This is a natural place to add any other 
 #   [keyword arguments](https://docs.sciml.ai/DiffEqDocs/stable/basics/common_solver_opts/) 
 #   for the solver, such as tolerances.
+
+# To actually run a simulation, now, the following is enough:
+prob = ODEProblem(popm)
+## Use an algorithm specified by LyoPronto: Rodas5P() with specific autodiff settings
+sol = solve(prob, LyoPronto.odealg_chunk2) 
 
 # ---
 
@@ -378,24 +402,30 @@ trans_K = K_transform_basic(5.0u"W/m^2/K")
 # (defined for the ODE RHS function) as a temperature. If you would like to plot other 
 # quantities specific to your model, you can add [recipes](https://docs.juliaplots.org/latest/RecipesBase/types/#User-Recipes-2) like the following:
 
-@userplot PikalMagicQPlot
-@recipe function f(pmqp::PikalMagicQPlot)
-    sol = pqmp.args
-    summary = summary_md_Q(sol)
+@userplot PikalStopperRPlot
+@recipe function f(pmqp::PikalStopperRPlot)
+    sol = pmqp.args[1]
+    summary = summary_md_Q(sol) # This calls calc_md_Q at all saved time steps
+
+    xunit --> u"hr"
+    yunit --> u"cm^2*hr*Torr/g"
     @series begin
         color --> "orange"
-        return summary.t, summary.Q_shf
+        label --> "\$R_s\$"
+        return summary.t, summary.Rs
     end
     @series begin
-        color --> "dark orange"
-        return summary.t, summary.Q_magic
+        color --> "red"
+        label --> "\$R_p\$"
+        return summary.t, summary.Rp
     end
 end
 
 # For a solution `sol` with the above model, this would then be called as
-# ```julia
-# pikalmagicqplot(sol)
-# ```
+pl2 = pikalstopperrplot(sol)
+## which we can combine with
+pl1 = modconvtplot(sol)
+plot(pl1, pl2, link=:x, layout=(2,1))
 
 # ---
 
