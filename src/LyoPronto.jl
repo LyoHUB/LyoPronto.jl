@@ -46,6 +46,7 @@ include("cycle_time.jl")
 include("get_vial_dims.jl")
 include("physical_properties.jl")
 include("eq_cap_ECCURT.jl")
+include("design_space.jl")
 
 # Exports, all in one place
 # convenience structs
