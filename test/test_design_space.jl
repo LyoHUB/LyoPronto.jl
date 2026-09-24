@@ -24,7 +24,7 @@ po = ParamObjPikal((
 
 @testset "Design Space Tests" begin
     pch_range = 50u"mTorr":50u"mTorr":300u"mTorr"
-    tab_sh = @time LyoPronto.ds_calculate_shelf_isotherm(20.0u"°C", pch_range, po)
+    tab_sh = @time LyoPronto.ds_shelf_isotherm(20.0u"°C", pch_range, po)
     @testset "Shelf Isotherm Tests" begin
 
         @test LyoPronto.new_Tsh_ramp(po.Tsh, 5u"degC") == RampedVariable([po.Tsh.setpts[1], 5u"degC"|>u"K"], po.Tsh.ramprates[1])
@@ -45,7 +45,7 @@ po = ParamObjPikal((
     end
 
     Tcrit = -15.0u"°C"
-    tab_pr = @time LyoPronto.ds_calculate_product_isotherm(Tcrit, pch_range, po)
+    tab_pr = @time LyoPronto.ds_product_isotherm(Tcrit, pch_range, po)
     @testset "Product Isotherm Tests" begin
         # Test that each solution has different statistics, except max_Tf
         for name in [:max_md, :ave_md, :end_md, :dry_time]

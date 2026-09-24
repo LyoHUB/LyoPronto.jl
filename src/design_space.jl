@@ -16,7 +16,7 @@ Returns a table of results, with each row corresponding to a different pch in pc
 - `max_Tf`: The maximum product temperature from the solution
 - `dry_time`: The total time to reach the end of primary drying
 """
-function ds_calculate_shelf_isotherm(Tsh_iso, pch_range, po)
+function ds_shelf_isotherm(Tsh_iso, pch_range, po)
     tab = Table(map(pch_range) do pch_i
         # Set up the specific case and simulate
         Tsh = new_Tsh_ramp(po.Tsh, Tsh_iso)
@@ -42,7 +42,7 @@ function ds_calculate_shelf_isotherm(Tsh_iso, pch_range, po)
 end
 
 # First, a generic fallback which doesn't require model manipulation
-function ds_calculate_product_isotherm(Tpr, pch_range, po)
+function ds_product_isotherm(Tpr, pch_range, po)
     tab = Table(map(pch_range) do pch_i
         pch = RampedVariable(pch_i)
         # First, must find the Tsh which gives the desired Tpr as maximum
