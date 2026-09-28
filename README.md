@@ -5,8 +5,7 @@
 This package is a Julia complement to [LyoPRONTO](https://github.com/LyoHUB/LyoPronto), an open source Python package.
 It has some overlapping functionality with LyoPRONTO, especially simulation of primary drying for conventional lyophilization.
 LyoPRONTO (the Python version) also has functionality for generating a design space, estimating time to freeze, and picking optimal drying conditions.
-On the other hand, this package has much more advanced utilities for fitting empirical parameters (such as $R_p$ and $K_v$) to experimental data.
-This package also provides that fitting functionality for a model applicable to microwave-assisted lyophilization.  
+On the other hand, this package has much more advanced utilities for fitting empirical parameters (such as $R_p$ and $K_v$) to experimental data, and can be extended to other models (see the documentation for more details), such as an included model for microwave-assisted lyophilization.
 
 ## Installation
 
@@ -22,7 +21,7 @@ The "badge" up above is a link to the documentation, which is [also here](https:
 
 ## Versioning
 
-In an attempt to adhere to Julia community conventions, this package will use [semantic versioning](semver.org).
+In accordance with the Julia community's conventions, this package uses [semantic versioning](semver.org).
 
 ## Authors
 
@@ -67,7 +66,7 @@ po = ParamObjPikal((
 ))
 
 prob = ODEProblem(po)
-sol = solve(prob, Rosenbrock23())
+sol = solve(prob, LyoPronto.odealg_chunk2)
 
 modconvtplot(sol)
 ```

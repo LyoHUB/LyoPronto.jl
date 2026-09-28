@@ -54,7 +54,9 @@ end
 
 
 @doc """
-    $(SIGNATURES)
+    RampedVariable(constant_setpt)
+    RampedVariable(setpts, ramprate)
+    RampedVariable(setpts, ramprates, holds)
 
 A convenience type for computing temperatures, pressures, etc. with multiple setpoints in sequence,
 and linear interpolation according to a fixed ramp rate between set points
@@ -166,6 +168,14 @@ end
 
 """
     $(SIGNATURES)
+
+This extracts the time stops, which are typically not smooth, for controlled variables. 
+
+These time stops are used to ensure that the ODE solver treats these points as non-smooth, 
+and does not attempt to interpolate across them.
+
+This is defined for `RampedVariable` and `DataInterpolations.AbstractInterpolation` objects.
+For other objects, it falls back to returning `[0.0]`.
 """
 extract_ts(rv::RampedVariable{true, T1, T2, T3, T4}; un=u"hr") where {T1, T2, T3, T4} = ustrip.(un, float.(rv.timestops))
 extract_ts(rv::RampedVariable{false, T1, T2, T3, T4}; un=u"hr") where {T1, T2, T3, T4} = [0.0]
@@ -174,6 +184,13 @@ extract_ts(a::Any) = [0.0]
 
 """
     $(SIGNATURES)
+
+Get the non-smooth time points for a set of time-varying controlled variables.
+
+When called with a tuple, [`extract_ts`](@ref) is called on each element of the tuple, then
+those results are merged into a single vector of time points, dimensionless but given in hours.
+
+Each element of the tuple should be a `RampedVariable` or a `DataInterpolations.AbstractInterpolation` object.
 """
 function get_tstops(controls::Tuple)
     # tstops = [0.0]
@@ -199,3 +216,11 @@ end
 end
 (cpp::ConstPhysProp)(args...) = cpp.val
 Base.show(io::IO, cpp::ConstPhysProp) = print(io, "ConstPhysProp($(cpp.val))")
+@doc """
+    ConstPhysProp(val)
+
+Make a constant physical properties callable.
+
+When called with any number of arguments, these objects simply return the constant value, e.g. `cpp = ConstPhysProp(5u"W/m^2/K")` can be called as `cpp(x)` or `cpp()` or `cpp(x, y, z)` to get `5u"W/m^2/K"`.
+"""
+ConstPhysProp

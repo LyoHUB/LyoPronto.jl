@@ -63,7 +63,11 @@ end
 """
     $(SIGNATURES)
 
-Simulate primary drying, given a vector of parameter guesses, a mapping `tr` from `fitlog` to named coefficients, and other parameters in `po`.
+Solve a model for the conditions `po` with `tr(fitlog)` mapped on top.
+
+These models will typically be for primary drying, with a flat dimensionless vector `fitlog` for fitted parameter values, a mapping `tr` from `fitlog` to named coefficients, and other parameters in `po`.
+
+If given, `fitdat` is used to set `saveat` for the ODE solution.
 
 The equations used are determined by the type of `po`, which (with the magic of dispatch)
 is used to set up an ODE system.
@@ -85,7 +89,6 @@ which is wrapped to avoid code duplication.
 So, to choose which parameters to fitting, all that is necessary is to provide an appropriate transform `tr`.
 Therefore this function can be used for both K-Rp fitting, or just Rp, or just a subset of the 3 Rp coefficients.
 
-If given, `fitdat` is used to set `saveat` for the ODE solution.
 
 Other `kwargs` are passed directly (as is) to the ODE `solve` call.
 """
@@ -97,7 +100,6 @@ function gen_sol_pd(fitlog, tr, po; saveat=[], badprms=nothing, kwargs...)
     sol = solve(prob, odealg_chunk2; saveat, kwargs...)
     return sol
 end
-"$(SIGNATURES)"
 function gen_sol_pd(fitlog, tr, po, fitdat; badprms=nothing, kwargs...)
     sol = gen_sol_pd(fitlog, tr, po; saveat=ustrip.(u"hr", fitdat.t), badprms, kwargs...)
     return sol

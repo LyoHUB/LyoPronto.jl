@@ -46,7 +46,7 @@ import LyoPronto: calc_md_Q, get_tstops, calc_u0, ODEProblem
 # ```math
 # \begin{aligned}
 # Q_\mathrm{shf} &= K_v (T_\mathrm{sh} - T_f) \\
-# T_\mathrm{sub} &= T_f - \frac{Q_\mathrm{shf}}{k_\mathrm{ice}} h_\mathrm{f} 
+# T_\mathrm{sub} &= T_\mathrm{f} - \frac{Q_\mathrm{shf}}{k_\mathrm{ice}} h_\mathrm{f} 
 # \end{aligned}
 # ```
 # Mass transfer:
@@ -64,11 +64,11 @@ import LyoPronto: calc_md_Q, get_tstops, calc_u0, ODEProblem
 # \end{aligned}
 # ```
 
-# In the end we have one differential equation (for ``h_f(t)``) and one more degree of 
+# In the end we have one differential equation (for ``h_\mathrm{f}(t)``) and one more degree of 
 # freedom which is fixed by our energy balance (which is an algebraic equation), so together
 # we have a differential-algebraic equation (DAE) system.
 
-# --
+# ---
 
 # # 1. Define a parameter container
 
@@ -343,7 +343,8 @@ end
 #   (frozen layer thickness approaches zero, i.e. ≈ 1e-10). If the value of 1e-10 is too close to the singularity at 0 for your model,
 #   define a new `ContinuousCallback` from the `DiffEqCallbacks` package
 #   as done for [`end_drying_callback`](@ref).
-# - For DAEs, `initializealg=BrownFullBasicInit()` provides consistent initial conditions.
+# - For DAEs, `initializealg=BrownFullBasicInit()` solves for consistent initial conditions, 
+#   keeping differential variables (e.g. ``h_\mathrm{f}``) fixed and varying algebraic variables (e.g. ``T_\mathrm{f}``) to satisfy the algebraic constraint.
 # - `tspan` should be very large, e.g. 1000 hours—the callback will stop simulation when drying is done.
 # - Use [`get_tstops`](@ref) as defined above is used to ensure simulation treats all the  
 #   non-smooth points.
