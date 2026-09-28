@@ -27,9 +27,8 @@ add LyoPronto
 
 ## Dependencies and Reexports
 
-The following are reexported by this package (so that you don't need to import them after importing LyoPronto):
-- [OrdinaryDiffEqRosenbrock](https://docs.sciml.ai/DiffEqDocs/stable/); used for solving the DAEs and ODEs inherent here
-- [DiffEqCallbacks](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/), used for ending DAE and ODE solves when drying ends
+Among the dependencies of LyoPronto are a few packages which provide functionality without which LyoPronto would not be very usable, so those functions are exported by LyoPronto as well (so that `using LyoPronto` makes these functions available). This includes the following:
+- From [OrdinaryDiffEqRosenbrock](https://docs.sciml.ai/DiffEqDocs/stable/) and [OrdinaryDiffEqNonlinearSolve](https://docs.sciml.ai/DiffEqDocs/stable/), `ODEProblem`, `solve` used for solving the DAEs and ODEs inherent here
 - [Unitful](https://juliaphysics.github.io/Unitful.jl/stable/); specifically, the `u""` macro, `ustrip`, `uconvert`, and `NoUnits`, which is all the API surface needed for regular usage of LyoPronto.
 
 Other noteworthy dependencies:

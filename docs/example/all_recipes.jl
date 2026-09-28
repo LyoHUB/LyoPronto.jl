@@ -188,13 +188,13 @@ po = ParamObjPikal((
 ));
 
 prob = ODEProblem(po)
-sol_conv = solve(prob, Rodas3());
+sol_conv = solve(prob, LyoPronto.odealg_chunk2);
 
 ## Make some alternate versions for showing in plots
 po_alt1 = @set po.Kshf.val = 16u"W/m^2/K"
 po_alt2 = @set po.Kshf.val = 10u"W/m^2/K"
-sol_calt1 = solve(ODEProblem(po_alt1), Rodas3())
-sol_calt2 = solve(ODEProblem(po_alt2), Rodas3());
+sol_calt1 = solve(ODEProblem(po_alt1), LyoPronto.odealg_chunk2)
+sol_calt2 = solve(ODEProblem(po_alt2), LyoPronto.odealg_chunk2);
 
 # ## Microwave-assisted lyophilization
 
@@ -225,7 +225,7 @@ po_rf = ParamObjRF((
 ))
 
 prob = ODEProblem(po_rf)
-sol_rf = solve(prob, Rodas3());
+sol_rf = solve(prob, LyoPronto.odealg_chunk2);
 
 # # Plot Recipes for Solution Objects
 

@@ -92,7 +92,7 @@ po = ParamObjPikal((
 ));
 
 prob = ODEProblem(po)
-sol_conv = solve(prob, Rodas3());
+sol_conv = solve(prob, LyoPronto.odealg_chunk2);
 
 # # System setpoints and conditions with `RampedVariable`s
 

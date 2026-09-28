@@ -1,12 +1,18 @@
 module LyoPronto
 
+## Imports which are partially reexported
 using Reexport
-@reexport using OrdinaryDiffEqRosenbrock
+using OrdinaryDiffEqRosenbrock
 import OrdinaryDiffEqRosenbrock: ODEProblem
-import NonlinearSolve: NonlinearFunction
-@reexport using OrdinaryDiffEqNonlinearSolve
-@reexport using DiffEqCallbacks
+# reexport only a few names
+using OrdinaryDiffEqNonlinearSolve: BrownFullBasicInit
+export BrownFullBasicInit
 @reexport using Unitful: @u_str, ustrip, uconvert, NoUnits
+export ODEProblem, solve 
+
+## Imports which are not reexported
+using DiffEqCallbacks: ContinuousCallback, terminate!
+import NonlinearSolve: NonlinearFunction
 import Unitful
 using TransformVariables
 using TransformVariables: logit

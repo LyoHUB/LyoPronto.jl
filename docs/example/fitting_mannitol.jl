@@ -157,7 +157,7 @@ po = ParamObjPikal((
 # Plot it with a recipe that attaches correct units.
 
 prob = ODEProblem(po)
-sol = solve(prob, Rodas3())
+sol = solve(prob, LyoPronto.odealg_chunk2)
 @df pd_data exptfplot(:t, :T1, :T2, :T3, nmarks=20)
 modconvtplot!(sol, label=L"$T_p$, model")
 savefig("modelpre.svg"); #md #hide

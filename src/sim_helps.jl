@@ -10,7 +10,12 @@ end_cond(u, t, integ) = u[1] - 1e-10 # When reaches 1e-10, is basically zero
 """
 A callback for use in simulating either the Pikal or RF model.
 
-Terminates the time integration when [`end_cond`](@ref) evaluates to `true`.
+Terminates the time integration when the first component of the state vector, `u[1]`, 
+reaches `1e-10` (i.e. approaches zero).
+
+Implemented very simply as
+    end_cond(u, t, integ) = u[1] - 1e-10
+    ContinuousCallback(end_cond, terminate!, save_positions=(true, false))
 """
 const end_drying_callback = ContinuousCallback(end_cond, terminate!, save_positions=(true, false))
 

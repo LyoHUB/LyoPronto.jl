@@ -24,15 +24,12 @@
 
 using LyoPronto
 using Unitful
-using TransformVariables
-using OptimizationOptimJL
-using LineSearches
-using ADTypes: AutoForwardDiff
 using Plots
-using Accessors
 using LinearAlgebra: Diagonal
 using ConcreteStructs: @concrete
 using RecipesBase
+using OrdinaryDiffEqRosenbrock: ODEFunction
+using SciMLBase: FullSpecialize
 
 # We will be adding methods to the following functions, so import them (rather than `using`).
 import LyoPronto: calc_md_Q, get_tstops, calc_u0, ODEProblem
@@ -333,7 +330,7 @@ end
 
 function LyoPronto.ODEProblem(po::ParamObjPikalStopper; u0=calc_u0(po), tspan=(0.0, 1000.0))
     tstops = get_tstops(po)
-    return ODEProblem{true, SciMLBase.FullSpecialize}(
+    return ODEProblem{true, FullSpecialize}(
         pikal_stopper_f, u0, tspan, po;
         tstops=tstops, callback=end_drying_callback,
         initializealg=BrownFullBasicInit(), dt=0.1
@@ -343,7 +340,9 @@ end
 # Key points:
 # - The first argument to `ODEProblem` is your RHS `ODEFunction` (or bare function for explicit ODEs).
 # - `callback=end_drying_callback` terminates integration when drying is complete 
-#   (frozen layer thickness approaches zero, i.e. ≈ 1e-10).
+#   (frozen layer thickness approaches zero, i.e. ≈ 1e-10). If the value of 1e-10 is too close to the singularity at 0 for your model,
+#   define a new `ContinuousCallback` from the `DiffEqCallbacks` package
+#   as done for [`end_drying_callback`](@ref).
 # - For DAEs, `initializealg=BrownFullBasicInit()` provides consistent initial conditions.
 # - `tspan` should be very large, e.g. 1000 hours—the callback will stop simulation when drying is done.
 # - Use [`get_tstops`](@ref) as defined above is used to ensure simulation treats all the  
@@ -387,8 +386,9 @@ trans_K = K_transform_basic(5.0u"W/m^2/K")
 
 # 1. Call `transform(tr, fitlog)` to get a `NamedTuple` of parameters.
 # 2. Call `setproperties(po, fitprm)` to merge fitted params into the base `ParamObj`.
-# 3. Call `ODEProblem(new_po)` to construct the ODE, then solve the ODE.
-# 4. Compare the solution to data in a `PrimaryDryFit` .
+# 3. Use the `fitdats` to choose points at which the ODE solve will be interpolated (affecting returned results, not internal numerical timestepping).
+# 4. Call `ODEProblem(new_po)` to construct the ODE, then solve the ODE.
+# 5. Compare the solution to data in a `PrimaryDryFit` .
 
 # Because `setproperties` (from `ConstructionBase`) works on any struct, and `ODEProblem` 
 # dispatches on your `ParamObj` subtype, **no additional code is needed** for fitting to work.
