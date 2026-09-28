@@ -147,17 +147,17 @@ Tsh = RampedVariable(uconvert.(u"K", [T_shelf_0, T_shelf_final]), ramp_rate)
 ## But for now, treat it as a constant guess
 Kshf = ConstPhysProp(5.0u"W/m^2/K")
 
-po = ParamObjPikal([
+po = ParamObjPikal((
     (Rp, hf0, csolid, ρsolution),
     (Kshf, Av, Ap),
     (pch, Tsh)
-]);
+));
 
 # As a sanity check, run the model to see that temperatures are in the right ballpark.
 # Plot it with a recipe that attaches correct units.
 
 prob = ODEProblem(po)
-sol = solve(prob, Rodas3())
+sol = solve(prob, LyoPronto.odealg_chunk2)
 @df pd_data exptfplot(:t, :T1, :T2, :T3, nmarks=20)
 modconvtplot!(sol, label=L"$T_p$, model")
 savefig("modelpre.svg"); #md #hide

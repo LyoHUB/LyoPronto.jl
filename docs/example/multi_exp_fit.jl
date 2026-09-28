@@ -13,6 +13,7 @@ using TransformVariables
 # Optimization provides a common interface to a variety of optimization packages, including Optim.
 # We import it with OptimizationOptimJL to specify Optim as a backend.
 # LineSearches gives a little more granular control over solver algorithms for Optim.
+using OptimizationBase
 using OptimizationOptimJL
 using LineSearches
 using ADTypes: AutoForwardDiff

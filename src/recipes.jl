@@ -1,4 +1,14 @@
 
+"""
+    $(SIGNATURES)
+
+This function makes a `Table` of the results of [`calc_md_Q`](@ref) at all of the
+given `ODESolution`'s time points.
+"""
+function summary_md_Q(sol::ODESolution)
+    Table(calc_md_Q.(sol.u, (sol.prob.p,), sol.t), t=sol.t*u"hr")
+end
+
 # This is a plot recipe used to add markers only every so often along the series.
 # e.g. if you have 100 data points but only want 10 markers, this will help.
 # This is used inside many of the below plot recipes.
@@ -456,46 +466,6 @@ end
     end
 end
 
-@doc raw"""
-    qrf_integrate(sol, RF_params)
-
-Compute the integral over time of each heat transfer mode in the lumped capacitance model.
-RF_params should represent the same parameters used to generate the solution `sol`,
-which (if OrdinaryDiffEq doesn't change) can likely be accessed as `sol.prob.p`.
-
-Returns a Dict{String, Quantity{...}}, with string keys `Qsub, Qshf, Qvwf, QRFf, QRFvw`.
-"""
-function qrf_integrate(sol, RF_params)
-
-    # Using an IntegratingSumCallback would be more elegant, but at last attempt
-    # it struggled with unitful values in the arrays.
-    # So we do a manual Riemann integration on the solution output
-    Qcontrib = map(sol.t) do ti
-        lumped_cap_rf!([0.0, 0.0, 0.0], sol(ti), RF_params, ti, Val(true))
-    end
-    Qcontrib = hcat(Qcontrib...)
-    Qsub = Qcontrib[1,:]
-    Qshf = Qcontrib[2,:]
-    Qvwf = Qcontrib[3,:]
-    QRFf = Qcontrib[4,:]
-    QRFvw = Qcontrib[5,:]
-
-    t = sol.t*u"hr"
-    weights = fill(first(t), length(sol.t))
-    dt = diff(t)
-    weights[begin:end-1] += dt./2
-    weights[begin+1:end] += dt./2
-
-    qinteg = map([Qsub, Qshf, Qvwf, QRFf, QRFvw]) do q
-        sum(q .* weights)
-    end
-    # TODO: consider returning differently
-    return Dict("Qsub"=>qinteg[1], 
-                "Qshf"=>qinteg[2],
-                "Qvwf"=>qinteg[3],
-                "QRFf"=>qinteg[4],
-                "QRFvw"=>qinteg[5])
-end
 
 """
     pressurenames(name)

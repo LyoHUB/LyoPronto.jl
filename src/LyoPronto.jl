@@ -1,12 +1,18 @@
 module LyoPronto
 
+## Imports which are partially reexported
 using Reexport
-@reexport using OrdinaryDiffEqRosenbrock
+using OrdinaryDiffEqRosenbrock
 import OrdinaryDiffEqRosenbrock: ODEProblem
-import NonlinearSolve: NonlinearFunction
-@reexport using OrdinaryDiffEqNonlinearSolve
-@reexport using DiffEqCallbacks
+# reexport only a few names
+using OrdinaryDiffEqNonlinearSolve: BrownFullBasicInit
+export BrownFullBasicInit
 @reexport using Unitful: @u_str, ustrip, uconvert, NoUnits
+export ODEProblem, solve 
+
+## Imports which are not reexported
+using DiffEqCallbacks: ContinuousCallback, terminate!
+import NonlinearSolve: NonlinearFunction
 import Unitful
 using TransformVariables
 using TransformVariables: logit
@@ -22,7 +28,7 @@ using Roots
 using Accessors
 using ConcreteStructs
 using ADTypes: AutoForwardDiff
-@reexport import ConstructionBase: setproperties
+using ConstructionBase: setproperties
 using DocStringExtensions
 using LinearAlgebra: Diagonal
 
@@ -53,12 +59,14 @@ export RpFormFit, RampedVariable, ConstPhysProp, PrimaryDryFit
 # simulation helpers
 export end_drying_callback
 export calc_u0, get_tstops
+export calc_md_Q
+export summary_md_Q
 # conventional lyo
-export lyo_1d_dae_f # calc_md_Q is public, not exported
+export lyo_1d_dae_f 
 export ParamObjPikal
 export RpEstimator, calc_hRp_T
 # RF lyo
-export lumped_cap_rf! # calc_md_Q_rf is public, not exported
+export lumped_cap_rf! 
 export ParamObjRF
 # raw parameter fitting tools
 export obj_expT, err_expT, err_expT!, num_errs

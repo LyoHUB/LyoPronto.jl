@@ -36,7 +36,7 @@ po = ParamObjPikal((
 # -------------------
 
 prob = ODEProblem(po)
-sol = solve(prob, Rodas3())
+sol = solve(prob, LyoPronto.odealg_chunk2)
 
 # Results from Python
 maxT = -32.1975

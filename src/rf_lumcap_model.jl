@@ -26,9 +26,9 @@ params = ParamObjRF((
     (Rp, hf0, cSolid, ρsolution),
     (Kshf_f, Av, Ap),
     (pch, Tsh, P_per_vial),
-    (mf0, cpf, mv, cpv, Arad),
+    (mf0, cpf, mv, cpv),
     (f_RF, eppf, eppvw),
-    (Kvwf, Bf, Bvw, alpha),
+    (Kvwf, Bf, Bvw),
 ))
 ```
 
@@ -41,6 +41,59 @@ See [`RpFormFit`](@ref) and [`RampedVariable`](@ref) for convenience types that 
 - `Arad` and `alpha` were used in a prior version of the model, and are not used in the 
     current version; they will be removed in a future version.
 """
+
+
+@concrete terse struct ParamObjRF <: ParamObj
+    Rp
+    hf0
+    csolid
+    ρsolution
+    Kshf
+    Av
+    Ap
+    pch
+    Tsh
+    P_per_vial
+    mf0
+    cpf
+    mv
+    cpv
+    f_RF
+    eppf
+    eppvw
+    Kvwf
+    Bf
+    Bvw
+end
+
+@doc """
+    $(TYPEDEF)
+
+The `ParamObjRF` type is a container for the parameters used in the RF model.
+
+
+Since it has many fields, the recommended constructor accepts a tuple of tuples, 
+as follows, to help avoid ordering mistakes:
+
+$(RF_PARAMS_DOC)
+"""
+ParamObjRF
+
+function ParamObjRF(tuptup::Tuple) 
+    # Check the proper number of fields
+    length.(tuptup) == (4, 3, 3, 4, 3, 3) || error("ParamObjRF tuple-of-tuple structure is wrong.")
+    # Create the object
+    po = ParamObjRF(tuptup[1]..., tuptup[2]...,
+                tuptup[3]..., tuptup[4]...,
+                tuptup[5]..., tuptup[6]...,)
+    # Check that callables return proper outputs
+    po.Kshf(1u"Torr") * u"m^2"*u"K" isa Unitful.Power || error("Kshf does not return heat transfer coeff")
+    # Note that, odd though it sounds, Rp does have dimensions of velocity
+    po.Rp(1u"cm") isa Unitful.Velocity || error("Rp does not return a mass transfer resistance")
+    po.pch(1.0u"hr") isa Unitful.Pressure || error("pch does not return a pressure")
+    po.Tsh(1.0u"hr") isa Unitful.Temperature || error("Tsh does not return an absolute temperature")
+    return po 
+end
 
 
 """
@@ -56,23 +109,14 @@ Returns a named tuple with the following fields, all as Unitful quantities:
 - `Q_RF_vw`: volumetric heating of vial wall (W)
 - `Q_shw`: heat transfer from shelf to vial wall (W)
 """
-@inline function calc_md_Q_rf(u, params, tn)
+@inline function calc_md_Q(u, po::ParamObjRF, tn)
     # Unpack all the parameters
-    if params isa ParamObjRF
-        (;Rp, hf0, csolid, ρsolution,
-        Kshf, Av, Ap,
-        pch, Tsh, P_per_vial, 
-        mf0, cpf, mv, cpv,
-        f_RF, eppf, eppvw,
-        Kvwf, Bf, Bvw) = params
-    else
-        Rp, hf0, csolid, ρsolution = params[1]
-        Kshf, Av, Ap, = params[2]
-        pch, Tsh, P_per_vial = params[3] 
-        mf0, cpf, mv, cpv = params[4]
-        f_RF, eppf, eppvw = params[5]
-        Kvwf, Bf, Bvw = params[6]
-    end
+    (;Rp, hf0, csolid, ρsolution,
+    Kshf, Av, Ap,
+    pch, Tsh, P_per_vial, 
+    mf0, mv,
+    f_RF, eppf, eppvw,
+    Kvwf, Bf, Bvw) = po
     # Dimensionalize the state variables
     t = tn*u"hr" 
     m_f = u[1]*u"g"
@@ -101,11 +145,12 @@ Returns a named tuple with the following fields, all as Unitful quantities:
     Qppp_RF_vw = 2*pi*f_RF*e_0*eppvw*P_per_vial(t)*Bvw # W / m^3
     Q_RF_f = Qppp_RF_f*Ap*h_f |> u"W" # W
     Q_RF_vw = Qppp_RF_vw*V_vial |> u"W"# W
+    Q_sub = mflow*ΔHsub # Sublimation
     # Check that total volumetric heating is less than input power
     if Q_RF_f + Q_RF_vw > P_per_vial(t) && t == 0u"hr"
         @warn "Energy balance of EM terms not satisfied." Q_RF_f Q_RF_vw P_per_vial(t)
     end
-    return (; md=mflow, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw)
+    return (; md=mflow, Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw)
 end
 
 """
@@ -113,7 +158,7 @@ end
 
 Compute the right-hand-side function for the ODEs making up the lumped-capacitance microwave-assisted model.
 
-To access the values of the various heat transfer terms, use `[calc_md_Q_rf](@ref)` to compute them; that function is used internally by this function.
+To access the values of the various heat transfer terms, use `[calc_md_Q](@ref)` to compute them; that function is used internally by this function.
 
 `du` refers to `[dmf/dt, dTf/dt, dTvw/dt]`, with `u = [mf, Tf, Tvw]`.
 `u` is taken without units but assumed to have the units of `[g, K, K]` (which is internally added).
@@ -123,10 +168,10 @@ Use the `ParamObjRF` type to hold the parameters.
 $(RF_PARAMS_DOC)
 
 """
-function lumped_cap_rf!(du, u, params, tn, qret = Val(false))
+function lumped_cap_rf!(du, u, params::ParamObjRF, tn)
 
     # Compute heat transfer rates
-    (; md, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw) = calc_md_Q_rf(u, params, tn)
+    (; md, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw) = calc_md_Q(u, params, tn)
     mflow = md
 
     (; csolid, ρsolution,
@@ -147,85 +192,6 @@ function lumped_cap_rf!(du, u, params, tn, qret = Val(false))
     du[1] = ustrip(u"g/hr", dm_f)
     du[2] = ustrip(u"K/hr", dT_f)
     du[3] = ustrip(u"K/hr", dT_vw)
-    
-    if qret isa Val{true}
-        return uconvert.(u"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw])
-    else
-        return nothing
-    end
-end
-
-@concrete terse struct ParamObjRF <: ParamObj
-    Rp
-    hf0
-    csolid
-    ρsolution
-    Kshf
-    Av
-    Ap
-    pch
-    Tsh
-    P_per_vial
-    mf0
-    cpf
-    mv
-    cpv
-    Arad
-    f_RF
-    eppf
-    eppvw
-    Kvwf
-    Bf
-    Bvw
-    alpha
-end
-
-@doc """
-    $(TYPEDEF)
-
-The `ParamObjRF` type is a container for the parameters used in the RF model.
-
-
-Since it has many fields, the recommended constructor accepts a tuple of tuples, 
-as follows, to help avoid ordering mistakes:
-
-$(RF_PARAMS_DOC)
-"""
-ParamObjRF
-
-function ParamObjRF(tuptup::Tuple) 
-    if (length(tuptup[4]) == 4 && length(tuptup[6]) == 3)
-        return ParamObjRF(tuptup[1]..., tuptup[2]...,
-                    tuptup[3]..., tuptup[4]..., missing,
-                    tuptup[5]..., tuptup[6]..., missing,)
-    elseif length(tuptup[6]) == 3
-        return ParamObjRF(tuptup[1]..., tuptup[2]...,
-                    tuptup[3]..., tuptup[4]...,
-                    tuptup[5]..., tuptup[6]..., missing,)
-    else
-        return ParamObjRF(tuptup[1]..., tuptup[2]...,
-                    tuptup[3]..., tuptup[4]...,
-                    tuptup[5]..., tuptup[6]...,)
-    end
-end
-Base.size(po::ParamObjRF) = (6,)
-
-function Base.getindex(po::ParamObjRF, i)
-    if i == 1
-        return (po.Rp, po.hf0, po.csolid, po.ρsolution)
-    elseif i == 2
-        return (po.Kshf, po.Av, po.Ap)
-    elseif i==3 
-        return (po.pch, po.Tsh, po.P_per_vial)
-    elseif i == 4
-        return (po.mf0, po.cpf, po.mv, po.cpv, po.Arad)
-    elseif i == 5
-        return (po.f_RF, po.eppf, po.eppvw)
-    elseif i == 6
-        return (po.Kvwf, po.Bf, po.Bvw, po.alpha)
-    else
-        error(BoundsError, "Attempt to access LyoPronto.ParamsObjRF at index $i. Only indices 1 to 6 allowed")
-    end
 end
 
 function calc_u0(po::ParamObjRF)
@@ -241,4 +207,42 @@ function ODEProblem(po::ParamObjRF; u0 = calc_u0(po), tspan=(0.0, 400.0))
     tstops = get_tstops(po)
     return ODEProblem{true, SciMLBase.FullSpecialize}(lumped_cap_rf!, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback, dt=0.1)
+end
+
+
+@doc raw"""
+    qrf_integrate(sol, RF_params)
+
+Compute the integral over time of each heat transfer mode in the lumped capacitance model.
+RF_params should represent the same parameters used to generate the solution `sol`,
+which (if OrdinaryDiffEq doesn't change) can likely be accessed as `sol.prob.p`.
+
+Returns a Dict{String, Quantity{...}}, with string keys `Qsub, Qshf, Qvwf, QRFf, QRFvw, Qshw`.
+"""
+function qrf_integrate(sol, RF_params::ParamObjRF)
+
+    # Using an IntegratingSumCallback would be more elegant, but at last attempt
+    # it struggled with unitful values in the arrays.
+    # So we do a manual Riemann integration on the solution output
+    history = Table(map(sol.t) do ti
+        calc_md_Q(sol(ti), RF_params, ti)
+    end)
+
+    t = sol.t*u"hr"
+    weights = fill(first(t), length(sol.t))
+    dt = diff(t)
+    weights[begin:end-1] += dt./2
+    weights[begin+1:end] += dt./2
+
+    names = [:Q_sub, :Q_shf, :Q_vwf, :Q_RF_f, :Q_RF_vw, :Q_shw]
+    qinteg = map(names) do q
+        sum(getproperty.(history, q) .* weights) |> u"W*hr"
+    end
+    # TODO: consider returning differently
+    return Dict("Qsub"=>qinteg[1], 
+                "Qshf"=>qinteg[2],
+                "Qvwf"=>qinteg[3],
+                "QRFf"=>qinteg[4],
+                "QRFvw"=>qinteg[5],
+                "Qshw"=>qinteg[6])
 end

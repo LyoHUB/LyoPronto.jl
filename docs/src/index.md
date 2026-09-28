@@ -4,11 +4,13 @@
 
 _A Julia package providing common computations for pharmaceutical lyophilization._
 
-This provides some of the functionality of [LyoPRONTO](https://github.com/LyoHUB/LyoPronto), a Python package.
+This package is a Julia complement to [LyoPRONTO](https://github.com/LyoHUB/LyoPronto), a Python package [shivkumarLyoPRONTOOpenSourceLyophilization2019](@cite) with a [web interface](https://lyopronto.geddes.rcac.purdue.edu). It is not a one-to-one translation, but rather a reimplementation of the same underlying model, with a much-improved interface for parameter estimation and an interface for extending that infrastructure to new models.
+
+In the newer [web interface](https://lyopronto2.geddes.rcac.purdue.edu), some of the functionality is provided by calling Python and some is provided by this package.
 
 ## Overview
 
-This relatively small package provides a standard literature model for simulating primary drying in pharmaceutical lyophilization, alongside robust utilities for a common parameter estimation workflow. This same infrastructure is provided for a model that adds microwave heating.
+<!-- This relatively small package provides a standard literature model for simulating primary drying in pharmaceutical lyophilization, alongside robust utilities for a common parameter estimation workflow. This same infrastructure is provided for a model that adds microwave heating. -->
 
 Some key advantages this has over the original version of LyoPRONTO are:
 - Speed: on my laptop, the regular model can be simulated in about a millisecond. This becomes most relevant when evaluating the model repeatedly in parameter estimation or constructing large design spaces.
@@ -27,9 +29,8 @@ add LyoPronto
 
 ## Dependencies and Reexports
 
-The following are reexported by this package (so that you don't need to import them after importing LyoPronto):
-- [OrdinaryDiffEqRosenbrock](https://docs.sciml.ai/DiffEqDocs/stable/); used for solving the DAEs and ODEs inherent here
-- [DiffEqCallbacks](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/), used for ending DAE and ODE solves when drying ends
+Among the dependencies of LyoPronto are a few packages which provide functionality without which LyoPronto would not be very usable, so those functions are exported by LyoPronto as well (so that `using LyoPronto` makes these functions available). This includes the following:
+- From [OrdinaryDiffEqRosenbrock](https://docs.sciml.ai/DiffEqDocs/stable/) and [OrdinaryDiffEqNonlinearSolve](https://docs.sciml.ai/DiffEqDocs/stable/), `ODEProblem`, `solve` used for solving the DAEs and ODEs inherent here
 - [Unitful](https://juliaphysics.github.io/Unitful.jl/stable/); specifically, the `u""` macro, `ustrip`, `uconvert`, and `NoUnits`, which is all the API surface needed for regular usage of LyoPronto.
 
 Other noteworthy dependencies:
@@ -60,3 +61,8 @@ This work was supported in part by funding for NIIMBL project PC4.1-307 .
 This package is released with the MIT license.
 
 
+## Cited References
+
+The following works are cited in this documentation
+```@bibliography
+```
