@@ -68,8 +68,10 @@ Simulate primary drying, given a vector of parameter guesses, a mapping `tr` fro
 The equations used are determined by the type of `po`, which (with the magic of dispatch)
 is used to set up an ODE system.
 
-`tr` should be a `TransformTuple` object, from TransformVariables, which maps e.g. a vector of 3
-real numbers to a NamedTuple with `R0, A1, A2` as keys and appropriate Unitful dimensions on the values.
+`tr` should be a `TransformTuple` object, from TransformVariables, which maps a plain 
+Vector{Float64} to a `NamedTuple` with fields matching the properties and units of the `po` object.
+To construct callable functions, have the transform map to callable structs.
+
 This small function runs 
 ```
 fitprm = transform(tr, fitlog)
@@ -80,8 +82,7 @@ sol = solve(prob, Rodas4(autodiff=AutoForwardDiff(chunksize=2)); saveat, kwargs.
 ```
 which is wrapped to avoid code duplication.
 
-So, to choose which parameters to fitting, all that is necessary is to provide an appropriate transform `tr`
-and add a method of `setproperties` for the desired parameters.
+So, to choose which parameters to fitting, all that is necessary is to provide an appropriate transform `tr`.
 Therefore this function can be used for both K-Rp fitting, or just Rp, or just a subset of the 3 Rp coefficients.
 
 If given, `fitdat` is used to set `saveat` for the ODE solution.

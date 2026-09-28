@@ -22,7 +22,7 @@ using Roots
 using Accessors
 using ConcreteStructs
 using ADTypes: AutoForwardDiff
-@reexport import ConstructionBase: setproperties
+using ConstructionBase: setproperties
 using DocStringExtensions
 using LinearAlgebra: Diagonal
 
