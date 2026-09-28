@@ -1,6 +1,8 @@
 CI = get(ENV, "CI", nothing) == "true" || get(ENV, "GITHUB_TOKEN", nothing) !== nothing
 using LyoPronto
 using Documenter
+using DocumenterCitations
+using DocumenterCodeBlocks
 using Literate
 ENV["GKSwstype"] = 100
 
@@ -15,6 +17,11 @@ for file in [
     ]
     Literate.markdown((@__DIR__)*"/example/$file", (@__DIR__)*"/src/generated", documenter=true)
 end
+
+bib = CitationBibliography("src/refs.bib"; style=:numeric)
+codeblocks = CodeBlocks(;
+    line_counter = :named,
+)
 
 @info "Building Documentation"
 makedocs(;
@@ -33,8 +40,8 @@ makedocs(;
         "Equipment capability estimation" => "eqcap.md",
         "Reference" => "alldocstrings.md",
     ],
-    # Don't worry about what `CI` does in this line.
-    format = Documenter.HTML(prettyurls = CI),
+    plugins = [bib, codeblocks],
+    format = Documenter.HTML(prettyurls = true),
 )
 
 @info "Deploying Documentation"

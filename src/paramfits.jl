@@ -32,7 +32,9 @@ struct PrimaryDryFit{T1, T2, T3, T4, T5, T6}
     end
 end
 @doc """
-PrimaryDryFit: a type for indicating how experimental data should be fit.
+    $(SIGNATURES)
+
+A type for indicating how experimental data should be fit.
 
 Provided constructors:
 

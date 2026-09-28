@@ -54,6 +54,8 @@ end
 
 
 @doc """
+    $(SIGNATURES)
+
 A convenience type for computing temperatures, pressures, etc. with multiple setpoints in sequence,
 and linear interpolation according to a fixed ramp rate between set points
 
