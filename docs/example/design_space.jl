@@ -66,7 +66,7 @@ eqcap = ECCURT.eq_cap_line(D, vth, L, V) # This gives us a callable, as a functi
 
 # Now, we need to choose pressure and shelf temperature ranges to draw on our design space.
 pch_range = (40:20:200)u"mTorr" # from 50 to 300 mTorr in 20 mTorr increments
-Tsh_range = (-10u"°C":10u"K":30u"°C") # from -20 to 20 °C in 5 °C increments
+Tsh_range = (-20u"°C":10u"K":20u"°C") # from -20 to 20 °C in 5 °C increments
 Tpr_range = T_crit .+ (-2u"K":1u"K":2u"K") # from 2 °C below to 2 °C above the product temperature limit in 1 °C increments
 
 # Do the actual design space calculation:
@@ -78,16 +78,21 @@ iso_Tpr = [LyoPronto.ds_product_isotherm(Tpr, pch_range, po) for Tpr in Tpr_rang
 # Now we can plot the design space. The shelf temperature isotherms are plotted in black,
 # the product temperature isotherms in red, and the equipment capability limit in blue. 
 
+# Note that the shelf temperature isotherms should be plotted for the _maximum_ mass flow 
+# rate, which is the worst case scenario; and the product temperature isotherms should be 
+# plotted for a _minimum_ mass flow rate, which is the worst case scenario. 
+# For the Pikal model, this minimum mass flow rate occurs at the end of drying.
+
 dsp = plot(u"mTorr", u"g/hr", ylabel="Sublimation Rate", xlabel="Chamber Pressure", title="Design Space", )
 plot!(pch_range, eqcap.(pch_range), color=:blue, fillto=0.0u"g/hr", fillalpha=0.5, label="Equipment Capability Limit")
 ## Index 3 is the actual critical temperature isotherm, so we can highlight it with a filled area
-plot!(iso_Tpr[3].pch, iso_Tpr[3].max_md .* n_vials; seriescolor=:red, 
+plot!(iso_Tpr[3].pch, iso_Tpr[3].end_md .* n_vials; seriescolor=:red, 
     label="Product Temperature Limit", 
     fillto = 0.0u"g/hr", fillcolor = :yellow, fillalpha=0.5)
 ## Draw dotted lines for the other isotherms
 for (i, Tpr) in enumerate(Tpr_range)
     ## When plotting mass fluxes, multiply by the number of vials
-    plot!(iso_Tpr[i].pch, iso_Tpr[i].max_md .* n_vials; 
+    plot!(iso_Tpr[i].pch, iso_Tpr[i].end_md .* n_vials; 
         seriescolor=:red, label="", linestyle=:dash)
 end
 for (i, Tsh) in enumerate(Tsh_range)
