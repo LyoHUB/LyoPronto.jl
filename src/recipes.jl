@@ -355,8 +355,8 @@ If two time points are passed, a light shading is applied between instead of a v
 tendplot
 @doc (@doc tendplot) tendplot!
 
-@userplot tendPlot
-@recipe function f(tp::tendPlot)
+@userplot tEndPlot
+@recipe function f(tp::tEndPlot)
     if ismissing(tp.args[1])
         return nothing
     elseif length(tp.args) == 1 && ~(tp.args[1] isa Tuple)
@@ -384,7 +384,7 @@ tendplot
             return [ustrip.(u"hr", t_end)...]
         end
     else
-        error("tendPlot requires 1 or 2 arguments")
+        error("tEndPlot requires 1 or 2 arguments")
     end
 end
 
@@ -403,26 +403,40 @@ end
     end
 end
 
-@recipe function f(pdf::PrimaryDryFit)
-    @series begin
-        return ExpTfPlot((pdf.t, pdf.Tfs...))
+# One plot series per data object in the ExpFitData container. Each temperature
+# series is plotted against the time points its `t_range` selects; the endpoint
+# and end-of-drying objects are drawn as single markers.
+# TODO: replace this with a filter so that all TfData objects get plotted together, likewise for all TvwSeriesData objects
+@recipe function f(pdf::ExpFitData)
+    Tfs = filter(o -> o isa TfData, pdf.data)
+    if !isempty(Tfs)
+        @series begin
+            if any(o -> !ismissing(o.t), Tfs)
+                @warn "Plot recipe needs to be fixed: some TfData objects have their own time vectors"
+            end
+            return ExpTfPlot((fit_t(pdf, Tfs[1]), (Tf.Tf for Tf in Tfs)...))
+        end
     end
-    if !ismissing(pdf.Tvws)
-        if pdf.Tvws isa Number
+    Tvws = filter(o -> o isa TvwSeriesData, pdf.data)
+    if !isempty(Tvws)
+        @series begin
+            if any(o -> !ismissing(o.t), Tvws)
+                @warn "Plot recipe needs to be fixed: some TvwSeriesData objects have their own time vectors"
+            end
+            return ExpTvwPlot((fit_t(pdf, Tvws[1]), (Tvw.Tvw for Tvw in Tvws)...))
+        end
+    end
+    for obj in pdf.data
+        if obj isa TvwEndData
             @series begin
                 seriestype := :scatter
                 label --> "\$T_\\mathrm{vw}\$"
-                return [pdf.t[maximum(pdf.Tf_iend)]], [pdf.Tvws]
+                return [pdf.t[end]], [obj.Tvw_end]
             end
-        else 
+        elseif obj isa EndTimeData
             @series begin
-                return ExpTvwPlot((pdf.t,pdf.Tvws...))
+                return tEndPlot(obj.t_end)
             end
-        end
-    end
-    if !ismissing(pdf.t_end)
-        @series begin
-            return tendPlot(pdf.t_end)
         end
     end
 end

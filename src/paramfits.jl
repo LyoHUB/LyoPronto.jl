@@ -51,7 +51,7 @@ end
 
 # Convenience constructor: default the time-index range to the full series length.
 function TfData(Tf; t=missing)
-    return TfData(Tf, 1:length(Tf), t)
+    return TfData(Tf, 1:length(Tf); t)
 end
 
 has_timevec(::TfData) = true
@@ -78,29 +78,29 @@ Constructors:
   time vector.
 """
 struct TvwSeriesData{T1, T2, T3} <: AbstractExpDatum
-    Tvws::T1       # AbstractVector of Temperature
+    Tvw::T1       # AbstractVector of Temperature
     t_range::T2 # range of time indices that Tvws corresponds to
     t::T3          # AbstractVector of Time; `missing` → use container `t`
-    function TvwSeriesData(Tvws, t_range; t=missing)
-        if !(Tvws isa AbstractVector) || !(first(Tvws) isa Unitful.Temperature)
-            throw(ArgumentError("Tvws should be a temperature or a vector of temperature measurements"))
+    function TvwSeriesData(Tvw, t_range; t=missing)
+        if !(Tvw isa AbstractVector) || !(first(Tvw) isa Unitful.Temperature)
+            throw(ArgumentError("Tvw should be a temperature or a vector of temperature measurements"))
         end
         if !(t_range isa AbstractRange) || !(first(t_range) isa Integer)
             throw(ArgumentError("t_range should be a range of integer time indices"))
         end
-        if length(t_range) != length(Tvws)
-            throw(ArgumentError("t_range must have the same length as Tvws"))
+        if length(t_range) != length(Tvw)
+            throw(ArgumentError("t_range must have the same length as Tvw"))
         end
         if !ismissing(t) && (!(t isa AbstractVector) || !(first(t) isa Unitful.Time))
             throw(ArgumentError("t should be a vector of time points with units of time"))
         end
-        new{typeof(Tvws), typeof(t_range), typeof(t)}(Tvws, t_range, t)
+        new{typeof(Tvw), typeof(t_range), typeof(t)}(Tvw, t_range, t)
     end
 end
 
 # Convenience constructor: default the time-index range to the full series length.
-function TvwSeriesData(Tvws; t=missing)
-    return TvwSeriesData(Tvws, 1:length(Tvws), t)
+function TvwSeriesData(Tvw; t=missing)
+    return TvwSeriesData(Tvw, 1:length(Tvw); t)
 end
 
 has_timevec(::TvwSeriesData) = true
@@ -260,8 +260,8 @@ function PrimaryDryFit(t, Tfs_or_data; Tvws=missing, t_end=missing)
         end
         objs = Tuple(TfData(Tf) for Tf in Tfs)
         if !ismissing(Tvws)
-            tvw_obj = Tvws isa Number ? TvwEndData(Tvws) : TvwSeriesData(Tvws)
-            objs = (objs..., tvw_obj)
+            tvw_obj = Tvws isa Number ? TvwEndData(Tvws) : Tuple(TvwSeriesData(Tvw) for Tvw in Tvws)
+            objs = (objs..., tvw_obj...)
         end
         if !ismissing(t_end)
             objs = (objs..., EndTimeData(t_end))
@@ -278,7 +278,7 @@ function Base.:(==)(a::TfData, b::TfData)
     return a.Tf == b.Tf && a.t_range == b.t_range && a.t == b.t
 end
 function Base.:(==)(a::TvwSeriesData, b::TvwSeriesData)
-    return a.Tvws == b.Tvws && a.t_range == b.t_range && a.t == b.t
+    return a.Tvw == b.Tvw && a.t_range == b.t_range && a.t == b.t
 end
 function Base.:(==)(a::TvwEndData, b::TvwEndData)
     return a.Tvw_end == b.Tvw_end
@@ -297,7 +297,7 @@ function Base.show(io::IO, d::TvwEndData)
     print(io, "TvwEndData(", d.Tvw_end, ")")
 end
 function Base.show(io::IO, d::TvwSeriesData)
-    print(io, "TvwSeriesData(", length(d.Tvws), " pts, t_range=", d.t_range, ")")
+    print(io, "TvwSeriesData(", length(d.Tvw), " pts, t_range=", d.t_range, ")")
 end
 function Base.show(io::IO, d::EndTimeData)
     print(io, "EndTimeData(", d.t_end, ")")
@@ -465,8 +465,13 @@ function obj_exp(sol::ODESolution, efd::ExpFitData;
 end
 obj_exp(sol::Val{NaN}, efd; kwargs...) = Inf
 
-function obj_expT(sol::ODESolution, efd::ExpFitData;
-    tweight=1.0, verbose = false, Tvw_weight=1.0)
+"""
+    $(SIGNATURES)
+
+A thin wrapper on [`obj_exp`](@ref), for backwards compatibility.
+"""
+function obj_expT(sol, efd;
+    tweight=1.0u"K^2/hr^2", verbose = false, Tvw_weight=1.0)
     return obj_exp(sol, efd; tweight, verbose, Tvw_weight)
 end
 
@@ -510,7 +515,7 @@ end
 
 function err_Tvw!(errs, i0, sol::ODESolution, obj::TvwSeriesData, t, st::SolTrim; verbose=false)
     Tvwmd = model_result(sol, st, 3; verbose=verbose)
-    Tvw = obj.Tvws
+    Tvw = obj.Tvw
     itvw = obj.Tvw_iend
     trim = min(itvw, length(Tvwmd))
     Tvw_errs = (Tvw[st.i_solstart:trim] .- Tvwmd[begin:trim-st.i_solstart+1])/sqrt(trim-st.i_solstart+1)
