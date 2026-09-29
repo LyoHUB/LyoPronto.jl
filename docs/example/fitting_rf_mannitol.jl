@@ -30,17 +30,12 @@ set_default(labelformat=:square) # Latexify, not Plots
 # measurements (from fiber optic probes) are in a separate file, and we must take care to 
 # synchronize the time.
 
-# As in the other examples, the file locations here are wonky in order to execute this 
-# documentation remotely; to follow along, adjust the file paths to match your local setup.
-
-filesdir = joinpath(@__DIR__, "..", "..", "example")
-
-dat1 = CSV.read(joinpath(filesdir, "2023-03-02_RF_Mannitol_temperature.csv"), Table)
-dat2 = CSV.read(joinpath(filesdir, "2023-03-02_RF_Mannitol_process.csv"), Table,
-    comment="#", stripwhitespace=true)
-
+filesdir = joinpath(@__DIR__, "..", "..", "example") # md #hide
 cp(joinpath(filesdir, "2023-03-02_RF_Mannitol_temperature.csv"), "./2023-03-02_RF_Mannitol_temperature.csv"); #md #hide
 cp(joinpath(filesdir, "2023-03-02_RF_Mannitol_process.csv"), "./2023-03-02_RF_Mannitol_process.csv"); #md #hide
+dat1 = CSV.read("./2023-03-02_RF_Mannitol_temperature.csv", Table)
+dat2 = CSV.read("./2023-03-02_RF_Mannitol_process.csv", Table,
+    comment="#", stripwhitespace=true)
 # To follow along, you can use the same data files [here](2023-03-02_RF_Mannitol_process.csv)
 # and [here](2023-03-02_RF_Mannitol_temperature.csv).
 

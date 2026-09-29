@@ -27,7 +27,7 @@ using LaTeXStrings
 
 doc_file_loc = joinpath(@__DIR__, "..", "..", "example", "2024-06-04-10_MFD_AH.csv") # md #hide
 file_loc = "./2024-06-04-10_MFD_AH.csv"
-cp(doc_file_loc, file_loc); #md #hide 
+cp(doc_file_loc, file_loc, force=true); #md #hide 
 ## Data start at 7th row of CSV file.
 procdata_raw = CSV.read(file_loc, Table, header=7)
 ## Convert time stamps to time counting from zero
