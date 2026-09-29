@@ -155,15 +155,19 @@ end
 
 struct RpEstimator{plural}
     po::ParamObjPikal
-    pdf::PrimaryDryFit
+    pdf::ExpFitData
     Tf_interp
 end
 
-function RpEstimator(po::ParamObjPikal, pdf::PrimaryDryFit)
-    if length(pdf.Tf_iend) == 1
-        return RpEstimator{false}(po, pdf, LinearInterpolation(pdf.Tfs[1], pdf.t[begin:pdf.Tf_iend[1]]))
+function RpEstimator(po::ParamObjPikal, pdf::ExpFitData)
+    tfs = Tuple(o for o in pdf.data if o isa TfData)
+    isempty(tfs) && throw(ArgumentError("ExpFitData must contain at least one TfData object"))
+    if length(tfs) == 1
+        tf = tfs[1]
+        t = fit_t(pdf, tf)
+        return RpEstimator{false}(po, pdf, LinearInterpolation(tf.Tf, t[tf.t_range]))
     end
-    Tf_interp = [LinearInterpolation(pdf.Tfs[i], pdf.t[begin:i_end], extrapolation=ExtrapolationType.Constant) for (i, i_end) in enumerate(pdf.Tf_iend)]
+    Tf_interp = [LinearInterpolation(tf.Tf, fit_t(pdf, tf)[tf.t_range], extrapolation=ExtrapolationType.Constant) for tf in tfs]
     return RpEstimator{true}(po, pdf, Tf_interp)
 end
 
@@ -243,7 +247,7 @@ will not be used here, so set it to any dummy value.
 If `pdf` has multiple temperature series, pass an index `i` to select which series to use. 
 Otherwise, the first series will be used.
 """
-function calc_hRp_T(po::ParamObjPikal, pdf::PrimaryDryFit; i=nothing)
+function calc_hRp_T(po::ParamObjPikal, pdf::ExpFitData; i=nothing)
     re = RpEstimator(po, pdf)
     if re isa RpEstimator{true}
         if !isnothing(i)
