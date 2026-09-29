@@ -120,8 +120,10 @@ iend_T4 = argmin(thm_pd.T4[1000:end]) + 1000
 iend_T1 = argmin(thm_pd.T1[1000:end]) + 1000
 ## Factor of 6 is because the temperature data are every 10 seconds, 
 ## compared to every minute for process data
-fitdat = @df thm_pd[begin:6:end] PrimaryDryFit(:t, (:T4[begin:iend_T4÷6], 
-    :T1[begin:iend_T1÷6]), :T3, t_end);
+# T4 and T1 are frozen-product temperatures (TfData); T3 is the vial-wall
+# temperature series (TvwSeriesData); t_end marks the end of primary drying.
+fitdat = @df thm_pd[begin:6:end] ExpFitData(:t, TfData(:T4[begin:iend_T4÷6]),
+    TfData(:T1[begin:iend_T1÷6]), TvwSeriesData(:T3), EndTimeData(t_end));
 plot(fitdat)
 
 # # Set up other model parameters
@@ -208,10 +210,10 @@ modrftplot!(prof_RF, markeralpha=0, trimend=1)
 ## Shelf temperature
 plot!(Tsh, c=:black, label=L"T_\mathrm{sh}")
 ## End of primary drying
-tendplot!(fitdat.t_end, label="", ls=:dash)
+tendplot!(t_end, label="", ls=:dash)
 ## Mark the end of drying with a nice label
 annotate!(9, -32, Plots.text("end of drying,\nRF off", 12, "Computer Modern"))
-plot!([fitdat.t_end-1.5u"hr", fitdat.t_end-0.2u"hr"], [-30, -30], arrow=:arrow, c=:black, linewidth=1, label="")
+plot!([t_end-1.5u"hr", t_end-0.2u"hr"], [-30, -30], arrow=:arrow, c=:black, linewidth=1, label="")
 ## Set other plot attributes
 plot!(legend=:topleft, ylim=(-40, 50), xlim=(0,13))
 plot!(size=(600,400), left_margin=15Plots.px)

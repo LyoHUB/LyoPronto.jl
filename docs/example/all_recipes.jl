@@ -128,13 +128,13 @@ savefig("tp_recipe_comps.svg"); #md #hide
 
 # # Fitting Object Recipes
 
-# As a reminder, the `PrimaryDryFit` object is a container for the data we will use in 
+# As a reminder, the `ExpFitData` object is a container for the data we will use in 
 # fitting--no actual iterations are happening yet.
 # This object has a plot recipe, useful for examining what you are feeding to the fit:
-fitdat_all = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 13u"hr"],
-                                    :T2[:t .< 13u"hr"],
-                                    :T3[:t .< 16u"hr"]);
-                                    t_end)
+fitdat_all = @df pd_data ExpFitData(:t, TfData(:T1[:t .< 13u"hr"]),
+                                    TfData(:T2[:t .< 13u"hr"]),
+                                    TfData(:T3[:t .< 16u"hr"]),
+                                    EndTimeData(t_end))
 plot(fitdat_all, nmarks=30)
 savefig("recipe_pdfit.svg"); #md #hide
 # ![](recipe_pdfit.svg) #md
@@ -142,10 +142,11 @@ savefig("recipe_pdfit.svg"); #md #hide
 
 # If T3 were instead a vial wall temperature measurement and we don't want
 # the optimizer to take drying time into account we could provide and plot it as such.
-## Note that we pass T1 and T2 in a tuple as frozen temperatures, then T3 as a next argument
-fitdat_vw = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 13u"hr"],
-                                    :T2[:t .< 13u"hr"]); 
-                                    Tvws=:T3[:t .< 16u"hr"],)
+## Note that we pass T1 and T2 as frozen temperatures (TfData), then T3 as a vial-wall
+## temperature series (TvwSeriesData)
+fitdat_vw = @df pd_data ExpFitData(:t, TfData(:T1[:t .< 13u"hr"]),
+                                    TfData(:T2[:t .< 13u"hr"]),
+                                    TvwSeriesData(:T3[:t .< 16u"hr"]))
 plot(fitdat_vw, nmarks=40, showline=true, linealpha=0.3)
 savefig("recipe_pdfitvw.svg"); #md #hide
 # ![](recipe_pdfitvw.svg) #md

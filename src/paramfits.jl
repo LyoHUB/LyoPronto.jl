@@ -231,43 +231,41 @@ ExpFitData
 
 # Convenience constructor for the old PrimaryDryFit API.
 # These build TfData/TvwSeriesData/TvwEndData/EndTimeData objects with `t = missing` (use container t).
-function PrimaryDryFit(t, Tfs_or_data; Tvws=missing, t_end=missing)
+"""
+    $(SIGNATURES)
+
+Deprecated: this is now a constructor for [`ExpFitData`](@ref).
+"""
+function PrimaryDryFit(t, Tfs; Tvws=missing, t_end=missing)
     Base.depwarn("PrimaryDryFit is deprecated; use ExpFitData instead. The PrimaryDryFit API is now a thin alias over ExpFitData, and will be removed in future.", :PrimaryDryFit)
-    if Tfs_or_data isa Tuple && !isempty(Tfs_or_data) &&
-       (Tfs_or_data[1] isa TfData || Tfs_or_data[1] isa TvwSeriesData ||
-        Tfs_or_data[1] isa TvwEndData || Tfs_or_data[1] isa EndTimeData)
-        # Pre-built data objects
-        data = Tfs_or_data
-    else
-        # Tfs is a vector or tuple of vectors; build data objects
-        Tfs = Tfs_or_data
-        if Tfs isa AbstractVector
-            if eltype(Tfs) <: Number
-                Tfs = (Tfs,)
-            else
-                Tfs = Tuple(Tfs...)
-            end
+    # Tfs is a vector or tuple of vectors; build data objects
+    Tfs = Tfs
+    if Tfs isa AbstractVector
+        if eltype(Tfs) <: Number
+            Tfs = (Tfs,)
+        else
+            Tfs = Tuple(Tfs...)
         end
-        if Tvws isa AbstractVector
-            if eltype(Tvws) <: Number
-                Tvws = (Tvws,)
-            else
-                Tvws = Tuple(Tvws...)
-            end
-        end
-        if t_end isa Tuple
-            t_end = extrema(t_end)
-        end
-        objs = Tuple(TfData(Tf) for Tf in Tfs)
-        if !ismissing(Tvws)
-            tvw_obj = Tvws isa Number ? TvwEndData(Tvws) : Tuple(TvwSeriesData(Tvw) for Tvw in Tvws)
-            objs = (objs..., tvw_obj...)
-        end
-        if !ismissing(t_end)
-            objs = (objs..., EndTimeData(t_end))
-        end
-        data = objs
     end
+    if Tvws isa AbstractVector
+        if eltype(Tvws) <: Number
+            Tvws = (Tvws,)
+        else
+            Tvws = Tuple(Tvws...)
+        end
+    end
+    if t_end isa Tuple
+        t_end = extrema(t_end)
+    end
+    objs = Tuple(TfData(Tf) for Tf in Tfs)
+    if !ismissing(Tvws)
+        tvw_obj = Tvws isa Number ? TvwEndData(Tvws) : Tuple(TvwSeriesData(Tvw) for Tvw in Tvws)
+        objs = (objs..., tvw_obj...)
+    end
+    if !ismissing(t_end)
+        objs = (objs..., EndTimeData(t_end))
+    end
+    data = objs
     ExpFitData(t, data)  # calls the actual current constructor
 end
 PrimaryDryFit(t, Tfs, Tvws, t_end) = PrimaryDryFit(t, Tfs; Tvws=Tvws, t_end=t_end)
@@ -375,9 +373,9 @@ function obj_Tvw(sol::ODESolution, obj::TvwSeriesData, t; verbose=false)
     obj_Tvw(sol, st, obj; verbose)
 end
 function obj_Tvw(sol::ODESolution, st::SolTrim, dat::TvwSeriesData; verbose=false)
-    Tmd = model_result(sol, st, 3; verbose) # Tf at index 2
+    Tmd = model_result(sol, st, 3; verbose) # Tvw at index 3
     maxind = min(length(dat.t_range), length(Tmd))
-    return sum(abs2, (dat.Tf[st.i_solstart:maxind] .- Tmd[begin:maxind-st.i_solstart+1]))/(maxind-st.i_solstart+1)
+    return sum(abs2, (dat.Tvw[st.i_solstart:maxind] .- Tmd[begin:maxind-st.i_solstart+1]))/(maxind-st.i_solstart+1)
 end
 
 function obj_Tvw(sol::ODESolution, obj::TvwEndData; verbose=false)
@@ -402,15 +400,16 @@ function obj_tend(sol::ODESolution, obj::EndTimeData; verbose=false)
 end
 
 # Function which dispatches to appropriate per-data-type objectives
-obj_exp_datum(sol::ODESolution, st::SolTrim, obj::TfData, t; verbose=false) = obj_Tf(sol, st, obj, t; verbose)
-obj_exp_datum(sol::ODESolution, st::SolTrim, obj::TvwSeriesData, t; verbose=false) = obj_Tvw(sol, st, obj, t; verbose)
+obj_exp_datum(sol::ODESolution, st::SolTrim, obj::TfData; verbose=false) = obj_Tf(sol, st, obj; verbose)
+obj_exp_datum(sol::ODESolution, st::SolTrim, obj::TvwSeriesData; verbose=false) = obj_Tvw(sol, st, obj; verbose)
 obj_exp_datum(sol::ODESolution, obj::TfData, t; verbose=false) = obj_Tf(sol, obj, t; verbose)
 obj_exp_datum(sol::ODESolution, obj::TvwSeriesData, t; verbose=false) = obj_Tvw(sol, obj, t; verbose)
-obj_exp_datum(sol::ODESolution, obj::TvwEndData, t; verbose=false) = obj_Tvw(sol, obj; verbose)
-obj_exp_datum(sol::ODESolution, obj::EndTimeData, t; verbose=false) = obj_tend(sol, obj; verbose)
+obj_exp_datum(sol::ODESolution, obj::TvwEndData; verbose=false) = obj_Tvw(sol, obj; verbose)
+obj_exp_datum(sol::ODESolution, obj::EndTimeData; verbose=false) = obj_tend(sol, obj; verbose)
 # Catch the case where solution failed
+obj_exp_datum(sol::Val{NaN}, obj::AbstractExpDatum; verbose=false) = Inf
 obj_exp_datum(sol::Val{NaN}, obj::AbstractExpDatum, t; verbose=false) = Inf
-obj_exp_datum(sol::Val{NaN}, st::SolTrim, obj::AbstractExpDatum, t; verbose=false) = Inf
+obj_exp_datum(sol::Val{NaN}, st::SolTrim, obj::AbstractExpDatum; verbose=false) = Inf
 
 """
     $(SIGNATURES)
@@ -439,6 +438,8 @@ function obj_exp(sol::ODESolution, efd::ExpFitData;
     separate_time = map((x->has_timevec(x) && !ismissing(x.t)), efd.data)
     container_trim = trim_sol(sol, efd.t)
     # Iterate over all data objects, providing appropriate solution trimming if necessary
+    # It would be better if this were a map of some sort, but splitting up residual types
+    # makes that difficult
     for (obj, sep_trim) in zip(efd.data, separate_time)
         st = if sep_trim
             trim_sol(sol, fit_t(efd, obj))
@@ -460,7 +461,7 @@ function obj_exp(sol::ODESolution, efd::ExpFitData;
             tobj += obj_exp_datum(sol, obj; verbose=verbose)
         end
     end
-    verbose && @info "loss call" tobj Tfobj Tvwobj
+    verbose && @info "loss call" tobj Tfobj Tvwobj tweight
     return ustrip(u"K^2", Tfobj + Tvw_weight*Tvwobj + tweight*tobj)
 end
 obj_exp(sol::Val{NaN}, efd; kwargs...) = Inf
@@ -501,10 +502,10 @@ end
 
 const not_avail_err = 0.0 # an error value to return for points where the solution is unavailable, e.g. if the model dries faster
 
-function err_Tf!(errs, i0, sol::ODESolution, obj::TfData, t, st::SolTrim; verbose=false)
+function err_Tf!(errs, i0, sol::ODESolution, obj::TfData, st::SolTrim; verbose=false)
     Tmd = model_result(sol, st, 2; verbose=verbose)
     Tf = obj.Tf
-    itf = obj.Tf_iend
+    itf = length(obj.t_range)
     trim = min(itf, length(Tmd))
     Tferrs = (Tf[st.i_solstart:trim] .- Tmd[begin:trim-st.i_solstart+1])/sqrt(trim-st.i_solstart+1)
     errs[i0+1:i0+st.i_solstart] .= not_avail_err
@@ -513,10 +514,10 @@ function err_Tf!(errs, i0, sol::ODESolution, obj::TfData, t, st::SolTrim; verbos
     return itf
 end
 
-function err_Tvw!(errs, i0, sol::ODESolution, obj::TvwSeriesData, t, st::SolTrim; verbose=false)
+function err_Tvw!(errs, i0, sol::ODESolution, obj::TvwSeriesData, st::SolTrim; verbose=false)
     Tvwmd = model_result(sol, st, 3; verbose=verbose)
     Tvw = obj.Tvw
-    itvw = obj.Tvw_iend
+    itvw = length(obj.t_range)
     trim = min(itvw, length(Tvwmd))
     Tvw_errs = (Tvw[st.i_solstart:trim] .- Tvwmd[begin:trim-st.i_solstart+1])/sqrt(trim-st.i_solstart+1)
     errs[i0+1:i0+st.i_solstart] .= not_avail_err
@@ -525,14 +526,14 @@ function err_Tvw!(errs, i0, sol::ODESolution, obj::TvwSeriesData, t, st::SolTrim
     return itvw
 end
 
-function err_Tvw!(errs, i0, sol::ODESolution, obj::TvwEndData, t, st::SolTrim; verbose=false)
+function err_Tvw!(errs, i0, sol::ODESolution, obj::TvwEndData; verbose=false)
     Tvw_err = sol[3, end]*u"K" - uconvert(u"K", obj.Tvw_end)
     errs[i0+1] = ustrip(u"K", Tvw_err)
     return 1
 end
 
-function err_tend!(errs, i0, sol::ODESolution, obj::EndTimeData, t, st::SolTrim; tweight=1.0u"K/hr", verbose=false)
-    tmd = st.tmd
+function err_tend!(errs, i0, sol::ODESolution, obj::EndTimeData; tweight=1.0u"K/hr", verbose=false)
+    tmd = sol.t[end]*u"hr"
     t_end = obj.t_end
     if t_end isa Tuple # See if is inside window and scale appropriately
         mid_t = (t_end[1] + t_end[2]) / 2.0
@@ -546,7 +547,7 @@ function err_tend!(errs, i0, sol::ODESolution, obj::EndTimeData, t, st::SolTrim;
     else
         t_err = (t_end - tmd)
     end
-    errs[i0+1] = ustrip(u"hr", t_err*tweight)
+    errs[i0+1] = ustrip(u"K", t_err*tweight)
     return 1
 end
 
@@ -584,16 +585,26 @@ function err_exp!(errs, sol::ODESolution, efd; tweight=1.0u"K/hr", verbose = fal
         errs .= Inf
         return
     end
+    # Check which, if any, of the data objects have their own time vector provided
+    separate_time = map((x->has_timevec(x) && !ismissing(x.t)), efd.data)
+    container_trim = trim_sol(sol, efd.t)
     last_ind = 0
-    for obj in efd.data
-        t = fit_t(efd, obj)
-        st = trim_sol(sol, t)
+    for (obj, sep_trim) in zip(efd.data, separate_time)
+        st = if sep_trim
+            trim_sol(sol, fit_t(efd, obj))
+        elseif has_timevec(obj)
+            container_trim
+        else
+            nothing
+        end
         if obj isa TfData
-            last_ind += err_Tf!(errs, last_ind, sol, obj, t, st; verbose)
-        elseif obj isa TvwSeriesData || obj isa TvwEndData
-            last_ind += err_Tvw!(errs, last_ind, sol, obj, t, st; verbose)
+            last_ind += err_Tf!(errs, last_ind, sol, obj, st; verbose)
+        elseif obj isa TvwSeriesData
+            last_ind += err_Tvw!(errs, last_ind, sol, obj, st; verbose)
+        elseif obj isa TvwEndData
+            last_ind += err_Tvw!(errs, last_ind, sol, obj; verbose)
         elseif obj isa EndTimeData
-            last_ind += err_tend!(errs, last_ind, sol, obj, t, st; tweight, verbose)
+            last_ind += err_tend!(errs, last_ind, sol, obj; tweight, verbose)
         end
     end
     if last_ind != length(errs)

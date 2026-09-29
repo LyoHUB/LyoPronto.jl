@@ -414,7 +414,7 @@ end
             if any(o -> !ismissing(o.t), Tfs)
                 @warn "Plot recipe needs to be fixed: some TfData objects have their own time vectors"
             end
-            return ExpTfPlot((fit_t(pdf, Tfs[1]), (Tf.Tf for Tf in Tfs)...))
+            return ExpTfPlot((pdf.t, (Tf.Tf for Tf in Tfs)...))
         end
     end
     Tvws = filter(o -> o isa TvwSeriesData, pdf.data)
@@ -423,7 +423,7 @@ end
             if any(o -> !ismissing(o.t), Tvws)
                 @warn "Plot recipe needs to be fixed: some TvwSeriesData objects have their own time vectors"
             end
-            return ExpTvwPlot((fit_t(pdf, Tvws[1]), (Tvw.Tvw for Tvw in Tvws)...))
+            return ExpTvwPlot((pdf.t, (Tvw.Tvw for Tvw in Tvws)...))
         end
     end
     for obj in pdf.data
