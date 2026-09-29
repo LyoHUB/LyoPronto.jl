@@ -64,9 +64,9 @@ has_timevec(::TfData) = true
 A single experimental vial-wall (Tvw) temperature series, for use in [`ExpFitData`](@ref).
 
 Fields:
-- `Tvws`: an `AbstractVector` of `Temperature` (one series).
-- `t_range`: a range of integer indices into the time vector that `Tvws` corresponds to;
-  `Tvws[k]` is the temperature measured at time `t[t_range[k]]`.
+- `Tvw`: an `AbstractVector` of `Temperature` (one series).
+- `t_range`: a range of integer indices into the time vector that `Tvw` corresponds to;
+  `Tvw[k]` is the temperature measured at time `t[t_range[k]]`.
 - `t`: an optional `AbstractVector` of `Time`; when `missing` (the default), the container's
   time vector is used (see [`fit_t`](@ref)).
 
@@ -123,9 +123,15 @@ has_timevec(::TvwEndData) = false
 
 """
     EndTimeData(t_end)
-An experimentally measured drying time, for use in [`ExpFitData`](@ref). 
 
-`t_end` can be a single time or a tuple of two times, indicating a window of acceptable drying times.
+An experimentally measured end of primary drying, for use in [`ExpFitData`](@ref).
+
+`t_end` is typically determined from non-temperature measurements (e.g. Pirani-CM
+convergence). It can be a single time, or a tuple of two times indicating a window of
+acceptable drying times: in the objective function, any model drying time inside that
+window is not penalized, while outside the window a squared error applies, as for the
+single-time case. If no [`EndTimeData`](@ref) object is present in the fit, the end of
+drying is ignored in the objective function.
 """
 struct EndTimeData{T1} <: AbstractExpDatum
     t_end::T1      # Unitful.Time OR Tuple of two Times
@@ -204,21 +210,17 @@ The convenience constructors that accept raw temperature vectors with keyword
 arguments (`Tvws=`, `t_end=`) are only available through the deprecated
 [`PrimaryDryFit`](@ref) function.
 
-Each `TfData` and `TvwSeriesData` object has a `t_range` field: the range of time indices into
-the time vector that the series corresponds to, so that `series[k]` is the temperature measured
-at `t[t_range[k]]`. By default `t_range` is `1:length(series)`, but it can be set to a sub-window
-to indicate the series was measured over only part of the time vector. A single endpoint vial wall
-temperature is stored in a `TvwEndData` object (no `t_range` needed).
+Each data object is documented with its own fields and constructors. In particular, the
+temperature series ([`TfData`](@ref), [`TvwSeriesData`](@ref)) carry a `t_range` selecting the
+time points they correspond to, and any data object may carry its own time vector `t` (see
+[`fit_t`](@ref)). An end of drying is supplied via an [`EndTimeData`](@ref) object and is
+ignored in the objective function if absent.
 
-`t_end` (via a `EndTimeData` object) indicates an end of drying, as would be determined from
-non-temperature measurements (e.g. Pirani-CM convergence). If no `EndTimeData` object is provided, it is
-ignored in the objective function. If set to a tuple of two times, then in the objective function
-any time in that window is not penalized; outside that window, squared error takes over, as for
-the single time case.
-
-Each data object may carry its own `t` (time vector). When `t` is `missing` (the default in the
-data object constructors), the container's `t` is used. This allows mixing data measured on
-different time grids.
+Currently-implemented data objects include:
+- [`TfData`](@ref): a single frozen-product temperature series
+- [`TvwSeriesData`](@ref): a single vial-wall temperature series
+- [`TvwEndData`](@ref): a single vial-wall temperature endpoint
+- [`EndTimeData`](@ref): a single end-of-drying time, or a tuple of two times indicating an acceptable window
 
 Common Cases:
 - Conventional, single thermocouple: `ExpFitData(t, TfData(Tf))`

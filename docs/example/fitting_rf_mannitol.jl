@@ -120,8 +120,9 @@ iend_T4 = argmin(thm_pd.T4[1000:end]) + 1000
 iend_T1 = argmin(thm_pd.T1[1000:end]) + 1000
 ## Factor of 6 is because the temperature data are every 10 seconds, 
 ## compared to every minute for process data
-# T4 and T1 are frozen-product temperatures (TfData); T3 is the vial-wall
-# temperature series (TvwSeriesData); t_end marks the end of primary drying.
+
+## T4 and T1 are frozen-product temperatures (TfData); T3 is the vial-wall
+## temperature series (TvwSeriesData); t_end marks the end of primary drying.
 fitdat = @df thm_pd[begin:6:end] ExpFitData(:t, TfData(:T4[begin:iend_T4÷6]),
     TfData(:T1[begin:iend_T1÷6]), TvwSeriesData(:T3), EndTimeData(t_end));
 plot(fitdat)
