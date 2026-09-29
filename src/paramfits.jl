@@ -317,10 +317,11 @@ end
 # sub-zero interpolation correction. `i_solstart` is the index into `t` where
 # the model solution begins.
 
-struct SolTrim{T}
+struct SolTrim{T, Tt}
     i_solstart::Int
     preinterp::Bool
     tmd::T
+    t::Tt
 end
 
 """
@@ -335,16 +336,21 @@ function trim_sol(sol::ODESolution, t_exp)
     nt = length(sol.t) - 1
     i_solstart = searchsortedfirst(t_exp, sol.t[begin]*u"hr")
     # Identify if the solution is pre-interpolated to the time points in t
-    preinterp = mapreduce(≈, &, sol.t[1:nt].*u"hr", t_exp[i_solstart:i_solstart+nt-1]) 
-    SolTrim(i_solstart, preinterp, tmd)
+    if i_solstart + nt - 1 <= length(t_exp)
+        preinterp = mapreduce(≈, &, sol.t[1:nt].*u"hr", t_exp[i_solstart:i_solstart+nt-1])
+    else
+        # If there are fewer experimental time points than solution points minus 1, 
+        # then the solution is definitely not pre-interpolated
+        preinterp = false
+    end
+    SolTrim(i_solstart, preinterp, tmd, t_exp)
 end
 
 function model_result(sol::ODESolution, st::SolTrim, idx; verbose=false)
     if st.preinterp
         return sol[idx, begin:end-1].*u"K" # Leave off last time point because is end time
     end
-    tmd = st.tmd
-    trim = sol.t[begin]*u"hr" .< st.t .< tmd
+    trim = sol.t[begin]*u"hr" .<= st.t .< st.tmd
     t_trim = st.t[trim]
     Tmd = sol.(ustrip.(u"hr", t_trim), idxs=idx).*u"K"
     # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.

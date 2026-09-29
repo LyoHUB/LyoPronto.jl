@@ -165,7 +165,7 @@ po = ParamObjPikal((
     sol = solve(ODEProblem(po), LyoPronto.odealg_chunk2)
     t = sol.t*u"hr"
     T = sol[2,1:end-2]*u"K"
-    pdfit = PrimaryDryFit(t, T; t_end = t[end])
+    pdfit = ExpFitData(t, TfData(T), EndTimeData(t[end]))
 
     hd, Rpvals = calc_hRp_T(po, pdfit)
     @test length(hd) == length(Rpvals) > 0

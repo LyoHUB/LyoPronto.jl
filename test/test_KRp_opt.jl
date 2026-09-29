@@ -35,7 +35,7 @@ base_sol = solve(ODEProblem(po), LyoPronto.odealg_chunk2)
 t = base_sol.t*u"hr"
 T = base_sol[2,begin:end-2]*u"K"
 t_end = t[end]
-pdfit = PrimaryDryFit(t, T; t_end)
+pdfit = ExpFitData(t, TfData(T), EndTimeData(t_end))
 
 @testset "Both Kv and Rp, optimization routine" begin
     tr = KRp_transform_basic(Kshf(pch(0))*0.75, R0*0.5, 2*A1, A2*0.5)
@@ -104,7 +104,7 @@ pdfits = map(pos) do poi
     t = base_sol.t*u"hr"
     T = base_sol[2,begin:end-2]*u"K" # Leave the last couple temperatures out, to imitate real life
     t_end = t[end]
-    pdfit = PrimaryDryFit(t, T; t_end)
+    pdfit = ExpFitData(t, TfData(T), EndTimeData(t_end))
 end
 
 @testset "Fit with shared Kv, distinct Rp" begin

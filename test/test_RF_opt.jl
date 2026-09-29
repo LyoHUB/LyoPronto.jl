@@ -53,7 +53,7 @@ t = base_sol.t[keep]*u"hr"
 Tf = base_sol[2,keep]*u"K"
 Tvw = base_sol[3,keep]*u"K"
 t_end = t[end]
-pdfit = PrimaryDryFit(t, Tf, Tvw, t_end)
+pdfit = ExpFitData(t, TfData(Tf), TvwData(Tvw), EndTimeData(t_end))
 
 tr = KBB_transform_basic(Kvwf*0.5, Bf*0.5, 0.5*Bvw)
 pg = fill(1.0, 3)
