@@ -71,8 +71,7 @@ export RpEstimator, calc_hRp_T
 export lumped_cap_rf! 
 export ParamObjRF
 # raw parameter fitting tools
-export obj_expT, err_exp, err_exp!, num_errs
-export obj_exp, obj_exp_datum
+export obj_exp, obj_expT, err_exp, err_exp!, num_errs
 # transforms
 export KRp_transform_basic, K_transform_basic, Rp_transform_basic, KBB_transform_basic
 export KBB_transform_bounded

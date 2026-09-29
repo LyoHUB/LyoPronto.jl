@@ -160,6 +160,8 @@ function obj_pd(fitlog, tpf; tweight=1.0u"K^2/hr^2", Tvw_weight=1.0, badprms=not
     return obj_exp(sol, tpf[3]; tweight, Tvw_weight, verbose)
 end
 
+# TODO: consider this sketch for a fleshed-out public API
+# In the event that the weights in obj_exp get their own struct type, this could help
 @concrete terse struct ObjPdFixedWeights
     tweight
     Tvw_weight

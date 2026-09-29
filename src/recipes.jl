@@ -403,10 +403,8 @@ end
     end
 end
 
-# One plot series per data object in the ExpFitData container. Each temperature
-# series is plotted against the time points its `t_range` selects; the endpoint
-# and end-of-drying objects are drawn as single markers.
-# TODO: replace this with a filter so that all TfData objects get plotted together, likewise for all TvwSeriesData objects
+# One plot series per type of data object in the ExpFitData container. 
+# TODO: shore this recipe up or redo it for TfData or TvwSerieData that have nontrivial t_range or t vectors
 @recipe function f(efd::ExpFitData)
     Tfs = filter(o -> o isa TfData, efd.data)
     if !isempty(Tfs)
