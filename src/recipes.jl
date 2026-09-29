@@ -109,7 +109,13 @@ exptfplot
         labels = ["\$T_\\mathrm{f$i}\$"*labsuffix for i in 1:n]
     end
     for (i, T) in enumerate(Ts)
+        
         @series begin
+            _t, _T = if T isa TfData
+                fit_t(time, T), T.Tf
+            else
+                time, T
+            end
             markershape --> markers[i]
             label --> labels[i]
             seriescolor --> pal[i]
@@ -117,12 +123,12 @@ exptfplot
                 seriestype := :samplemarkers
                 step := step
                 offset := step÷n *(i-1) + 1
-                return time[eachindex(T)], T
+                return _t[eachindex(_T)], _T
             else
                 seriestype --> :scatter
                 offset = step÷n *(i-1) + 1
-                minlen = min(length(time), length(T))
-                return time[offset:step:minlen], T[offset:step:minlen]
+                minlen = min(length(_t), length(_T))
+                return _t[offset:step:minlen], _T[offset:step:minlen]
             end
         end
     end
@@ -179,17 +185,22 @@ exptvwplot
     end
     for (i, T) in enumerate(Ts)
         @series begin
+            _t, _T = if T isa TvwSeriesData
+                fit_t(time, T), T.Tvw
+            else
+                time, T
+            end
             markershape --> markers[i]
             label --> labels[i]
             seriescolor --> pal[i]
             markercolor --> :white
             markerstrokecolor --> pal[i]
             markerstrokewidth --> 1.5
-            minlen = min(length(time), length(T))
+            minlen = min(length(_t), length(_T))
             if showline || get(plotattributes, :linewidth, 0) > 0 # Don't need to check for 
                 linestyle --> :dash
-                time_skip = time[begin:skip:minlen]
-                T_skip = T[begin:skip:minlen]
+                time_skip = _t[begin:skip:minlen]
+                T_skip = _T[begin:skip:minlen]
                 seriestype := :samplemarkers
                 step := step  
                 offset := step÷n *(i-1) + 1
@@ -197,9 +208,9 @@ exptvwplot
             else
                 seriestype --> :scatter
                 # Not using the :samplemarkers recipe, so manually skipping points to get nmarks
-                step = nmarks == Inf ? 1 : (size(time, 1) ÷ nmarks) 
+                step = nmarks == Inf ? 1 : (size(_t, 1) ÷ nmarks) 
                 offset = step÷n *(i-1) + 1
-                return time[offset:step:minlen], T[offset:step:minlen]
+                return _t[offset:step:minlen], _T[offset:step:minlen]
             end
         end
     end
@@ -412,7 +423,7 @@ end
             if any(o -> !ismissing(o.t), Tfs)
                 @warn "Plot recipe needs to be fixed: some TfData objects have their own time vectors"
             end
-            return ExpTfPlot((efd.t, (Tf.Tf for Tf in Tfs)...))
+            return ExpTfPlot((efd, Tfs...))
         end
     end
     Tvws = filter(o -> o isa TvwSeriesData, efd.data)
@@ -421,7 +432,7 @@ end
             if any(o -> !ismissing(o.t), Tvws)
                 @warn "Plot recipe needs to be fixed: some TvwSeriesData objects have their own time vectors"
             end
-            return ExpTvwPlot((efd.t, (Tvw.Tvw for Tvw in Tvws)...))
+            return ExpTvwPlot((efd, Tvws...))
         end
     end
     for obj in efd.data

@@ -30,7 +30,7 @@ using Accessors
 ## Data start at 8th row of CSV file.
 doc_file_loc = joinpath(@__DIR__, "..", "..", "example", "2024-06-04-10_MFD_AH.csv") # md #hide
 file_loc = "./2024-06-04-10_MFD_AH.csv"
-cp(doc_file_loc, file_loc); #md #hide
+cp(doc_file_loc, file_loc, force=true); #md #hide
 procdata_raw = CSV.read(file_loc, Table, header=7)
 t = uconvert.(u"hr", procdata_raw.CycleTime .- procdata_raw.CycleTime[1])
 ## At midnight, timestamps revert to zero, so catch that case

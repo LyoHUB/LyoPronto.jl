@@ -164,10 +164,10 @@ function RpEstimator(po::ParamObjPikal, efd::ExpFitData)
     isempty(tfs) && throw(ArgumentError("ExpFitData must contain at least one TfData object"))
     if length(tfs) == 1
         tf = tfs[1]
-        t = fit_t(efd, tf)
-        return RpEstimator{false}(po, efd, LinearInterpolation(tf.Tf, t[tf.t_range]))
+        return RpEstimator{false}(po, efd, LinearInterpolation(tf.Tf, fit_t(efd, tf), 
+            extrapolation=ExtrapolationType.Constant))
     end
-    Tf_interp = [LinearInterpolation(tf.Tf, fit_t(efd, tf)[tf.t_range], extrapolation=ExtrapolationType.Constant) for tf in tfs]
+    Tf_interp = [LinearInterpolation(tf.Tf, fit_t(efd, tf), extrapolation=ExtrapolationType.Constant) for tf in tfs]
     return RpEstimator{true}(po, efd, Tf_interp)
 end
 
@@ -176,7 +176,7 @@ function Base.show(io::IO, re::RpEstimator{plural}) where plural
 end
 
 function Base.getindex(re::RpEstimator{true}, i)
-    return RpEstimator{false}(re.po, re.pdf, re.Tf_interp[i])
+    return RpEstimator{false}(re.po, re.efd, re.Tf_interp[i])
 end
 Base.length(re::RpEstimator{false}) = length(re.Tf_interp.t)
 

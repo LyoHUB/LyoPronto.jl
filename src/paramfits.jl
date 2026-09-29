@@ -54,6 +54,7 @@ function TfData(Tf; t=missing)
     return TfData(Tf, 1:length(Tf); t)
 end
 
+Base.length(td::TfData) = length(td.t_range)
 has_timevec(::TfData) = true
 
 # Provide separate types for Tvw as a full series or as a single endpoint
@@ -103,6 +104,7 @@ function TvwSeriesData(Tvw; t=missing)
     return TvwSeriesData(Tvw, 1:length(Tvw); t)
 end
 
+Base.length(td::TvwSeriesData) = length(td.t_range)
 has_timevec(::TvwSeriesData) = true
 
 """
@@ -136,7 +138,7 @@ drying is ignored in the objective function.
 struct EndTimeData{T1} <: AbstractExpDatum
     t_end::T1      # Unitful.Time OR Tuple of two Times
     function EndTimeData(t_end)
-        if !(t_end isa Unitful.Time) && !(t_end isa Tuple && first(t_end) isa Unitful.Time)
+        if !(t_end isa Unitful.Time) && !(t_end isa Tuple && length(t_end) == 2 && all(x -> x isa Unitful.Time, t_end))
             throw(ArgumentError("t_end should be a time or a tuple of two times"))
         end
         new{typeof(t_end)}(t_end)
@@ -180,8 +182,13 @@ end
 """
     fit_t(fitdat, obj)
 
-Return the time vector to use for `obj`: `obj.t` if it is set, otherwise the
-container's `fitdat.t`.
+Return the time vector to use for `obj`.
+    
+Three cases:
+- `obj.t[obj.t_range]` if `obj.t` is set 
+- `fitdat.t[obj.t_range]` if `t_range` makes sense and `obj.t` is `missing`
+- `fitdat.t` if `obj` is not tied to a time vector
+
 """
 function fit_t(fitdat::ExpFitData, obj::AbstractExpDatum)
     if has_timevec(obj) 
@@ -273,12 +280,11 @@ end
 PrimaryDryFit(t, Tfs, Tvws, t_end) = PrimaryDryFit(t, Tfs; Tvws=Tvws, t_end=t_end)
 
 
-# TODO: do this programmatically for all AbstractExpDatum types, rather than hard-coding each one
 function Base.:(==)(a::TfData, b::TfData)
-    return a.Tf == b.Tf && a.t_range == b.t_range && (ismissing(a.t) == ismissing(b.t))
+    return a.Tf == b.Tf && a.t_range == b.t_range && isequal(a.t, b.t)
 end
 function Base.:(==)(a::TvwSeriesData, b::TvwSeriesData)
-    return a.Tvw == b.Tvw && a.t_range == b.t_range && (ismissing(a.t) == ismissing(b.t))
+    return a.Tvw == b.Tvw && a.t_range == b.t_range && isequal(a.t, b.t)
 end
 function Base.:(==)(a::TvwEndData, b::TvwEndData)
     return a.Tvw_end == b.Tvw_end
@@ -443,12 +449,16 @@ function obj_exp(sol::ODESolution, efd::ExpFitData;
     Tvwobj = 0.0u"K^2"
     tobj = 0.0u"hr^2"
     # Check which, if any, of the data objects have their own time vector provided
-    separate_time = map((x->has_timevec(x) && !ismissing(x.t)), efd.data)
+    separate_time = map(efd.data) do x
+        has_timevec(x) && (!ismissing(x.t) || first(x.t_range) > 1 || step(x.t_range) != 1)
+    end
     container_trim = trim_sol(sol, efd.t)
     # Iterate over all data objects, providing appropriate solution trimming if necessary
     # It would be better if this were a map of some sort, but splitting up residual types
     # makes that difficult
     for (obj, sep_trim) in zip(efd.data, separate_time)
+        # obj.t is already confirmed not missing if sep_trim is true, so we can use it directly
+        # and ignore it if sep_trim is false
         st = if sep_trim
             trim_sol(sol, fit_t(efd, obj))
         elseif has_timevec(obj)
@@ -593,8 +603,10 @@ function err_exp!(errs, sol::ODESolution, efd; tweight=1.0u"K/hr", verbose = fal
         errs .= Inf
         return
     end
-    # Check which, if any, of the data objects have their own time vector provided
-    separate_time = map((x->has_timevec(x) && !ismissing(x.t)), efd.data)
+    # Check which, if any, of the data objects have their own time vector or t_range provided
+    separate_time = map(efd.data) do x
+        has_timevec(x) && (!ismissing(x.t) || first(x.t_range) > 1 || step(x.t_range) != 1)
+    end
     container_trim = trim_sol(sol, efd.t)
     last_ind = 0
     for (obj, sep_trim) in zip(efd.data, separate_time)
