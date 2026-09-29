@@ -178,10 +178,10 @@ Return the time vector to use for `obj`: `obj.t` if it is set, otherwise the
 container's `fitdat.t`.
 """
 function fit_t(fitdat::ExpFitData, obj::AbstractExpDatum)
-    if has_timevec(obj) && !ismissing(obj.t)
-        return obj.t[obj.t_range]
+    if has_timevec(obj) 
+        return ismissing(obj.t) ? fitdat.t[obj.t_range] : obj.t[obj.t_range]
     else
-        return fitdat.t[obj.t_range]
+        return fitdat.t
     end
 end
 
@@ -275,10 +275,10 @@ PrimaryDryFit(t, Tfs, Tvws, t_end) = PrimaryDryFit(t, Tfs; Tvws=Tvws, t_end=t_en
 
 # TODO: do this programmatically for all AbstractExpDatum types, rather than hard-coding each one
 function Base.:(==)(a::TfData, b::TfData)
-    return a.Tf == b.Tf && a.t_range == b.t_range && a.t == b.t
+    return a.Tf == b.Tf && a.t_range == b.t_range && (ismissing(a.t) == ismissing(b.t))
 end
 function Base.:(==)(a::TvwSeriesData, b::TvwSeriesData)
-    return a.Tvw == b.Tvw && a.t_range == b.t_range && a.t == b.t
+    return a.Tvw == b.Tvw && a.t_range == b.t_range && (ismissing(a.t) == ismissing(b.t))
 end
 function Base.:(==)(a::TvwEndData, b::TvwEndData)
     return a.Tvw_end == b.Tvw_end
