@@ -419,15 +419,15 @@ Evaluate an objective function which compares model solution computed by `sol` t
 
 - `sol` is a solution to an appropriate model; see [`gen_sol_pd`](@ref) for a helper.
 - `efd` is an instance of [`ExpFitData`](@ref), which contains some information about what to compare.
-- `tweight = 1` gives the weighting (in K^2/hr^2) of the total drying time in the objective, as compared to the temperature error.
-- `Tvw_weight = 1` gives the weighting of Tvw in the objective, as compared to Tf.
+- `tweight = 1.0u"K^2/hr^2"` gives the weighting (should have dimensions like K^2/hr^2) of the total drying time in the objective, as compared to the temperature error.
+- `Tvw_weight = 1.0` gives the weighting of Tvw in the objective, as compared to Tf.
 
 Note that if `efd` has vial wall temperatures (i.e. a [`TvwSeriesData`](@ref) or [`TvwEndData`](@ref) object in `efd.data`), the third-index variable in `sol` is assumed to be temperature, as is true for the lumped capacitance model (see [`ParamObjRF`](@ref).
 
 If there are multiple series of `Tf` in `efd`, squared error is computed for each separately then summed; likewise for `Tvw`.
 """
 function obj_exp(sol::ODESolution, efd::ExpFitData;
-    tweight=1.0, verbose = false, Tvw_weight=1.0)
+    tweight=1.0u"K^2/hr^2", verbose = false, Tvw_weight=1.0)
     if sol.retcode !== ReturnCode.Terminated || length(sol.u) <= 1
         verbose && @warn "ODE solve did not reach end of drying. Either parameters are bad, or tspan is not large enough." sol.retcode sol.prob.p.hf0 sol[end]
         return Inf
@@ -461,7 +461,7 @@ function obj_exp(sol::ODESolution, efd::ExpFitData;
         end
     end
     verbose && @info "loss call" tobj Tfobj Tvwobj
-    return ustrip(u"K^2", Tfobj + Tvw_weight*Tvwobj) + tweight*ustrip(u"hr^2", tobj)
+    return ustrip(u"K^2", Tfobj + Tvw_weight*Tvwobj + tweight*tobj)
 end
 obj_exp(sol::Val{NaN}, efd; kwargs...) = Inf
 
@@ -482,7 +482,7 @@ num_errs(obj::EndTimeData) = 1
 
 Compute the number of data points available in `efd` for comparison to model solution.
 
-This is useful for caching a residual vector for least-squares fitting, e.g. with [`err_expT!`](@ref) and [`nls_pd!`](@ref).
+This is useful for caching a residual vector for least-squares fitting, e.g. with [`err_exp!`](@ref) and [`nls_pd!`](@ref).
 """
 function num_errs(efd::ExpFitData)
     nerr = mapreduce(num_errs, +, efd.data, init=0)
@@ -526,7 +526,7 @@ function err_Tvw!(errs, i0, sol::ODESolution, obj::TvwEndData, t, st::SolTrim; v
     return 1
 end
 
-function err_tend!(errs, i0, sol::ODESolution, obj::EndTimeData, t, st::SolTrim; tweight=1, verbose=false)
+function err_tend!(errs, i0, sol::ODESolution, obj::EndTimeData, t, st::SolTrim; tweight=1.0u"K/hr", verbose=false)
     tmd = st.tmd
     t_end = obj.t_end
     if t_end isa Tuple # See if is inside window and scale appropriately
@@ -545,18 +545,18 @@ function err_tend!(errs, i0, sol::ODESolution, obj::EndTimeData, t, st::SolTrim;
     return 1
 end
 
-const errexpT_doc = """
+const errexp_doc = """
 Evaluate the error between model solution `sol` and experimental data in `efd`.
 
-The in-place version `err_expT!` fills the `errs` vector with the errors, while the non-in-place version `err_expT` returns a new vector of errors.
-In-place `err_expT!` thus doesn't allocate, but requires `errs` to have length `num_errs(efd)`.
+The in-place version `err_exp!` fills the `errs` vector with the errors, while the non-in-place version `err_exp` returns a new vector of errors.
+In-place `err_exp!` thus doesn't allocate, but requires `errs` to have length `num_errs(efd)`.
 
-In contrast to `obj_expT()`, which sums all the squared residuals, this function fills the passed array
+In contrast to `obj_exp()`, which sums all the squared residuals, this function fills the passed array
 `errs` with each separate residual, which is suited for least squares algorithms.
 - `errs` is a vector of length `num_errs(efd)`, which this function fills with the errors.
 -`sol` is a solution to an appropriate model; see [`gen_sol_pd`](@ref) for a helper function.
 - `efd` is an instance of [`ExpFitData`](@ref), which contains some information about what to compare.
-- `tweight = 1` gives the weighting (in K^2/hr^2) of the total drying time in the objective, as compared to the temperature error.
+- `tweight = 1.0u"K/hr"` gives the weighting (in K^2/hr^2) of the total drying time in the objective, as compared to the temperature error.
 Each time series, plus the end time, is given equal weight by dividing by its length; error is given in K (but `ustrip`ped).
 
 Note that if `efd` has vial wall temperatures (i.e. a [`TvwSeriesData`](@ref) or [`TvwEndData`](@ref) object in `efd.data`), the third-index variable in `sol` is assumed to be temperature, as is true for solutions with [`ParamObjRF`](@ref).
@@ -567,9 +567,9 @@ If there are multiple series of `Tf` in `efd`, error is computed for each separa
 """
     $(SIGNATURES)
 
-$errexpT_doc
+$errexp_doc
 """
-function err_expT!(errs, sol::ODESolution, efd; tweight=1, verbose = false)
+function err_exp!(errs, sol::ODESolution, efd; tweight=1.0u"K/hr", verbose = false)
     if length(errs) != num_errs(efd)
         error("Wrong length of cached residual vector.")
     end
@@ -584,11 +584,11 @@ function err_expT!(errs, sol::ODESolution, efd; tweight=1, verbose = false)
         t = fit_t(efd, obj)
         st = trim_sol(sol, t)
         if obj isa TfData
-            last_ind += err_Tf!(errs, last_ind, sol, obj, t, st; verbose=verbose)
+            last_ind += err_Tf!(errs, last_ind, sol, obj, t, st; verbose)
         elseif obj isa TvwSeriesData || obj isa TvwEndData
-            last_ind += err_Tvw!(errs, last_ind, sol, obj, t, st; verbose=verbose)
+            last_ind += err_Tvw!(errs, last_ind, sol, obj, t, st; verbose)
         elseif obj isa EndTimeData
-            last_ind += err_tend!(errs, last_ind, sol, obj, t, st; tweight=tweight, verbose=verbose)
+            last_ind += err_tend!(errs, last_ind, sol, obj, t, st; tweight, verbose)
         end
     end
     if last_ind != length(errs)
@@ -597,15 +597,15 @@ function err_expT!(errs, sol::ODESolution, efd; tweight=1, verbose = false)
     verbose && @info "loss call" sol.t[end]*u"hr" size(errs) sum(abs2.(errs))
     return nothing
 end
-err_expT!(errs, sol::Val{NaN}, efd; kwargs...) = errs .= Inf;
+err_exp!(errs, sol::Val{NaN}, efd; kwargs...) = errs .= Inf;
 
 """
     $(SIGNATURES)
 
-$errexpT_doc
+$errexp_doc
 """
-function err_expT(sol, efd; tweight=1, verbose = false)
+function err_exp(sol, efd; tweight=1.0u"K/hr", verbose = false)
     errs = zeros(num_errs(efd))
-    err_expT!(errs, sol, efd; tweight=tweight, verbose=verbose)
+    err_exp!(errs, sol, efd; tweight, verbose)
     return errs
 end
