@@ -106,8 +106,8 @@ fitdat_all = @df pd_data ExpFitData(:t, TfData(:T1[:t .< 13u"hr"]),
                                     EndTimeData(t_end))
 ## There is a plot recipe for this fit object
 plot(fitdat_all, nmarks=30)
-savefig("pdfit.svg"); #md #hide
-# ![](pdfit.svg) #md
+savefig("efd.svg"); #md #hide
+# ![](efd.svg) #md
 
 # By passing all three temperature series to `ExpFitData`, this will compare model output to all three temperature series at once. 
 

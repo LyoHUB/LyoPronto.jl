@@ -53,13 +53,13 @@ t = base_sol.t[keep]*u"hr"
 Tf = base_sol[2,keep]*u"K"
 Tvw = base_sol[3,keep]*u"K"
 t_end = t[end]
-pdfit = ExpFitData(t, TfData(Tf), TvwData(Tvw), EndTimeData(t_end))
+efd = ExpFitData(t, TfData(Tf), TvwSeriesData(Tvw), EndTimeData(t_end))
 
 tr = KBB_transform_basic(Kvwf*0.5, Bf*0.5, 0.5*Bvw)
 pg = fill(1.0, 3)
 sol = @inferred gen_sol_pd(pg, tr, po)
 @test sol != base_sol
-pass = (tr, po, pdfit)
+pass = (tr, po, efd)
 
 @testset "qrf_integrate" begin
     qinteg = qrf_integrate(base_sol, po)
@@ -119,7 +119,7 @@ end
 end
 
 @testset "Least squares" begin
-    lsq = NonlinearFunction(pdfit)
+    lsq = NonlinearFunction(efd)
     opt = @inferred solve(NonlinearLeastSquaresProblem(lsq, pg, pass), LevenbergMarquardt())
     @test SciMLBase.successful_retcode(opt)
     vals = transform(tr, opt.u)

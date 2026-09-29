@@ -136,8 +136,8 @@ fitdat_all = @df pd_data ExpFitData(:t, TfData(:T1[:t .< 13u"hr"]),
                                     TfData(:T3[:t .< 16u"hr"]),
                                     EndTimeData(t_end))
 plot(fitdat_all, nmarks=30)
-savefig("recipe_pdfit.svg"); #md #hide
-# ![](recipe_pdfit.svg) #md
+savefig("recipe_efd.svg"); #md #hide
+# ![](recipe_efd.svg) #md
 
 
 # If T3 were instead a vial wall temperature measurement and we don't want
@@ -148,8 +148,8 @@ fitdat_vw = @df pd_data ExpFitData(:t, TfData(:T1[:t .< 13u"hr"]),
                                     TfData(:T2[:t .< 13u"hr"]),
                                     TvwSeriesData(:T3[:t .< 16u"hr"]))
 plot(fitdat_vw, nmarks=40, showline=true, linealpha=0.3)
-savefig("recipe_pdfitvw.svg"); #md #hide
-# ![](recipe_pdfitvw.svg) #md
+savefig("recipe_efdvw.svg"); #md #hide
+# ![](recipe_efdvw.svg) #md
 
 # In lack of a better place, it is also worth mentioning that `RampedVariable` structs have
 # a plotting recipe as well. Since the end time isn't specified by the struct, specify it

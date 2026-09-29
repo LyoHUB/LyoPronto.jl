@@ -407,31 +407,31 @@ end
 # series is plotted against the time points its `t_range` selects; the endpoint
 # and end-of-drying objects are drawn as single markers.
 # TODO: replace this with a filter so that all TfData objects get plotted together, likewise for all TvwSeriesData objects
-@recipe function f(pdf::ExpFitData)
-    Tfs = filter(o -> o isa TfData, pdf.data)
+@recipe function f(efd::ExpFitData)
+    Tfs = filter(o -> o isa TfData, efd.data)
     if !isempty(Tfs)
         @series begin
             if any(o -> !ismissing(o.t), Tfs)
                 @warn "Plot recipe needs to be fixed: some TfData objects have their own time vectors"
             end
-            return ExpTfPlot((pdf.t, (Tf.Tf for Tf in Tfs)...))
+            return ExpTfPlot((efd.t, (Tf.Tf for Tf in Tfs)...))
         end
     end
-    Tvws = filter(o -> o isa TvwSeriesData, pdf.data)
+    Tvws = filter(o -> o isa TvwSeriesData, efd.data)
     if !isempty(Tvws)
         @series begin
             if any(o -> !ismissing(o.t), Tvws)
                 @warn "Plot recipe needs to be fixed: some TvwSeriesData objects have their own time vectors"
             end
-            return ExpTvwPlot((pdf.t, (Tvw.Tvw for Tvw in Tvws)...))
+            return ExpTvwPlot((efd.t, (Tvw.Tvw for Tvw in Tvws)...))
         end
     end
-    for obj in pdf.data
+    for obj in efd.data
         if obj isa TvwEndData
             @series begin
                 seriestype := :scatter
                 label --> "\$T_\\mathrm{vw}\$"
-                return [pdf.t[end]], [obj.Tvw_end]
+                return [efd.t[end]], [obj.Tvw_end]
             end
         elseif obj isa EndTimeData
             @series begin

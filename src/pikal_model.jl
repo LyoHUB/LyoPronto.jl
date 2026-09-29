@@ -155,20 +155,20 @@ end
 
 struct RpEstimator{plural}
     po::ParamObjPikal
-    pdf::ExpFitData
+    efd::ExpFitData
     Tf_interp
 end
 
-function RpEstimator(po::ParamObjPikal, pdf::ExpFitData)
-    tfs = Tuple(o for o in pdf.data if o isa TfData)
+function RpEstimator(po::ParamObjPikal, efd::ExpFitData)
+    tfs = Tuple(o for o in efd.data if o isa TfData)
     isempty(tfs) && throw(ArgumentError("ExpFitData must contain at least one TfData object"))
     if length(tfs) == 1
         tf = tfs[1]
-        t = fit_t(pdf, tf)
-        return RpEstimator{false}(po, pdf, LinearInterpolation(tf.Tf, t[tf.t_range]))
+        t = fit_t(efd, tf)
+        return RpEstimator{false}(po, efd, LinearInterpolation(tf.Tf, t[tf.t_range]))
     end
-    Tf_interp = [LinearInterpolation(tf.Tf, fit_t(pdf, tf)[tf.t_range], extrapolation=ExtrapolationType.Constant) for tf in tfs]
-    return RpEstimator{true}(po, pdf, Tf_interp)
+    Tf_interp = [LinearInterpolation(tf.Tf, fit_t(efd, tf)[tf.t_range], extrapolation=ExtrapolationType.Constant) for tf in tfs]
+    return RpEstimator{true}(po, efd, Tf_interp)
 end
 
 function Base.show(io::IO, re::RpEstimator{plural}) where plural
@@ -238,17 +238,17 @@ end
 """
     $(SIGNATURES)
 
-For experimental conditions given by a `po` and experimental data given by `pdf`, 
+For experimental conditions given by a `po` and experimental data given by `efd`, 
 compute the effective \$R_p\$ and dry layer height \$h_d\$ over time.
 
 Since `po` is a a `ParamObjPikal`, you will need to construct that object--the value of \$R_p\$ 
 will not be used here, so set it to any dummy value. 
 
-If `pdf` has multiple temperature series, pass an index `i` to select which series to use. 
+If `efd` has multiple temperature series, pass an index `i` to select which series to use. 
 Otherwise, the first series will be used.
 """
-function calc_hRp_T(po::ParamObjPikal, pdf::ExpFitData; i=nothing)
-    re = RpEstimator(po, pdf)
+function calc_hRp_T(po::ParamObjPikal, efd::ExpFitData; i=nothing)
+    re = RpEstimator(po, efd)
     if re isa RpEstimator{true}
         if !isnothing(i)
             prob = ODEProblem(re[i])
@@ -260,7 +260,7 @@ function calc_hRp_T(po::ParamObjPikal, pdf::ExpFitData; i=nothing)
         !isnothing(i) && @warn "Index passed but not needed" i 
         prob = ODEProblem(re)
     end
-    sol = solve(prob, odealg_chunk2, saveat=ustrip.(u"hr", pdf.t))
+    sol = solve(prob, odealg_chunk2, saveat=ustrip.(u"hr", efd.t))
     hd, Rp = sol[1,:]*u"cm", sol[2,:]*u"cm^2*Torr*hr/g"
     # If there are multiple zeros at the start, trim them off
     hdi = findlast(hd .== 0.0u"cm")
