@@ -66,7 +66,7 @@ export summary_md_Q
 # conventional lyo
 export lyo_1d_dae_f 
 export ParamObjPikal
-export RpEstimator, calc_hRp_T
+export calc_hRp_T
 # RF lyo
 export lumped_cap_rf! 
 export ParamObjRF

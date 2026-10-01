@@ -156,6 +156,7 @@ end
 struct RpEstimator{plural}
     po::ParamObjPikal
     efd::ExpFitData
+    Tfs
     Tf_interp
 end
 
@@ -164,11 +165,11 @@ function RpEstimator(po::ParamObjPikal, efd::ExpFitData)
     isempty(tfs) && throw(ArgumentError("ExpFitData must contain at least one TfData object"))
     if length(tfs) == 1
         tf = tfs[1]
-        return RpEstimator{false}(po, efd, LinearInterpolation(tf.Tf, fit_t(efd, tf), 
+        return RpEstimator{false}(po, efd, tf, LinearInterpolation(tf.Tf, fit_t(efd, tf), 
             extrapolation=ExtrapolationType.Constant))
     end
     Tf_interp = [LinearInterpolation(tf.Tf, fit_t(efd, tf), extrapolation=ExtrapolationType.Constant) for tf in tfs]
-    return RpEstimator{true}(po, efd, Tf_interp)
+    return RpEstimator{true}(po, efd, tfs, Tf_interp)
 end
 
 function Base.show(io::IO, re::RpEstimator{plural}) where plural
@@ -176,7 +177,7 @@ function Base.show(io::IO, re::RpEstimator{plural}) where plural
 end
 
 function Base.getindex(re::RpEstimator{true}, i)
-    return RpEstimator{false}(re.po, re.efd, re.Tf_interp[i])
+    return RpEstimator{false}(re.po, re.efd, tfs[i], re.Tf_interp[i])
 end
 Base.length(re::RpEstimator{false}) = length(re.Tf_interp.t)
 
@@ -184,7 +185,6 @@ Base.length(re::RpEstimator{false}) = length(re.Tf_interp.t)
 function dae_Rp!(du, u, p, tn)
     t = tn*u"hr"
     hd = u[1]*u"cm"
-    Rpg = u[2]*u"cm^2*Torr*hr/g"
 
     (;po, Tf_interp) = p
     (;hf0, csolid, ρsolution, 
@@ -249,18 +249,18 @@ Otherwise, the first series will be used.
 """
 function calc_hRp_T(po::ParamObjPikal, efd::ExpFitData; i=nothing)
     re = RpEstimator(po, efd)
-    if re isa RpEstimator{true}
+    prob, save_t = if re isa RpEstimator{true}
         if !isnothing(i)
-            prob = ODEProblem(re[i])
+            ODEProblem(re[i]), fit_t(efd, re[i].tf)
         else
             @warn "Index needed for multiple Tf. Taken as 1 by default" i 
-            prob = ODEProblem(re[1])
+            ODEProblem(re[1]), fit_t(efd, re[1].tf)
         end
     else
         !isnothing(i) && @warn "Index passed but not needed" i 
-        prob = ODEProblem(re)
+        ODEProblem(re), fit_t(efd, re[1].tf)
     end
-    sol = solve(prob, odealg_chunk2, saveat=ustrip.(u"hr", efd.t))
+    sol = solve(prob, odealg_chunk2; saveat=ustrip.(u"hr", save_t))
     hd, Rp = sol[1,:]*u"cm", sol[2,:]*u"cm^2*Torr*hr/g"
     # If there are multiple zeros at the start, trim them off
     hdi = findlast(hd .== 0.0u"cm")
