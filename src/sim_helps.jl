@@ -150,6 +150,12 @@ end
 function Base.hash(rv::RampedVariable, h::UInt)
     hash(rv.setpts, hash(rv.ramprates, hash(rv.holds, hash(rv.timestops, hash(:RampedVariable, h)))))
 end
+function Base.isequal(rv1::RampedVariable, rv2::RampedVariable)
+    return rv1.setpts == rv2.setpts && rv1.ramprates == rv2.ramprates && rv1.holds == rv2.holds && rv1.timestops == rv2.timestops
+end
+function Base.:(==)(rv1::RampedVariable, rv2::RampedVariable)
+    return rv1.setpts == rv2.setpts && rv1.ramprates == rv2.ramprates && rv1.holds == rv2.holds && rv1.timestops == rv2.timestops
+end
 
 function Base.show(io::IO, rv::RampedVariable{false}) 
     return print(io, "RampedVariable($(rv.setpts))")
