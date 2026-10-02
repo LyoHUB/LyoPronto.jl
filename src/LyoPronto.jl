@@ -56,6 +56,8 @@ include("eq_cap_ECCURT.jl")
 # Exports, all in one place
 # convenience structs
 export RpFormFit, RampedVariable, ConstPhysProp, PrimaryDryFit
+# experimental data containers for fitting
+export ExpFitData, TfData, TvwSeriesData, TvwEndData, EndTimeData
 # simulation helpers
 export end_drying_callback
 export calc_u0, get_tstops
@@ -64,12 +66,12 @@ export summary_md_Q
 # conventional lyo
 export lyo_1d_dae_f 
 export ParamObjPikal
-export RpEstimator, calc_hRp_T
+export calc_hRp_T
 # RF lyo
 export lumped_cap_rf! 
 export ParamObjRF
 # raw parameter fitting tools
-export obj_expT, err_expT, err_expT!, num_errs
+export obj_exp, obj_expT, err_exp, err_exp!, num_errs
 # transforms
 export KRp_transform_basic, K_transform_basic, Rp_transform_basic, KBB_transform_basic
 export KBB_transform_bounded

@@ -27,7 +27,7 @@ using LaTeXStrings
 
 doc_file_loc = joinpath(@__DIR__, "..", "..", "example", "2024-06-04-10_MFD_AH.csv") # md #hide
 file_loc = "./2024-06-04-10_MFD_AH.csv"
-cp(doc_file_loc, file_loc); #md #hide 
+cp(doc_file_loc, file_loc, force=true); #md #hide 
 ## Data start at 7th row of CSV file.
 procdata_raw = CSV.read(file_loc, Table, header=7)
 ## Convert time stamps to time counting from zero
@@ -95,19 +95,21 @@ savefig("fullcycle.svg"); #md #hide
 
 # Based on an examination of the temperature data, we want to go only up to the "temperature 
 # rise" commonly observed in lyophilization near (but not at) the end of drying. 
-# To pass this information on to the least-squares fitting routine, pass the temperatures up to 
-# the end of primary drying into a  [`PrimaryDryFit`](@ref LyoPronto.PrimaryDryFit) 
+# To pass this information on to the least-squares fitting routine, we wrap the temperatures up 
+# to the end of primary drying in an [`ExpFitData`](@ref LyoPronto.ExpFitData) object. Each 
+# temperature series is described by its own datum object (here, three [`TfData`](@ref LyoPronto.TfData) 
+# objects), and the end of primary drying is given by an [`EndTimeData`](@ref LyoPronto.EndTimeData) 
 # object. To be clear, no fitting happens yet: this object just wraps the data up for fitting.
-fitdat_all = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 13u"hr"],
-                                    :T2[:t .< 13u"hr"],
-                                    :T3[:t .< 16u"hr"]);
-                                    t_end)
+fitdat_all = @df pd_data ExpFitData(:t, TfData(:T1[:t .< 13u"hr"]),
+                                    TfData(:T2[:t .< 13u"hr"]),
+                                    TfData(:T3[:t .< 16u"hr"]),
+                                    EndTimeData(t_end))
 ## There is a plot recipe for this fit object
 plot(fitdat_all, nmarks=30)
-savefig("pdfit.svg"); #md #hide
-# ![](pdfit.svg) #md
+savefig("efd.svg"); #md #hide
+# ![](efd.svg) #md
 
-# By passing all three temperature series to `PrimaryDryFit`, this will compare model output to all three temperature series at once. 
+# By passing all three temperature series to `ExpFitData`, this will compare model output to all three temperature series at once. 
 
 
 # ## Set up model 
@@ -204,7 +206,7 @@ optalg = Optim.BFGS(linesearch=LineSearches.BackTracking())
 
 # To avoid allocating a residual vector every time, we use an inplace function that needs
 # to know how many residuals there are. The [`num_errs`](@ref LyoPronto.num_errs) function
-# looks at a [`PrimaryDryFit`](@ref LyoPronto.PrimaryDryFit) and counts the number of data 
+# looks at an [`ExpFitData`](@ref LyoPronto.ExpFitData) and counts the number of data 
 # points that can be used by `obj_pd` or `nls_pd!`.
 
 ## nls_eqs = NonlinearFunction{true}(nls_pd!, resid_prototype=zeros(num_errs(fitdat_all)))
@@ -234,4 +236,4 @@ po_nls = transform(trans_KRp, nls.u)
 
 # To check goodness of fit, we can look at the objective being used for optimization.
 # This objective is a normalized sum of squared error, so smaller is better.
-[obj_expT(sol, fitdat_all) for sol in (sol_opt, sol_nls)] 
+[obj_exp(sol, fitdat_all) for sol in (sol_opt, sol_nls)] 

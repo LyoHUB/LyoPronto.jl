@@ -153,23 +153,38 @@ end
     $(SIGNATURES)
 
 Calculate the sum of squared error (objective function) for fitting parameters to primary drying data.
-This directly calls [`gen_sol_pd`](@ref), then [`obj_expT`](@ref), so see those docstrings.
+This directly calls [`gen_sol_pd`](@ref), then [`obj_exp`](@ref), so see those docstrings.
 """
-function obj_pd(fitlog, tpf; tweight=1.0, Tvw_weight=1.0, badprms=nothing, verbose=false)
+function obj_pd(fitlog, tpf; tweight=1.0u"K^2/hr^2", Tvw_weight=1.0, badprms=nothing, verbose=false)
     sol = gen_sol_pd(fitlog, tpf...; badprms)
-    return obj_expT(sol, tpf[3]; tweight, Tvw_weight, verbose)
+    return obj_exp(sol, tpf[3]; tweight, Tvw_weight, verbose)
+end
+
+# TODO: consider this sketch for a fleshed-out public API
+# In the event that the weights in obj_exp get their own struct type, this could help
+@concrete terse struct ObjPdFixedWeights
+    tweight
+    Tvw_weight
+    badprms
+end
+function obj_pd_fixedweights(;tweight=1.0u"K^2/hr^2", Tvw_weight=1.0, badprms=nothing)
+    return ObjPdFixedWeights(tweight, Tvw_weight, badprms)
+end
+function (obj::ObjPdFixedWeights)(fitlog, tpf; verbose=false)
+    sol = gen_sol_pd(fitlog, tpf...; badprms=obj.badprms)
+    return obj_exp(sol, tpf[3]; tweight=obj.tweight, Tvw_weight=obj.Tvw_weight, verbose)
 end
 
 """
     $(SIGNATURES)
 
 Calculate the sum of squared error (objective function) for fitting parameters to primary drying data.
-This directly calls [`gen_nsol_pd`](@ref), then [`obj_expT`](@ref), so see those docstrings.
+This directly calls [`gen_nsol_pd`](@ref), then [`obj_exp`](@ref), so see those docstrings.
 """
-function objn_pd(fitlog, tpf; tweight=1.0, Tvw_weight=1.0, badprms=nothing, verbose=false)
+function objn_pd(fitlog, tpf; tweight=1.0u"K^2/hr^2", Tvw_weight=1.0, badprms=nothing, verbose=false)
     sols = gen_nsol_pd(fitlog, tpf...; badprms)
     obj = mapreduce(+, sols, tpf[3]) do sol, fitdat
-        obj_expT(sol, fitdat; tweight, Tvw_weight, verbose)
+        obj_exp(sol, fitdat; tweight, Tvw_weight, verbose)
     end
     return obj
 end
@@ -178,26 +193,26 @@ end
     $(SIGNATURES)
 
 Calculate the errors for fitting parameters to primary drying data.
-This directly calls [`gen_sol_pd`](@ref), then [`err_expT!`](@ref), so see those docstrings.
+This directly calls [`gen_sol_pd`](@ref), then [`err_exp!`](@ref), so see those docstrings.
 """
-function nls_pd!(errs, fitlog, tpf; tweight=1.0, verbose=false)
+function nls_pd!(errs, fitlog, tpf; tweight=1.0u"K/hr", verbose=false)
     sol = gen_sol_pd(fitlog, tpf...)
-    return err_expT!(errs, sol, tpf[3]; tweight, verbose)
+    return err_exp!(errs, sol, tpf[3]; tweight, verbose)
 end
 """
     $(SIGNATURES)
 
 Calculate the errors for fitting parameters to primary drying data.
-This directly calls [`gen_sol_pd`](@ref), then [`err_expT`](@ref), so see those docstrings.
+This directly calls [`gen_sol_pd`](@ref), then [`err_exp`](@ref), so see those docstrings.
 """
-function nls_pd(fitlog, tpf; tweight=1.0, verbose=false)
+function nls_pd(fitlog, tpf; tweight=1.0u"K/hr", verbose=false)
     sol = gen_sol_pd(fitlog, tpf...)
-    return err_expT(sol, tpf[3]; tweight, verbose)
+    return err_exp(sol, tpf[3]; tweight, verbose)
 end
 
 # Prepare a fitting nonlinear function with some sensible defaults
-function NonlinearFunction(fitdat::PrimaryDryFit; tweight=1.0, verbose=false)
-    if tweight == 1.0 && verbose == false
+function NonlinearFunction(fitdat::ExpFitData; tweight=1.0u"K/hr", verbose=false)
+    if tweight == 1.0u"K/hr" && verbose == false
         NonlinearFunction{true, SciMLBase.FullSpecialize}(nls_pd!, 
             resid_prototype=zeros(num_errs(fitdat)))
     else

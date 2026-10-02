@@ -389,7 +389,7 @@ trans_K = K_transform_basic(5.0u"W/m^2/K")
 # 2. Call `setproperties(po, fitprm)` to merge fitted params into the base `ParamObj`.
 # 3. Use the `fitdats` to choose points at which the ODE solve will be interpolated (affecting returned results, not internal numerical timestepping).
 # 4. Call `ODEProblem(new_po)` to construct the ODE, then solve the ODE.
-# 5. Compare the solution to data in a `PrimaryDryFit` .
+# 5. Compare the solution to data in an `ExpFitData` .
 
 # Because `setproperties` (from `ConstructionBase`) works on any struct, and `ODEProblem` 
 # dispatches on your `ParamObj` subtype, **no additional code is needed** for fitting to work.

@@ -109,7 +109,13 @@ exptfplot
         labels = ["\$T_\\mathrm{f$i}\$"*labsuffix for i in 1:n]
     end
     for (i, T) in enumerate(Ts)
+        
         @series begin
+            _t, _T = if T isa TfData
+                fit_t(time, T), T.Tf
+            else
+                time, T
+            end
             markershape --> markers[i]
             label --> labels[i]
             seriescolor --> pal[i]
@@ -117,12 +123,12 @@ exptfplot
                 seriestype := :samplemarkers
                 step := step
                 offset := step÷n *(i-1) + 1
-                return time[eachindex(T)], T
+                return _t[eachindex(_T)], _T
             else
                 seriestype --> :scatter
                 offset = step÷n *(i-1) + 1
-                minlen = min(length(time), length(T))
-                return time[offset:step:minlen], T[offset:step:minlen]
+                minlen = min(length(_t), length(_T))
+                return _t[offset:step:minlen], _T[offset:step:minlen]
             end
         end
     end
@@ -179,17 +185,22 @@ exptvwplot
     end
     for (i, T) in enumerate(Ts)
         @series begin
+            _t, _T = if T isa TvwSeriesData
+                fit_t(time, T), T.Tvw
+            else
+                time, T
+            end
             markershape --> markers[i]
             label --> labels[i]
             seriescolor --> pal[i]
             markercolor --> :white
             markerstrokecolor --> pal[i]
             markerstrokewidth --> 1.5
-            minlen = min(length(time), length(T))
+            minlen = min(length(_t), length(_T))
             if showline || get(plotattributes, :linewidth, 0) > 0 # Don't need to check for 
                 linestyle --> :dash
-                time_skip = time[begin:skip:minlen]
-                T_skip = T[begin:skip:minlen]
+                time_skip = _t[begin:skip:minlen]
+                T_skip = _T[begin:skip:minlen]
                 seriestype := :samplemarkers
                 step := step  
                 offset := step÷n *(i-1) + 1
@@ -197,9 +208,9 @@ exptvwplot
             else
                 seriestype --> :scatter
                 # Not using the :samplemarkers recipe, so manually skipping points to get nmarks
-                step = nmarks == Inf ? 1 : (size(time, 1) ÷ nmarks) 
+                step = nmarks == Inf ? 1 : (size(_t, 1) ÷ nmarks) 
                 offset = step÷n *(i-1) + 1
-                return time[offset:step:minlen], T[offset:step:minlen]
+                return _t[offset:step:minlen], _T[offset:step:minlen]
             end
         end
     end
@@ -355,8 +366,8 @@ If two time points are passed, a light shading is applied between instead of a v
 tendplot
 @doc (@doc tendplot) tendplot!
 
-@userplot tendPlot
-@recipe function f(tp::tendPlot)
+@userplot tEndPlot
+@recipe function f(tp::tEndPlot)
     if ismissing(tp.args[1])
         return nothing
     elseif length(tp.args) == 1 && ~(tp.args[1] isa Tuple)
@@ -384,7 +395,7 @@ tendplot
             return [ustrip.(u"hr", t_end)...]
         end
     else
-        error("tendPlot requires 1 or 2 arguments")
+        error("tEndPlot requires 1 or 2 arguments")
     end
 end
 
@@ -403,26 +414,38 @@ end
     end
 end
 
-@recipe function f(pdf::PrimaryDryFit)
-    @series begin
-        return ExpTfPlot((pdf.t, pdf.Tfs...))
+# One plot series per type of data object in the ExpFitData container. 
+# TODO: shore this recipe up or redo it for TfData or TvwSerieData that have nontrivial t_range or t vectors
+@recipe function f(efd::ExpFitData)
+    Tfs = filter(o -> o isa TfData, efd.data)
+    if !isempty(Tfs)
+        @series begin
+            if any(o -> !ismissing(o.t), Tfs)
+                @warn "Plot recipe needs to be fixed: some TfData objects have their own time vectors"
+            end
+            return ExpTfPlot((efd, Tfs...))
+        end
     end
-    if !ismissing(pdf.Tvws)
-        if pdf.Tvws isa Number
+    Tvws = filter(o -> o isa TvwSeriesData, efd.data)
+    if !isempty(Tvws)
+        @series begin
+            if any(o -> !ismissing(o.t), Tvws)
+                @warn "Plot recipe needs to be fixed: some TvwSeriesData objects have their own time vectors"
+            end
+            return ExpTvwPlot((efd, Tvws...))
+        end
+    end
+    for obj in efd.data
+        if obj isa TvwEndData
             @series begin
                 seriestype := :scatter
                 label --> "\$T_\\mathrm{vw}\$"
-                return [pdf.t[maximum(pdf.Tf_iend)]], [pdf.Tvws]
+                return [efd.t[end]], [obj.Tvw_end]
             end
-        else 
+        elseif obj isa EndTimeData
             @series begin
-                return ExpTvwPlot((pdf.t,pdf.Tvws...))
+                return tEndPlot(obj.t_end)
             end
-        end
-    end
-    if !ismissing(pdf.t_end)
-        @series begin
-            return tendPlot(pdf.t_end)
         end
     end
 end

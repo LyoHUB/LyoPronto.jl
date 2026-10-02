@@ -35,14 +35,14 @@ base_sol = solve(ODEProblem(po), LyoPronto.odealg_chunk2)
 t = base_sol.t*u"hr"
 T = base_sol[2,begin:end-2]*u"K"
 t_end = t[end]
-pdfit = PrimaryDryFit(t, T; t_end)
+efd = ExpFitData(t, TfData(T), EndTimeData(t_end))
 
 @testset "Both Kv and Rp, optimization routine" begin
     tr = KRp_transform_basic(Kshf(pch(0))*0.75, R0*0.5, 2*A1, A2*0.5)
     pg = fill(0.0, 4)
     sol = @inferred gen_sol_pd(pg, tr, po)
     @test sol != base_sol
-    pass = (tr, po, pdfit)
+    pass = (tr, po, efd)
     # err = @inferred obj_pd(pg, pass)
     err = @inferred obj_pd(pg, pass)
     obj = OptimizationFunction(obj_pd, AutoForwardDiff(chunksize=4))
@@ -60,7 +60,7 @@ end
     pg = fill(0.0, 3)
     sol = @inferred gen_sol_pd(pg, tr, po)
     @test sol != base_sol
-    pass = (tr, po, pdfit)
+    pass = (tr, po, efd)
     # err = @inferred obj_pd(pg, pass)
     err = @inferred obj_pd(pg, pass)
     obj = OptimizationFunction(obj_pd, AutoForwardDiff(chunksize=3))
@@ -85,8 +85,8 @@ end
     pg = fill(0.0, 4)
     sol = @inferred gen_sol_pd(pg, tr, po)
     @test sol != base_sol
-    pass = (tr, po, pdfit)
-    nls = NonlinearFunction(pdfit)
+    pass = (tr, po, efd)
+    nls = NonlinearFunction(efd)
     opt = solve(NonlinearLeastSquaresProblem(nls, pg, pass), GaussNewton(), reltol=1e-10, abstol=1e-10)
     vals = transform(tr, opt.u)
     @test vals.Kshf(pch(0)) ≈ Kshf(pch(0)) rtol=0.1
@@ -99,12 +99,12 @@ po2 = @set po.Rp = RpFormFit(2.0u"cm^2*Torr*hr/g", 5.0u"cm*Torr*hr/g", 0.5u"cm^-
 po3 = @set po.Rp = RpFormFit(0.5u"cm^2*Torr*hr/g", 50.0u"cm*Torr*hr/g", 3.0u"cm^-1")
 
 pos = [po, po2, po3]
-pdfits = map(pos) do poi
+efds = map(pos) do poi
     base_sol = solve(ODEProblem(poi), LyoPronto.odealg_chunk2)
     t = base_sol.t*u"hr"
     T = base_sol[2,begin:end-2]*u"K" # Leave the last couple temperatures out, to imitate real life
     t_end = t[end]
-    pdfit = PrimaryDryFit(t, T; t_end)
+    efd = ExpFitData(t, TfData(T), EndTimeData(t_end))
 end
 
 @testset "Fit with shared Kv, distinct Rp" begin
@@ -121,7 +121,7 @@ end
             @test sol != base_sol
         end
     end
-    pass = (big_trans, pos, pdfits)
+    pass = (big_trans, pos, efds)
     err = @inferred objn_pd(pg, pass)
 
     # This specific test can be deleted if it becomes trouble, probably

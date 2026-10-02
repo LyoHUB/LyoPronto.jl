@@ -155,16 +155,21 @@ end
 
 struct RpEstimator{plural}
     po::ParamObjPikal
-    pdf::PrimaryDryFit
+    efd::ExpFitData
+    Tfs
     Tf_interp
 end
 
-function RpEstimator(po::ParamObjPikal, pdf::PrimaryDryFit)
-    if length(pdf.Tf_iend) == 1
-        return RpEstimator{false}(po, pdf, LinearInterpolation(pdf.Tfs[1], pdf.t[begin:pdf.Tf_iend[1]]))
+function RpEstimator(po::ParamObjPikal, efd::ExpFitData)
+    tfs = Tuple(o for o in efd.data if o isa TfData)
+    isempty(tfs) && throw(ArgumentError("ExpFitData must contain at least one TfData object"))
+    if length(tfs) == 1
+        tf = tfs[1]
+        return RpEstimator{false}(po, efd, tf, LinearInterpolation(tf.Tf, fit_t(efd, tf), 
+            extrapolation=ExtrapolationType.Constant))
     end
-    Tf_interp = [LinearInterpolation(pdf.Tfs[i], pdf.t[begin:i_end], extrapolation=ExtrapolationType.Constant) for (i, i_end) in enumerate(pdf.Tf_iend)]
-    return RpEstimator{true}(po, pdf, Tf_interp)
+    Tf_interp = [LinearInterpolation(tf.Tf, fit_t(efd, tf), extrapolation=ExtrapolationType.Constant) for tf in tfs]
+    return RpEstimator{true}(po, efd, tfs, Tf_interp)
 end
 
 function Base.show(io::IO, re::RpEstimator{plural}) where plural
@@ -172,7 +177,7 @@ function Base.show(io::IO, re::RpEstimator{plural}) where plural
 end
 
 function Base.getindex(re::RpEstimator{true}, i)
-    return RpEstimator{false}(re.po, re.pdf, re.Tf_interp[i])
+    return RpEstimator{false}(re.po, re.efd, re.Tfs[i], re.Tf_interp[i])
 end
 Base.length(re::RpEstimator{false}) = length(re.Tf_interp.t)
 
@@ -180,7 +185,6 @@ Base.length(re::RpEstimator{false}) = length(re.Tf_interp.t)
 function dae_Rp!(du, u, p, tn)
     t = tn*u"hr"
     hd = u[1]*u"cm"
-    Rpg = u[2]*u"cm^2*Torr*hr/g"
 
     (;po, Tf_interp) = p
     (;hf0, csolid, ρsolution, 
@@ -234,29 +238,29 @@ end
 """
     $(SIGNATURES)
 
-For experimental conditions given by a `po` and experimental data given by `pdf`, 
+For experimental conditions given by a `po` and experimental data given by `efd`, 
 compute the effective \$R_p\$ and dry layer height \$h_d\$ over time.
 
 Since `po` is a a `ParamObjPikal`, you will need to construct that object--the value of \$R_p\$ 
 will not be used here, so set it to any dummy value. 
 
-If `pdf` has multiple temperature series, pass an index `i` to select which series to use. 
+If `efd` has multiple temperature series, pass an index `i` to select which series to use. 
 Otherwise, the first series will be used.
 """
-function calc_hRp_T(po::ParamObjPikal, pdf::PrimaryDryFit; i=nothing)
-    re = RpEstimator(po, pdf)
-    if re isa RpEstimator{true}
+function calc_hRp_T(po::ParamObjPikal, efd::ExpFitData; i=nothing)
+    re = RpEstimator(po, efd)
+    prob, save_t = if re isa RpEstimator{true}
         if !isnothing(i)
-            prob = ODEProblem(re[i])
+            ODEProblem(re[i]), fit_t(efd, re[i].Tfs)
         else
             @warn "Index needed for multiple Tf. Taken as 1 by default" i 
-            prob = ODEProblem(re[1])
+            ODEProblem(re[1]), fit_t(efd, re[1].Tfs)
         end
     else
         !isnothing(i) && @warn "Index passed but not needed" i 
-        prob = ODEProblem(re)
+        ODEProblem(re), fit_t(efd, re.Tfs)
     end
-    sol = solve(prob, odealg_chunk2, saveat=ustrip.(u"hr", pdf.t))
+    sol = solve(prob, odealg_chunk2; saveat=ustrip.(u"hr", save_t))
     hd, Rp = sol[1,:]*u"cm", sol[2,:]*u"cm^2*Torr*hr/g"
     # If there are multiple zeros at the start, trim them off
     hdi = findlast(hd .== 0.0u"cm")
