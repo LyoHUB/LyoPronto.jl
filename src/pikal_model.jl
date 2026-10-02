@@ -177,7 +177,7 @@ function Base.show(io::IO, re::RpEstimator{plural}) where plural
 end
 
 function Base.getindex(re::RpEstimator{true}, i)
-    return RpEstimator{false}(re.po, re.efd, re.tfs[i], re.Tf_interp[i])
+    return RpEstimator{false}(re.po, re.efd, re.Tfs[i], re.Tf_interp[i])
 end
 Base.length(re::RpEstimator{false}) = length(re.Tf_interp.t)
 
@@ -251,14 +251,14 @@ function calc_hRp_T(po::ParamObjPikal, efd::ExpFitData; i=nothing)
     re = RpEstimator(po, efd)
     prob, save_t = if re isa RpEstimator{true}
         if !isnothing(i)
-            ODEProblem(re[i]), fit_t(efd, re[i].tf)
+            ODEProblem(re[i]), fit_t(efd, re[i].Tfs)
         else
             @warn "Index needed for multiple Tf. Taken as 1 by default" i 
-            ODEProblem(re[1]), fit_t(efd, re[1].tf)
+            ODEProblem(re[1]), fit_t(efd, re[1].Tfs)
         end
     else
         !isnothing(i) && @warn "Index passed but not needed" i 
-        ODEProblem(re), fit_t(efd, re[1].tf)
+        ODEProblem(re), fit_t(efd, re.Tfs)
     end
     sol = solve(prob, odealg_chunk2; saveat=ustrip.(u"hr", save_t))
     hd, Rp = sol[1,:]*u"cm", sol[2,:]*u"cm^2*Torr*hr/g"

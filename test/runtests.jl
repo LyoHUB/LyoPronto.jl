@@ -167,10 +167,28 @@ po = ParamObjPikal((
     T = sol[2,1:end-2]*u"K"
     efd = ExpFitData(t, TfData(T), EndTimeData(t[end]))
 
+    # Single
     hd, Rpvals = calc_hRp_T(po, efd)
     @test length(hd) == length(Rpvals) > 0
 
     @test all(.≈(Rpvals, Rp.(hd), atol=1e-2u"cm^2*Torr*hr/g"))
+
+    # Multiple
+    po2 = @set po.Rp.A1 = 30.0u"cm*Torr*hr/g"
+    sol2 = solve(ODEProblem(po2), LyoPronto.odealg_chunk2)
+    t2 = sol2.t*u"hr"
+    T2 = sol2[2,1:end-2]*u"K"
+    efd2 = ExpFitData(t, TfData(T), TfData(T2; t=t2))
+
+    using Logging
+    # Check that a warning is issue if no index is passed for multiple Tf
+    h1, R1 = @test_logs (:warn, r"Index needed") calc_hRp_T(po, efd2)
+    # Check that the result is the same if i=1 is passed
+    @test (h1, R1) == @test_logs min_level=Logging.Error calc_hRp_T(po, efd2, i=1)
+    h2, R2 = calc_hRp_T(po, efd2, i=2)
+    @test all(.≈(R1, Rp.(h1), atol=1e-2u"cm^2*Torr*hr/g"))
+    Rp2 = po2.Rp
+    @test all(.≈(R2, Rp2.(h2), atol=1e-2u"cm^2*Torr*hr/g"))
 end
 
 @testset "Vial geometry helpers" begin
