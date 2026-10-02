@@ -177,7 +177,7 @@ function Base.show(io::IO, re::RpEstimator{plural}) where plural
 end
 
 function Base.getindex(re::RpEstimator{true}, i)
-    return RpEstimator{false}(re.po, re.efd, tfs[i], re.Tf_interp[i])
+    return RpEstimator{false}(re.po, re.efd, re.tfs[i], re.Tf_interp[i])
 end
 Base.length(re::RpEstimator{false}) = length(re.Tf_interp.t)
 
