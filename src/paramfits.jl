@@ -4,10 +4,16 @@
 # container's `t` is used (see `fit_t`).
 abstract type AbstractExpDatum end
 
-# Trait for identifying whether a given fit type has an associated vector of times
+# Trait for identifying whether a given type should be associated with a time vector
+function time_bound_data end
+# Function for checking if a given instance of the type has its own self-contained time vector
+# This is strictly false if `time_bound_data` is false
 function has_timevec end
+# Function for checking if a given instance of the type has a nontrivial set of time indices
+# This is strictly false if `time_bound_data` is false, but may not be implemented
+function nontrivial_t_range end
 # Trait for identifying dimensions of the residuals for a given fit type
-function error_dims end
+function resid_name end
 
 """
     TfData(Tf; t=missing)
@@ -55,7 +61,10 @@ function TfData(Tf; t=missing)
 end
 
 Base.length(td::TfData) = length(td.t_range)
-has_timevec(::TfData) = true
+time_bound_data(::TfData) = true
+has_timevec(td::TfData) = !ismissing(td.t)
+nontrivial_t_range(td::TfData) = first(td.t_range) > 1 || step(td.t_range) != 1
+resid_name(::TfData) = :Tf
 
 # Provide separate types for Tvw as a full series or as a single endpoint
 """
@@ -105,7 +114,10 @@ function TvwSeriesData(Tvw; t=missing)
 end
 
 Base.length(td::TvwSeriesData) = length(td.t_range)
-has_timevec(::TvwSeriesData) = true
+time_bound_data(::TvwSeriesData) = true
+has_timevec(td::TvwSeriesData) = !ismissing(td.t)
+nontrivial_t_range(td::TvwSeriesData) = first(td.t_range) > 1 || step(td.t_range) != 1
+resid_name(::TvwSeriesData) = :Tvw
 
 """
     TvwEndData(Tvw_end)
@@ -121,7 +133,9 @@ struct TvwEndData{T1} <: AbstractExpDatum
     end
 end
 
+time_bound_data(::TvwEndData) = false
 has_timevec(::TvwEndData) = false
+resid_name(::TvwEndData) = :Tvw
 
 """
     EndTimeData(t_end)
@@ -141,11 +155,16 @@ struct EndTimeData{T1} <: AbstractExpDatum
         if !(t_end isa Unitful.Time) && !(t_end isa Tuple && length(t_end) == 2 && all(x -> x isa Unitful.Time, t_end))
             throw(ArgumentError("t_end should be a time or a tuple of two times"))
         end
+        if t_end isa Tuple
+            t_end = extrema(t_end) # Reorder to be (min, max)
+        end
         new{typeof(t_end)}(t_end)
     end
 end
 
+time_bound_data(::EndTimeData) = false
 has_timevec(::EndTimeData) = false
+resid_name(::EndTimeData) = u"hr"
 
 # --------
 # Collector struct for all data to be fit, in a single experiment
@@ -190,9 +209,9 @@ Three cases:
 - `fitdat.t` if `obj` is not tied to a time vector
 
 """
-function fit_t(fitdat::ExpFitData, obj::AbstractExpDatum)
-    if has_timevec(obj) 
-        return ismissing(obj.t) ? fitdat.t[obj.t_range] : obj.t[obj.t_range]
+function fit_t(fitdat::ExpFitData, dat::AbstractExpDatum)
+    if time_bound_data(dat) 
+        return has_timevec(dat) ? dat.t[dat.t_range] : fitdat.t[dat.t_range] 
     else
         return fitdat.t
     end
@@ -379,7 +398,9 @@ end
 function obj_Tf(sol::ODESolution, st::SolTrim, dat::TfData; verbose=false)
     Tmd = model_result(sol, st, 2; verbose) # Tf at index 2
     maxind = min(length(dat.t_range), length(Tmd))
-    return sum(abs2, (dat.Tf[st.i_solstart:maxind] .- Tmd[begin:maxind-st.i_solstart+1]))/(maxind-st.i_solstart+1)
+    resid = sum(abs2, (dat.Tf[st.i_solstart:maxind] .- Tmd[begin:maxind-st.i_solstart+1]))/(maxind-st.i_solstart+1)
+    verbose && @info "Tf_err = $resid"
+    return resid
 end
 
 function obj_Tvw(sol::ODESolution, obj::TvwSeriesData, t; verbose=false)
@@ -389,11 +410,15 @@ end
 function obj_Tvw(sol::ODESolution, st::SolTrim, dat::TvwSeriesData; verbose=false)
     Tmd = model_result(sol, st, 3; verbose) # Tvw at index 3
     maxind = min(length(dat.t_range), length(Tmd))
-    return sum(abs2, (dat.Tvw[st.i_solstart:maxind] .- Tmd[begin:maxind-st.i_solstart+1]))/(maxind-st.i_solstart+1)
+    resid = sum(abs2, (dat.Tvw[st.i_solstart:maxind] .- Tmd[begin:maxind-st.i_solstart+1]))/(maxind-st.i_solstart+1)
+    verbose && @info "Tvw_err = $resid"
+    return resid
 end
 
 function obj_Tvw(sol::ODESolution, obj::TvwEndData; verbose=false)
-    return (sol[3, end]*u"K" - uconvert(u"K", obj.Tvw_end))^2
+    resid = (sol[3, end]*u"K" - uconvert(u"K", obj.Tvw_end))^2
+    verbose && @info "Tvw_err = $resid"
+    return resid
 end
 
 function obj_tend(sol::ODESolution, obj::EndTimeData; verbose=false)
@@ -432,57 +457,88 @@ Evaluate an objective function which compares model solution computed by `sol` t
 
 - `sol` is a solution to an appropriate model; see [`gen_sol_pd`](@ref) for a helper.
 - `efd` is an instance of [`ExpFitData`](@ref), which contains some information about what to compare.
-- `tweight = 1.0u"K^2/hr^2"` gives the weighting (should have dimensions like K^2/hr^2) of the total drying time in the objective, as compared to the temperature error.
-- `Tvw_weight = 1.0` gives the weighting of Tvw in the objective, as compared to Tf.
+- `weights` is a `NamedTuple` maps each experimental datum to an inverse-squared-unit weight;
+    the default is constructed with [`default_residual_weighting`](@ref).
+
+To add a custom type of experimental data, 
+define `resid_name(::MyDatum)::Symbol` and map that symbol to a weight accessed in a `NamedTuple`,
+e.g. `weights[:t]` should be e.g. `1.0u"hr^-2"`.
 
 Note that if `efd` has vial wall temperatures (i.e. a [`TvwSeriesData`](@ref) or [`TvwEndData`](@ref) object in `efd.data`), the third-index variable in `sol` is assumed to be temperature, as is true for the lumped capacitance model (see [`ParamObjRF`](@ref).
 
 If there are multiple series of `Tf` in `efd`, squared error is computed for each separately then summed; likewise for `Tvw`.
 """
 function obj_exp(sol::ODESolution, efd::ExpFitData;
-    tweight=1.0u"K^2/hr^2", verbose = false, Tvw_weight=1.0)
+    weights = default_residual_weighting(), verbose = false)
     if sol.retcode !== ReturnCode.Terminated || length(sol.u) <= 1
         verbose && @warn "ODE solve did not reach end of drying. Either parameters are bad, or tspan is not large enough." sol.retcode sol.prob.p.hf0 sol[end]
         return Inf
     end
-    Tfobj = 0.0u"K^2"
-    Tvwobj = 0.0u"K^2"
-    tobj = 0.0u"hr^2"
     # Check which, if any, of the data objects have their own time vector provided
     separate_time = map(efd.data) do x
-        has_timevec(x) && (!ismissing(x.t) || first(x.t_range) > 1 || step(x.t_range) != 1)
+        time_bound_data(x) && (has_timevec(x) || nontrivial_t_range(x))
     end
     container_trim = trim_sol(sol, efd.t)
+    verbose && @info "loss call" # Verbose gets passed to separate calls
     # Iterate over all data objects, providing appropriate solution trimming if necessary
     # It would be better if this were a map of some sort, but splitting up residual types
     # makes that difficult
-    for (obj, sep_trim) in zip(efd.data, separate_time)
+    obj = mapreduce(+, efd.data, separate_time) do dat, sep_trim
         # obj.t is already confirmed not missing if sep_trim is true, so we can use it directly
-        # and ignore it if sep_trim is false
         st = if sep_trim
-            trim_sol(sol, fit_t(efd, obj))
-        elseif has_timevec(obj)
+            trim_sol(sol, fit_t(efd, dat))
+        elseif time_bound_data(dat)
             container_trim
         else
             nothing
         end
-        # This is ugly. I would like to do this with dispatch, but that probably means some 
-        # sort of weighting object that carries the weights around and new types for each 
-        # residual or for all residuals together, which feels annoying, so here we are.
-        if obj isa TfData
-            Tfobj += obj_exp_datum(sol, st, obj; verbose=verbose)
-        elseif obj isa TvwSeriesData 
-            Tvwobj += obj_exp_datum(sol, st, obj; verbose=verbose)
-        elseif obj isa TvwEndData
-            Tvwobj += obj_exp_datum(sol, obj; verbose=verbose)
-        elseif obj isa EndTimeData
-            tobj += obj_exp_datum(sol, obj; verbose=verbose)
+        # If `verbose` is true then the residuals will each be reported
+        single_err = if !isnothing(st)
+            obj_exp_datum(sol, st, dat; verbose)
+        else
+            obj_exp_datum(sol, dat; verbose)
         end
+        # Evaluate the residual, divide by weight matched to data type, 
+        # check for nondimensional, then strip units
+        return ustrip(NoUnits, single_err * weights[resid_name(dat)])
     end
-    verbose && @info "loss call" tobj Tfobj Tvwobj tweight
-    return ustrip(u"K^2", Tfobj + Tvw_weight*Tvwobj + tweight*tobj)
+    return obj
 end
 obj_exp(sol::Val{NaN}, efd; kwargs...) = Inf
+
+"""
+    $(SIGNATURES)
+
+Construct the default `NamedTuple` of weights for [`obj_exp`](@ref). 
+    
+`weights` maps the names returned by [`resid_name`](@ref) to inverse-squared-unit weights, 
+so custom datum types can be weighted without changing LyoPronto. `t` and
+`Tf` provide the built-in defaults.
+"""
+function default_residual_weighting(;
+    t = 1.0u"hr^-2", 
+    Tvw = 1.0u"K^-2", 
+    Tf = 1.0u"K^-2",
+    kwargs...
+    )
+    return residual_weighting(;t, Tvw, Tf, kwargs...)
+end
+
+"""
+    $(SIGNATURES)
+
+Construct a NamedTuple of weights per experiment type for use with [`obj_exp`](@ref).
+    
+The names of each kwarg must match the results of [`resid_name`](@ref) for each type of 
+`AbstractExpDatum`, e.g. `:Tf`, `:t`, `:Tvw` for the builtin types.
+
+The value of each kwarg should have inverse-square units, e.g. `u"hr^-2"` for `:t`.
+"""
+function residual_weighting(;kwargs...)
+    return NamedTuple(kwargs)
+end
+
+
 
 """
     $(SIGNATURES)
@@ -490,8 +546,9 @@ obj_exp(sol::Val{NaN}, efd; kwargs...) = Inf
 A thin wrapper on [`obj_exp`](@ref), for backwards compatibility.
 """
 function obj_expT(sol, efd;
-    tweight=1.0u"K^2/hr^2", verbose = false, Tvw_weight=1.0)
-    return obj_exp(sol, efd; tweight, verbose, Tvw_weight)
+    tweight=1.0, verbose = false, Tvw_weight=1.0)
+    return obj_exp(sol, efd; verbose,
+    weight_func=default_residual_weighting(t=tweight*u"hr^-2", Tvw=Tvw_weight*u"K^-2"))
 end
 
 # --- Per-data-type residual counts ----------------------------------------
@@ -605,14 +662,14 @@ function err_exp!(errs, sol::ODESolution, efd; tweight=1.0u"K/hr", verbose = fal
     end
     # Check which, if any, of the data objects have their own time vector or t_range provided
     separate_time = map(efd.data) do x
-        has_timevec(x) && (!ismissing(x.t) || first(x.t_range) > 1 || step(x.t_range) != 1)
+        time_bound_data(x) && (has_timevec(x) || nontrivial_t_range(x))
     end
     container_trim = trim_sol(sol, efd.t)
     last_ind = 0
     for (obj, sep_trim) in zip(efd.data, separate_time)
         st = if sep_trim
             trim_sol(sol, fit_t(efd, obj))
-        elseif has_timevec(obj)
+        elseif time_bound_data(obj)
             container_trim
         else
             nothing

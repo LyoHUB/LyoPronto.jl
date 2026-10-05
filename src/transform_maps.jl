@@ -155,24 +155,24 @@ end
 Calculate the sum of squared error (objective function) for fitting parameters to primary drying data.
 This directly calls [`gen_sol_pd`](@ref), then [`obj_exp`](@ref), so see those docstrings.
 """
-function obj_pd(fitlog, tpf; tweight=1.0u"K^2/hr^2", Tvw_weight=1.0, badprms=nothing, verbose=false)
+function obj_pd(fitlog, tpf; weights=default_residual_weighting(), badprms=nothing, verbose=false)
     sol = gen_sol_pd(fitlog, tpf...; badprms)
-    return obj_exp(sol, tpf[3]; tweight, Tvw_weight, verbose)
+    return obj_exp(sol, tpf[3]; verbose, weights)
 end
 
 # TODO: consider this sketch for a fleshed-out public API
-# In the event that the weights in obj_exp get their own struct type, this could help
+# that makes it easier to serialize the objective function
 @concrete terse struct ObjPdFixedWeights
-    tweight
-    Tvw_weight
     badprms
+    weights
+    verbose
 end
-function obj_pd_fixedweights(;tweight=1.0u"K^2/hr^2", Tvw_weight=1.0, badprms=nothing)
-    return ObjPdFixedWeights(tweight, Tvw_weight, badprms)
+function obj_pd_fixedweights(;weights=default_residual_weighting(), badprms=nothing, verbose=false)
+    return ObjPdFixedWeights(badprms, weights, verbose)
 end
-function (obj::ObjPdFixedWeights)(fitlog, tpf; verbose=false)
+function (obj::ObjPdFixedWeights)(fitlog, tpf, verbose=false)
     sol = gen_sol_pd(fitlog, tpf...; badprms=obj.badprms)
-    return obj_exp(sol, tpf[3]; tweight=obj.tweight, Tvw_weight=obj.Tvw_weight, verbose)
+    return obj_exp(sol, tpf[3]; weights=obj.weights, verbose)
 end
 
 """
