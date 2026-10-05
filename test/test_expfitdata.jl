@@ -1,6 +1,9 @@
 using LyoPronto
 using Test
 
+struct PressureDatum <: LyoPronto.AbstractExpDatum end
+LyoPronto.resid_name(::PressureDatum) = :pd
+
 t1 = collect(range(0.0u"hr", 10.0u"hr", length=5))
 T1a = collect(range(220.0u"K", 230.0u"K", length = length(t1)))
 T1b = collect(range(220.0u"K", 230.0u"K", length = length(t1)-1))
@@ -41,6 +44,12 @@ t_end = 12.0u"hr"
     @test te2.t_end == (10.0u"hr", 12.0u"hr")
 end
 
+@testset "Extensible residual weighting" begin
+    pressure_weight = LyoPronto.default_residual_weighting(weights=Dict(u"Pa" => 3.0u"Pa^-2"))
+    @test pressure_weight(PressureDatum()) == 3.0u"Pa^-2"
+    @test_throws ArgumentError LyoPronto.default_residual_weighting()(PressureDatum())
+end
+
 @testset "Data object validation" begin
     # TfData: Tf must be a vector of temperatures
     @test_throws ArgumentError TfData(T1a[1], 1:1)
@@ -68,11 +77,20 @@ end
     @test_throws ArgumentError EndTimeData((12.0, 13.0))
 end
 
-@testset "has_timevec trait" begin
-    @test LyoPronto.has_timevec(TfData(T1a))
-    @test LyoPronto.has_timevec(TvwSeriesData(T2))
-    @test !LyoPronto.has_timevec(TvwEndData(T2[end]))
-    @test !LyoPronto.has_timevec(EndTimeData(t_end))
+@testset "time traits" begin
+    # Simplest cases
+    td = TfData(T1a)
+    tvd = TvwSeriesData(T1a)
+    @test LyoPronto.time_bound_data(td)
+    @test !LyoPronto.has_timevec(td)
+    @test !LyoPronto.nontrivial_t_range(td)
+    @test LyoPronto.time_bound_data(tvd)
+    @test !LyoPronto.has_timevec(tvd)
+    @test !LyoPronto.nontrivial_t_range(tvd)
+    # No time vectors anyway
+    @test !LyoPronto.time_bound_data(TvwEndData(T2[end]))
+    @test !LyoPronto.time_bound_data(EndTimeData(t_end))
+    # Own time vector
 end
 
 @testset "Container constructors" begin
@@ -238,13 +256,14 @@ solutions = (
     @test_throws ErrorException err_exp!(zeros(n-1), sol, efd)
     @test_throws ErrorException err_exp!(zeros(n+1), sol, efd)
 
-    # obj_exp with tweight and Tvw_weight kwargs
-    obj_weighted = obj_exp(sol, efd; tweight=2.0u"K^2/hr^2", Tvw_weight=2.0)
+    # obj_exp with per-dimension weights
+    obj_weighted = obj_exp(sol, efd;
+        weights=default_residual_weighting(Tf=2.0u"K^-2", t=2.0u"hr^-2"))
     @test isfinite(obj_weighted)
     @test obj_weighted >= 0.0
 
     # err_exp with tweight kwarg
-    errs_tw = err_exp(sol, efd; tweight=2.0u"K/hr")
+    errs_tw = err_exp(sol, efd; weights=default_residual_weighting(2.0u"K/hr")
     @test length(errs_tw) == n
     @test all(isfinite, errs_tw)
 

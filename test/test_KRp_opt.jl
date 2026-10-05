@@ -41,6 +41,7 @@ efd = ExpFitData(t, TfData(T), EndTimeData(t_end))
     tr = KRp_transform_basic(Kshf(pch(0))*0.75, R0*0.5, 2*A1, A2*0.5)
     pg = fill(0.0, 4)
     sol = @inferred gen_sol_pd(pg, tr, po)
+    sol = @inferred gen_sol_pd(pg, tr, po, efd)
     @test sol != base_sol
     pass = (tr, po, efd)
     # err = @inferred obj_pd(pg, pass)
