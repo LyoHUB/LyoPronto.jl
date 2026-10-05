@@ -155,7 +155,7 @@ end
 Calculate the sum of squared error (objective function) for fitting parameters to primary drying data.
 This directly calls [`gen_sol_pd`](@ref), then [`obj_exp`](@ref), so see those docstrings.
 """
-function obj_pd(fitlog, tpf; weights=default_residual_weighting(), badprms=nothing, verbose=false)
+function obj_pd(fitlog, tpf; weights=loss_weighting(), badprms=nothing, verbose=false)
     sol = gen_sol_pd(fitlog, tpf...; badprms)
     return obj_exp(sol, tpf[3]; verbose, weights)
 end
@@ -167,7 +167,7 @@ end
     weights
     verbose
 end
-function obj_pd_fixedweights(;weights=default_residual_weighting(), badprms=nothing, verbose=false)
+function obj_pd_fixedweights(;weights=loss_weighting(), badprms=nothing, verbose=false)
     return ObjPdFixedWeights(badprms, weights, verbose)
 end
 function (obj::ObjPdFixedWeights)(fitlog, tpf, verbose=false)
@@ -181,10 +181,10 @@ end
 Calculate the sum of squared error (objective function) for fitting parameters to primary drying data.
 This directly calls [`gen_nsol_pd`](@ref), then [`obj_exp`](@ref), so see those docstrings.
 """
-function objn_pd(fitlog, tpf; tweight=1.0u"K^2/hr^2", Tvw_weight=1.0, badprms=nothing, verbose=false)
+function objn_pd(fitlog, tpf; weights=loss_weighting(), badprms=nothing, verbose=false)
     sols = gen_nsol_pd(fitlog, tpf...; badprms)
     obj = mapreduce(+, sols, tpf[3]) do sol, fitdat
-        obj_exp(sol, fitdat; tweight, Tvw_weight, verbose)
+        obj_exp(sol, fitdat; weights, verbose)
     end
     return obj
 end
@@ -195,9 +195,9 @@ end
 Calculate the errors for fitting parameters to primary drying data.
 This directly calls [`gen_sol_pd`](@ref), then [`err_exp!`](@ref), so see those docstrings.
 """
-function nls_pd!(errs, fitlog, tpf; tweight=1.0u"K/hr", verbose=false)
+function nls_pd!(errs, fitlog, tpf; weights=residual_weighting(), verbose=false)
     sol = gen_sol_pd(fitlog, tpf...)
-    return err_exp!(errs, sol, tpf[3]; tweight, verbose)
+    return err_exp!(errs, sol, tpf[3]; weights, verbose)
 end
 """
     $(SIGNATURES)
@@ -205,18 +205,18 @@ end
 Calculate the errors for fitting parameters to primary drying data.
 This directly calls [`gen_sol_pd`](@ref), then [`err_exp`](@ref), so see those docstrings.
 """
-function nls_pd(fitlog, tpf; tweight=1.0u"K/hr", verbose=false)
+function nls_pd(fitlog, tpf; weights=residual_weighting(), verbose=false)
     sol = gen_sol_pd(fitlog, tpf...)
-    return err_exp(sol, tpf[3]; tweight, verbose)
+    return err_exp(sol, tpf[3]; weights, verbose)
 end
 
 # Prepare a fitting nonlinear function with some sensible defaults
-function NonlinearFunction(fitdat::ExpFitData; tweight=1.0u"K/hr", verbose=false)
-    if tweight == 1.0u"K/hr" && verbose == false
+function NonlinearFunction(fitdat::ExpFitData; weights=residual_weighting(), verbose=false)
+    if weights == residual_weighting() && verbose == false
         NonlinearFunction{true, SciMLBase.FullSpecialize}(nls_pd!, 
             resid_prototype=zeros(num_errs(fitdat)))
     else
-        f = (e, f, tpf) -> nls_pd!(e, f, tpf; tweight, verbose)
+        f = (e, f, tpf) -> nls_pd!(e, f, tpf; weights, verbose)
         NonlinearFunction{true, SciMLBase.FullSpecialize}(f,
             resid_prototype=zeros(num_errs(fitdat)))
     end

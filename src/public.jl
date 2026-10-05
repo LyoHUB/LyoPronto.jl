@@ -10,6 +10,6 @@ public ρ_sucrose, k_sucrose
 public extract_ts
 
 public obj_exp_datum
-public AbstractExpDatum, resid_name, residual_weighting
+public AbstractExpDatum, resid_name
 
 public ParamObj

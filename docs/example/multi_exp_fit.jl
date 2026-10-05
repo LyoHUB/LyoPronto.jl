@@ -118,7 +118,7 @@ shared_trans = as((separate = as(Vector, trans_Rp, 3),
       ))
 p0 = zeros(TransformVariables.dimension(shared_trans)) # Initial guess for optimization parameters
 
-objnf_pd = OptimizationFunction((x,y)->LyoPronto.objn_pd(x,y,tweight=5e-2u"K^2/hr^2"), AutoForwardDiff())
+objnf_pd = OptimizationFunction((x,y)->LyoPronto.objn_pd(x,y;weights=loss_weighting(t=5e-2u"hr^-2")), AutoForwardDiff())
 
 all_po = (poA, poB, poC)
 

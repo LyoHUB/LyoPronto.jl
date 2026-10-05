@@ -1,8 +1,6 @@
 using LyoPronto
 using Test
 
-struct PressureDatum <: LyoPronto.AbstractExpDatum end
-LyoPronto.resid_name(::PressureDatum) = :pd
 
 t1 = collect(range(0.0u"hr", 10.0u"hr", length=5))
 T1a = collect(range(220.0u"K", 230.0u"K", length = length(t1)))
@@ -42,12 +40,6 @@ t_end = 12.0u"hr"
     # EndTimeData: a tuple of two times (a window)
     te2 = EndTimeData((10.0u"hr", 12.0u"hr"))
     @test te2.t_end == (10.0u"hr", 12.0u"hr")
-end
-
-@testset "Extensible residual weighting" begin
-    pressure_weight = LyoPronto.default_residual_weighting(weights=Dict(u"Pa" => 3.0u"Pa^-2"))
-    @test pressure_weight(PressureDatum()) == 3.0u"Pa^-2"
-    @test_throws ArgumentError LyoPronto.default_residual_weighting()(PressureDatum())
 end
 
 @testset "Data object validation" begin
@@ -258,17 +250,18 @@ solutions = (
 
     # obj_exp with per-dimension weights
     obj_weighted = obj_exp(sol, efd;
-        weights=default_residual_weighting(Tf=2.0u"K^-2", t=2.0u"hr^-2"))
+        weights=loss_weighting(Tf=2.0u"K^-2", t=2.0u"hr^-2"))
     @test isfinite(obj_weighted)
     @test obj_weighted >= 0.0
 
     # err_exp with tweight kwarg
-    errs_tw = err_exp(sol, efd; weights=default_residual_weighting(2.0u"K/hr")
+    errs_tw = err_exp(sol, efd; weights=residual_weighting(t=1.0u"hr^-1"))
     @test length(errs_tw) == n
     @test all(isfinite, errs_tw)
+    @test ~all(iszero, errs_tw)
 
-    # obj_exp with verbose (should not error)
-    obj_verbose = @test_logs (:info, "loss call") obj_exp(sol, efd; verbose=true)
+    # obj_exp with verbose (should not error, but should log some info)
+    obj_verbose = @test_logs (:info, r"loss call") obj_exp(sol, efd; verbose=true)
     @test isfinite(obj_verbose)
 end
 
@@ -281,4 +274,14 @@ end
     obj_ni = obj_exp(solutions[4][3], solutions[4][4]) 
     @test isapprox(obj_interp, obj_ni; rtol=1e-8)
 
+end
+
+@testset "Extensible residual weighting" begin
+    struct PressureDatum <: LyoPronto.AbstractExpDatum end
+    LyoPronto.resid_name(::PressureDatum) = :pe
+    LyoPronto.time_bound_data(::PressureDatum) = false
+    LyoPronto.obj_exp_datum(sol, st, dat::PressureDatum; weights, verbose=false) = weights[:pe]*1.0u"Pa^2"
+    pressure_weight = LyoPronto.loss_weighting(pe=3.0u"Pa^-2")
+    @test pressure_weight[LyoPronto.resid_name(PressureDatum())] == 3.0u"Pa^-2"
+    @test LyoPronto.obj_exp(sol_conv, ExpFitData((1:5)u"hr", PressureDatum()); weights=pressure_weight) == 3.0
 end
