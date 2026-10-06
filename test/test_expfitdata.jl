@@ -261,10 +261,11 @@ solutions = (
     @test ~all(iszero, errs_tw)
 
     # obj_exp with verbose (should not error, but should log some info)
-    obj_verbose = @test_logs (:info, r"loss call") obj_exp(sol, efd; verbose=true)
+    obj_verbose = @test_logs (:info, r"loss call") match_mode=:any obj_exp(sol, efd; verbose=true)
     @test isfinite(obj_verbose)
 end
 
+# Depends on the `solutions` constructed for the above test
 @testset "compare non-interp to interp" begin
     obj_interp = obj_exp(solutions[1][3], solutions[1][4])
     obj_ni = obj_exp(solutions[2][3], solutions[2][4]) 
@@ -280,7 +281,7 @@ end
     struct PressureDatum <: LyoPronto.AbstractExpDatum end
     LyoPronto.resid_name(::PressureDatum) = :pe
     LyoPronto.time_bound_data(::PressureDatum) = false
-    LyoPronto.obj_exp_datum(sol, st, dat::PressureDatum; weights, verbose=false) = weights[:pe]*1.0u"Pa^2"
+    LyoPronto.obj_exp_datum(sol, dat::PressureDatum; verbose=false) = 1.0u"Pa^2"
     pressure_weight = LyoPronto.loss_weighting(pe=3.0u"Pa^-2")
     @test pressure_weight[LyoPronto.resid_name(PressureDatum())] == 3.0u"Pa^-2"
     @test LyoPronto.obj_exp(sol_conv, ExpFitData((1:5)u"hr", PressureDatum()); weights=pressure_weight) == 3.0
