@@ -64,19 +64,16 @@ pass = (tr, po, efd)
 @testset "qrf_integrate" begin
     qinteg = qrf_integrate(base_sol, po)
 
-    @test qinteg isa Dict
-    @test haskey(qinteg, "Qsub")
-    @test haskey(qinteg, "Qshf")
-    @test haskey(qinteg, "Qvwf")
-    @test haskey(qinteg, "QRFf")
-    @test haskey(qinteg, "QRFvw")
-    @test haskey(qinteg, "Qshw")
+    @test haskey(qinteg, :Q_sub)
+    @test haskey(qinteg, :Q_shf)
+    @test haskey(qinteg, :Q_vwf)
+    @test haskey(qinteg, :Q_RF_f)
+    @test haskey(qinteg, :Q_RF_vw)
+    @test haskey(qinteg, :Q_shw)
 
     for v in values(qinteg)
         @test first(v) isa Unitful.Energy
     end
-
-    # @test qinteg["Qsub"] > 0u"W*hr"
 
     # Energy conservation check on the product:
     #   d(mf*cpf*Tf)/dt = Q_shf + Q_vwf + Q_RF_f - Q_sub
@@ -86,8 +83,8 @@ pass = (tr, po, efd)
     cpf = po.cpf
 
     Δinternal = cpf * (m_f[end] * T_f[end] - m_f[begin] * T_f[begin]) |> u"W*hr"
-    energy_in = qinteg["Qshf"] + qinteg["Qvwf"] + qinteg["QRFf"]
-    energy_out = qinteg["Qsub"] + Δinternal
+    energy_in = qinteg[:Q_shf] + qinteg[:Q_vwf] + qinteg[:Q_RF_f]
+    energy_out = qinteg[:Q_sub] + Δinternal
 
     @test isapprox(energy_in, energy_out; rtol=1e-2)
 
@@ -100,8 +97,8 @@ pass = (tr, po, efd)
     cpv = po.cpv
 
     Δinternal_vw = mv * cpv * (T_vw[end] - T_vw[begin]) |> u"W*hr"
-    energy_in_vw = qinteg["Qshw"] + qinteg["QRFvw"]
-    energy_out_vw = qinteg["Qvwf"] + Δinternal_vw
+    energy_in_vw = qinteg[:Q_shw] + qinteg[:Q_RF_vw]
+    energy_out_vw = qinteg[:Q_vwf] + Δinternal_vw
 
     @test isapprox(energy_in_vw, energy_out_vw; rtol=1e-2)
 end

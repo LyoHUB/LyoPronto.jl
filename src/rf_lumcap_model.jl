@@ -137,7 +137,6 @@ Returns a named tuple with the following fields, all as Unitful quantities:
     # Evaluate mass flow; positive means drying is progressing. Not forced to be positive
     mflow = Ap/Rp(h_d)*(calc_psub(T_f) - pch(t)) # g/s
     # Evaluate heat transfer from wall
-    # TODO: consider precalculating Bi and shape factor in ParamObjRF constructor
     Bi = uconvert(NoUnits, Kvwf*rad/k_dry)
     Q_vwf = 2π*(Kvwf*rad*h_f + k_dry*(hf0-h_f)*S_interp(Bi)) * (T_vw-T_f) |> u"W"
     # Volumetric heating
@@ -214,10 +213,11 @@ end
     qrf_integrate(sol, RF_params)
 
 Compute the integral over time of each heat transfer mode in the lumped capacitance model.
+
 RF_params should represent the same parameters used to generate the solution `sol`,
 which (if OrdinaryDiffEq doesn't change) can likely be accessed as `sol.prob.p`.
 
-Returns a Dict{String, Quantity{...}}, with string keys `Qsub, Qshf, Qvwf, QRFf, QRFvw, Qshw`.
+Returns a `NamedTuple` with keys which match the result of `calc_md_Q` (`Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw`).
 """
 function qrf_integrate(sol, RF_params::ParamObjRF)
 
@@ -238,11 +238,5 @@ function qrf_integrate(sol, RF_params::ParamObjRF)
     qinteg = map(names) do q
         sum(getproperty.(history, q) .* weights) |> u"W*hr"
     end
-    # TODO: consider returning differently
-    return Dict("Qsub"=>qinteg[1], 
-                "Qshf"=>qinteg[2],
-                "Qvwf"=>qinteg[3],
-                "QRFf"=>qinteg[4],
-                "QRFvw"=>qinteg[5],
-                "Qshw"=>qinteg[6])
+    return NamedTuple(zip(names, qinteg))
 end
