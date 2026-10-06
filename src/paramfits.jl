@@ -379,11 +379,32 @@ end
 # sub-zero interpolation correction. `i_solstart` is the index into `t` where
 # the model solution begins.
 
-struct SolTrim{T, Tt}
-    i_solstart::Int
+"""
+    SolTrim
+
+A struct to contain information about which model points overlap with experiment.
+
+If `preinterp` is true, then the model solution is pre-interpolated to the experimental time points;
+the model's time indices `1:(length(sol.t)-1)` correspond exactly to the experimental
+time indices `ti_model_start:ti_model_end`. 
+
+If `preinterp` is false, then the model solution is not pre-interpolated, and the model solution will need to be interpolated to the experimental time points.
+at time indices `ti_m_start:ti_m_end`. 
+"""
+struct SolTrim{I <: Integer, T}
     preinterp::Bool
-    tmd::T
-    t::Tt
+    ti_m_start::I
+    ti_m_end::I
+    len::I
+    t::T
+end
+
+function check_preinterp(sol::ODESolution, t_exp)
+    nt = min(length(sol.t) - 1, length(t_exp)) # possible number of valid times
+    ti_m_start = searchsortedfirst(t_exp, sol.t[begin]*u"hr")
+    # Check if the solution is pre-interpolated to the time points in t
+    preinterp = mapreduce(≈, &, sol.t[1:nt]*u"hr", t_exp[ti_m_start:ti_m_start+nt-1])
+    return preinterp, ti_m_start
 end
 
 """
@@ -391,38 +412,70 @@ end
 
 Trim the solution `sol` to the experimental time grid `t_exp`, returning a `SolTrim` object.
 
-This should be called separately for data objects which have their own time vector.
+As a first pass, this should be called on an `ExpFitData`.
+Thenshould be called separately for data objects which have their own time vector.
 """
-function trim_sol(sol::ODESolution, t_exp)
-    tmd = sol.t[end].*u"hr"
-    nt = length(sol.t) - 1
-    i_solstart = searchsortedfirst(t_exp, sol.t[begin]*u"hr")
-    # Identify if the solution is pre-interpolated to the time points in t
-    if i_solstart + nt - 1 <= length(t_exp)
-        preinterp = mapreduce(≈, &, sol.t[1:nt].*u"hr", t_exp[i_solstart:i_solstart+nt-1])
-    else
-        # If there are fewer experimental time points than solution points minus 1, 
-        # then the solution is definitely not pre-interpolated
-        preinterp = false
+function trim_sol(sol::ODESolution, t_exp, preinterp::Bool, ti_m_start)
+    # Last index of t_exp that is <= sol.t[end]
+    nt = min(length(sol.t) - 1, length(t_exp))
+    ti_m_end = searchsortedlast(t_exp, sol.t[end]*u"hr")
+
+    # Make sure there is at least one time point overlapping
+    if ti_m_end - ti_m_start < 1
+        throw(ArgumentError("Experimental time vector does not overlap with model solution time points"))
     end
-    SolTrim(i_solstart, preinterp, tmd, t_exp)
+        
+    #TODO: see if we can avoid allocating a new time vector here, for performance
+    # First idea of checking of passing `missing` for preinterpolated is type-unstable, I think
+    # pass_t = preinterp ? t_exp[1:0] : t_exp[ti_m_start:ti_m_end]
+    return SolTrim(preinterp, ti_m_start, ti_m_end, ti_m_end - ti_m_start + 1, t_exp[ti_m_start:ti_m_end])
 end
 
-function model_result(sol::ODESolution, st::SolTrim, idx; verbose=false)
+"""
+    $(SIGNATURES)
+
+Compute the model result for a given solution `sol` with time trimming `st`, variable `idx`.
+
+If `idx` is specified, the function evaluates the solution at that index and gives it the 
+units specified by the `unit` kwarg (defaulting to `u"K"`). 
+
+If `idx` is not specified, the function evaluates [`calc_md_Q`](@ref) at all appropriate 
+time points and returns a corresponding Table. If only a single column from that table is desired,
+pass the keyword argument `var` to select the column by name (e.g. `var=:md`).
+
+If you have a choice between the two, it will be more efficient to use `idx` since it only
+has to interpolate the solution for that index, while the `var` option will evaluate the full model at all time points and then select the column.
+"""
+function model_result(sol::ODESolution, st::SolTrim, idx; unit=u"K", verbose=false)
     if st.preinterp
-        return sol[idx, begin:end-1].*u"K" # Leave off last time point because is end time
+        # We want multi-D array indexing, so index into sol, not sol.u
+        return sol[idx, begin:end-1]*unit # Leave off last time point because is end time
     end
-    trim = sol.t[begin]*u"hr" .<= st.t .< st.tmd
-    t_trim = st.t[trim]
-    Tmd = sol.(ustrip.(u"hr", t_trim), idxs=idx).*u"K"
-    # Sometimes the interpolation procedure of the solution produces wild temperatures, as in below absolute zero.
+    res = sol.(ustrip.(u"hr", st.t), idxs=idx)*unit
+    # Sometimes the interpolation procedure of the solution produces temperatures below absolute zero.
     # This bit replaces any subzero values with the previous positive temperature, and notifies that it happened.
-    if any(Tmd .< 0u"K")
-        subzero = findall(Vector(Tmd .< 0u"K"))
-        Tmd[subzero] .= Tmd[subzero[1] - 1]
-        verbose && @info "bad interpolation" subzero Tmd[subzero]
+    if first(res) isa Unitful.Temperature && any(res .< 0u"K")
+        subzero = findall(Vector(res .< 0u"K"))
+        res[subzero] .= res[subzero[1] - 1]
+        verbose && @info "bad interpolation" subzero res[subzero]
     end
-    return Tmd
+    return res
+end
+function model_result(sol::ODESolution, st::SolTrim; var=nothing, verbose=false)
+    t_trim_nd = ustrip.(u"hr", st.t)
+    uu = if st.preinterp
+        # We want a vector of vectors, so access sol.u
+        sol.u[begin:end-1] # Leave off last time point because is end time
+    else
+        uu = sol.(t_trim_nd)
+    end
+    if isnothing(var)
+        mdq = map((u, t) -> calc_md_Q(u, sol.prob.p, t), uu, t_trim_nd)
+        return Table(mdq)
+    else
+        varq = map((u, t) -> calc_md_Q(u, sol.prob.p, t)[var], uu, t_trim_nd)
+        return varq
+    end
 end
 
 # ---------------
@@ -483,8 +536,8 @@ function obj_Tf(sol::ODESolution, obj::TfData, t; verbose=false)
 end
 function obj_Tf(sol::ODESolution, st::SolTrim, dat::TfData; verbose=false)
     Tmd = model_result(sol, st, 2; verbose) # Tf at index 2
-    maxind = min(length(dat.t_range), length(Tmd))
-    resid = sum(abs2, (dat.Tf[st.i_solstart:maxind] .- Tmd[begin:maxind-st.i_solstart+1]))/(maxind-st.i_solstart+1)
+    verbose && @info "Tf_model = $Tmd"
+    resid = sum(abs2, (dat.Tf[st.ti_m_start:st.ti_m_end] .- Tmd[begin:st.len]))/(st.len)
     verbose && @info "Tf_err = $resid"
     return resid
 end
@@ -495,8 +548,7 @@ function obj_Tvw(sol::ODESolution, obj::TvwSeriesData, t; verbose=false)
 end
 function obj_Tvw(sol::ODESolution, st::SolTrim, dat::TvwSeriesData; verbose=false)
     Tmd = model_result(sol, st, 3; verbose) # Tvw at index 3
-    maxind = min(length(dat.t_range), length(Tmd))
-    resid = sum(abs2, (dat.Tvw[st.i_solstart:maxind] .- Tmd[begin:maxind-st.i_solstart+1]))/(maxind-st.i_solstart+1)
+    resid = sum(abs2, (dat.Tvw[st.ti_m_start:st.ti_m_end] .- Tmd[begin:st.len]))/(st.len)
     verbose && @info "Tvw_err = $resid"
     return resid
 end
@@ -560,25 +612,25 @@ function obj_exp(sol::ODESolution, efd::ExpFitData;
         verbose && @warn "ODE solve did not reach end of drying. Either parameters are bad, or tspan is not large enough." sol.retcode sol.prob.p.hf0 sol[end]
         return Inf
     end
-    # Check which, if any, of the data objects have their own time vector provided
-    separate_time = map(efd.data) do x
-        time_bound_data(x) && (has_timevec(x) || nontrivial_t_range(x))
-    end
-    container_trim = trim_sol(sol, efd.t)
+    # Check if the 
+    preinterp_shared, ti_m_start_shared = check_preinterp(sol, efd.t)
     verbose && @info "loss call" # Verbose gets passed to separate calls
-    obj = mapreduce(+, efd.data, separate_time) do dat, sep_trim
-        # obj.t is already confirmed not missing if sep_trim is true, so we can use it directly
-        st = if sep_trim
-            trim_sol(sol, fit_t(efd, dat))
-        elseif time_bound_data(dat)
-            container_trim
-        else
-            nothing
-        end
-        # If `verbose` is true then the residuals will each be reported
-        single_err = if !isnothing(st)
+    obj = mapreduce(+, efd.data) do dat
+        single_err = if time_bound_data(dat) 
+            sep_trim = has_timevec(dat) || nontrivial_t_range(dat)
+            ti_m_start = if sep_trim
+                searchsortedfirst(fit_t(efd, dat), sol.t[begin]*u"hr")
+            else
+                ti_m_start_shared
+            end
+            # If the container t is preinterpolated, then specific is preintepolated exactly if it shares t
+            # If the container t is not preinterpolated, the solution almost certainly isn't
+            #   and it probably isn't worth checking
+            preinterp = preinterp_shared ? ~sep_trim : false
+            st = trim_sol(sol, fit_t(efd, dat), preinterp, ti_m_start)
             obj_exp_datum(sol, st, dat; verbose)
         else
+            # If the data is not time-bound, then the solution doesn't need any trimming
             obj_exp_datum(sol, dat; verbose)
         end
         # Evaluate the residual, divide by weight matched to data type, 
@@ -628,40 +680,33 @@ end
 
 const not_avail_err = 0.0 # an error value to return for points where the solution is unavailable, e.g. if the model dries faster
 
-function err_Tf!(errs, i0, sol::ODESolution, obj::TfData, st::SolTrim, weights; verbose=false)
+function err_Tf!(errs, i0, sol::ODESolution, dat::TfData, st::SolTrim, weight; verbose=false)
     Tmd = model_result(sol, st, 2; verbose=verbose)
-    Tf = obj.Tf
-    itf = length(obj.t_range)
-    trim = min(itf, length(Tmd))
-    Tferrs = (Tf[st.i_solstart:trim] .- Tmd[begin:trim-st.i_solstart+1])/sqrt(trim-st.i_solstart+1)
-    weight = weights[resid_name(obj)]
-    errs[i0+1:i0+st.i_solstart] .= not_avail_err
-    errs[i0+st.i_solstart:i0+trim] .= ustrip.(NoUnits, Tferrs * weight)
-    errs[i0+trim+1:i0+itf] .= not_avail_err
-    return itf
+    Tferrs = (dat.Tf[st.ti_m_start:st.ti_m_end] .- Tmd[begin:st.len])/sqrt(st.len)
+    ntf = length(dat.Tf)
+    errs[i0+1:i0+st.ti_m_start] .= not_avail_err
+    errs[i0+st.ti_m_start:i0+st.ti_m_end] .= ustrip.(NoUnits, Tferrs * weight)
+    errs[i0+st.ti_m_end+1:i0+ntf] .= not_avail_err
+    return ntf
 end
 
-function err_Tvw_series!(errs, i0, sol::ODESolution, obj::TvwSeriesData, st::SolTrim, weights; verbose=false)
+function err_Tvw_series!(errs, i0, sol::ODESolution, dat::TvwSeriesData, st::SolTrim, weight; verbose=false)
     Tvwmd = model_result(sol, st, 3; verbose=verbose)
-    Tvw = obj.Tvw
-    itvw = length(obj.t_range)
-    trim = min(itvw, length(Tvwmd))
-    Tvw_errs = (Tvw[st.i_solstart:trim] .- Tvwmd[begin:trim-st.i_solstart+1])/sqrt(trim-st.i_solstart+1)
-    weight = weights[resid_name(obj)]
-    errs[i0+1:i0+st.i_solstart] .= not_avail_err
-    errs[i0+st.i_solstart:i0+trim] .= ustrip.(NoUnits, Tvw_errs * weight)
-    errs[i0+trim+1:i0+itvw] .= not_avail_err
-    return itvw
+    Tvw_errs = (dat.Tvw[st.ti_m_start:st.ti_m_end] .- Tvwmd[begin:st.len])/sqrt(st.len)
+    ntvw = length(dat.Tvw)
+    errs[i0+1:i0+st.ti_m_start] .= not_avail_err
+    errs[i0+st.ti_m_start:i0+st.ti_m_end] .= ustrip.(NoUnits, Tvw_errs * weight)
+    errs[i0+st.ti_m_end+1:i0+ntvw] .= not_avail_err
+    return ntvw
 end
 
-function err_Tvw_end!(errs, i0, sol::ODESolution, obj::TvwEndData, weights; verbose=false)
+function err_Tvw_end!(errs, i0, sol::ODESolution, obj::TvwEndData, weight; verbose=false)
     Tvw_err = sol[3, end]*u"K" - uconvert(u"K", obj.Tvw_end)
-    weight = weights[resid_name(obj)]
     errs[i0+1] = ustrip(NoUnits, Tvw_err * weight)
     return 1
 end
 
-function err_tend!(errs, i0, sol::ODESolution, obj::EndTimeData, weights; verbose=false)
+function err_tend!(errs, i0, sol::ODESolution, obj::EndTimeData, weight; verbose=false)
     tmd = sol.t[end]*u"hr"
     t_end = obj.t_end
     if t_end isa Tuple # See if is inside window and scale appropriately
@@ -676,30 +721,29 @@ function err_tend!(errs, i0, sol::ODESolution, obj::EndTimeData, weights; verbos
     else
         t_err = (t_end - tmd)
     end
-    tweight = weights[resid_name(obj)]
-    errs[i0+1] = ustrip(NoUnits, t_err*tweight)
+    errs[i0+1] = ustrip(NoUnits, t_err*weight)
     return 1
 end
 
-function err_exp_datum!(errs, i0, sol::ODESolution, st::SolTrim, obj::TfData, weights; verbose=false)
-    return err_Tf!(errs, i0, sol, obj, st, weights; verbose)
+function err_exp_datum!(errs, i0, sol::ODESolution, st::SolTrim, obj::TfData, weight; verbose=false)
+    return err_Tf!(errs, i0, sol, obj, st, weight; verbose)
 end
-function err_exp_datum!(errs, i0, sol::ODESolution, obj::TfData, t, weights; verbose=false)
+function err_exp_datum!(errs, i0, sol::ODESolution, obj::TfData, t, weight; verbose=false)
     st = trim_sol(sol, t)
-    return err_Tf!(errs, i0, sol, obj, st, weights; verbose)
+    return err_Tf!(errs, i0, sol, obj, st, weight; verbose)
 end
-function err_exp_datum!(errs, i0, sol::ODESolution, st::SolTrim, obj::TvwSeriesData, weights; verbose=false)
-    return err_Tvw_series!(errs, i0, sol, obj, st, weights; verbose)
+function err_exp_datum!(errs, i0, sol::ODESolution, st::SolTrim, obj::TvwSeriesData, weight; verbose=false)
+    return err_Tvw_series!(errs, i0, sol, obj, st, weight; verbose)
 end
-function err_exp_datum!(errs, i0, sol::ODESolution, obj::TvwSeriesData, t, weights; verbose=false)
+function err_exp_datum!(errs, i0, sol::ODESolution, obj::TvwSeriesData, t, weight; verbose=false)
     st = trim_sol(sol, t)
-    return err_Tvw_series!(errs, i0, sol, obj, st, weights; verbose)
+    return err_Tvw_series!(errs, i0, sol, obj, st, weight; verbose)
 end
-function err_exp_datum!(errs, i0, sol::ODESolution, obj::TvwEndData, weights; verbose=false)
-    return err_Tvw_end!(errs, i0, sol, obj, weights; verbose)
+function err_exp_datum!(errs, i0, sol::ODESolution, obj::TvwEndData, weight; verbose=false)
+    return err_Tvw_end!(errs, i0, sol, obj, weight; verbose)
 end
-function err_exp_datum!(errs, i0, sol::ODESolution, obj::EndTimeData, weights; verbose=false)
-    return err_tend!(errs, i0, sol, obj, weights; verbose)
+function err_exp_datum!(errs, i0, sol::ODESolution, obj::EndTimeData, weight; verbose=false)
+    return err_tend!(errs, i0, sol, obj, weight; verbose)
 end
 
 const errexp_doc = """
@@ -737,23 +781,24 @@ function err_exp!(errs, sol::ODESolution, efd; weights=residual_weighting(), ver
         return
     end
     # Check which, if any, of the data objects have their own time vector or t_range provided
-    separate_time = map(efd.data) do x
-        time_bound_data(x) && (has_timevec(x) || nontrivial_t_range(x))
-    end
-    container_trim = trim_sol(sol, efd.t)
+    preinterp_shared, ti_m_start_shared = check_preinterp(sol, efd.t)
     last_ind = 0
-    for (dat, sep_trim) in zip(efd.data, separate_time)
-        st = if sep_trim
-            trim_sol(sol, fit_t(efd, dat))
-        elseif time_bound_data(dat)
-            container_trim
+    for dat in efd.data
+        last_ind += if time_bound_data(dat)
+            sep_trim = has_timevec(dat) || nontrivial_t_range(dat)
+            ti_m_start = if sep_trim
+                searchsortedfirst(dat.t, sol.t[begin]*u"hr")
+            else
+                ti_m_start_shared
+            end
+            # If the container t is preinterpolated, then specific is preintepolated exactly if it shares t
+            # If the container t is not preinterpolated, the solution almost certainly isn't
+            #   and it probably isn't worth checking
+            preinterp = preinterp_shared ? ~sep_trim : false
+            st = trim_sol(sol, fit_t(efd, dat), preinterp, ti_m_start)
+            err_exp_datum!(errs, last_ind, sol, st, dat, weights[resid_name(dat)]; verbose)
         else
-            nothing
-        end
-        last_ind += if isnothing(st)
-            err_exp_datum!(errs, last_ind, sol, dat, weights; verbose)
-        else
-            err_exp_datum!(errs, last_ind, sol, st, dat, weights; verbose)
+            err_exp_datum!(errs, last_ind, sol, dat, weights[resid_name(dat)]; verbose)
         end
     end
     if last_ind != length(errs)

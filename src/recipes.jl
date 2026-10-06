@@ -4,6 +4,8 @@
 
 This function makes a `Table` of the results of [`calc_md_Q`](@ref) at all of the
 given `ODESolution`'s time points.
+
+For more performance-sensitive uses (e.g. in parameter fitting), see [`model_result`](@ref).
 """
 function summary_md_Q(sol::ODESolution)
     Table(calc_md_Q.(sol.u, (sol.prob.p,), sol.t), t=sol.t*u"hr")
