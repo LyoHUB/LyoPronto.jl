@@ -62,7 +62,7 @@ sol = @inferred gen_sol_pd(pg, tr, po)
 pass = (tr, po, efd)
 
 @testset "qrf_integrate" begin
-    qinteg = qrf_integrate(base_sol, po)
+    qinteg = @inferred qrf_integrate(base_sol, po)
 
     @test haskey(qinteg, :Q_sub)
     @test haskey(qinteg, :Q_shf)

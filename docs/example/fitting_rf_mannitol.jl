@@ -202,13 +202,13 @@ plot!(fitdat, nmarks=40)
 # Now, we actually run the fit, which is a nonlinear least squares problem
 
 opt1 = solve(NonlinearLeastSquaresProblem(nls_M1, p0, (trans_KBB, params_base, fitdat)), LevenbergMarquardt())
-## Get the fitted solution
-prof_RF = gen_sol_pd(opt1.u, trans_KBB, params_base)
-## Get the fitted parameters in parameter space
+# The actual fit values are then 
 transform(trans_KBB, opt1.u)
 
 # ## Plot the fit results
-
+# First, we get the solution with the fitted parameters.
+prof_RF = gen_sol_pd(opt1.u, trans_KBB, params_base)
+# Now, we can plot using some of the custom recipes.
 ## Set up the plot
 plT = plot(u"hr", u"°C", xlabel="Time", ylabel="Temperature")
 ## Experimental data

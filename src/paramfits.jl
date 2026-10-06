@@ -53,10 +53,10 @@ to return a unique symbol for your data type, and then map that symbol to a weig
 function resid_name end
 
 """
-TfData(Tf; t=missing)
-TfData(Tf, t_range; t=missing)
+    TfData(Tf; t=missing)
+    TfData(Tf, t_range; t=missing)
 
-A single experimental freezing-front (Tf) temperature series, for use in [`ExpFitData`](@ref).
+A single experimental frozen-product (Tf) temperature series, for use in [`ExpFitData`](@ref).
 
 Fields:
 - `Tf`: an `AbstractVector` of `Temperature` (one series).
@@ -324,7 +324,7 @@ function PrimaryDryFit(t, Tfs; Tvws=missing, t_end=missing)
     end
     objs = Tuple(TfData(Tf) for Tf in Tfs)
     if !ismissing(Tvws)
-        tvw_obj = Tvws isa Number ? TvwEndData(Tvws) : Tuple(TvwSeriesData(Tvw) for Tvw in Tvws)
+        tvw_obj = Tvws isa Number ? Tuple(TvwEndData(Tvws)) : Tuple(TvwSeriesData(Tvw) for Tvw in Tvws)
         objs = (objs..., tvw_obj...)
     end
     if !ismissing(t_end)

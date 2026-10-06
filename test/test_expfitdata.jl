@@ -217,22 +217,22 @@ solutions = (
     @test n == (occursin("Pikal", name) ? 6 : 9)
 
     # obj_exp should compute a finite, non-negative objective
-    obj_val = obj_exp(sol, efd)
+    obj_val = @inferred obj_exp(sol, efd)
     @test obj_val isa Float64
     @test isfinite(obj_val)
     @test obj_val >= 0.0
 
     # obj_exp with Val(NaN) should return Inf
-    @test obj_exp(Val(NaN), efd) == Inf
+    @test (@inferred obj_exp(Val(NaN), efd)) == Inf
 
     # err_exp should return finite residuals of the correct length
-    errs = err_exp(sol, efd)
+    errs = @inferred err_exp(sol, efd)
     @test length(errs) == n
     @test all(isfinite, errs)
 
     # err_exp! in-place version should match
     errs2 = zeros(n)
-    err_exp!(errs2, sol, efd)
+    @inferred err_exp!(errs2, sol, efd)
     @test errs2 ≈ errs
 
     # err_exp! with Val(NaN) fills with Inf
@@ -241,7 +241,7 @@ solutions = (
     @test all(isinf, errs3)
 
     # err_exp with Val(NaN)
-    errs4 = err_exp(Val(NaN), efd)
+    errs4 = @inferred err_exp(Val(NaN), efd)
     @test all(isinf, errs4)
 
     # Wrong-length errs should throw

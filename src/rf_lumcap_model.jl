@@ -234,7 +234,7 @@ function qrf_integrate(sol, RF_params::ParamObjRF)
     qinteg = map(names) do q
         sum(getproperty.(history, q) .* weights) |> u"W*hr"
     end
-    return NamedTuple(zip(names, qinteg))
+    return NamedTuple{Tuple(names)}(qinteg)
 end
 
 """
