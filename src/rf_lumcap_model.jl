@@ -145,10 +145,6 @@ Returns a named tuple with the following fields, all as Unitful quantities:
     Q_RF_f = Qppp_RF_f*Ap*h_f |> u"W" # W
     Q_RF_vw = Qppp_RF_vw*V_vial |> u"W"# W
     Q_sub = mflow*ΔHsub # Sublimation
-    # Check that total volumetric heating is less than input power
-    if Q_RF_f + Q_RF_vw > P_per_vial(t) && t == 0u"hr"
-        @warn "Energy balance of EM terms not satisfied." Q_RF_f Q_RF_vw P_per_vial(t)
-    end
     return (; md=mflow, Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw)
 end
 
@@ -239,4 +235,19 @@ function qrf_integrate(sol, RF_params::ParamObjRF)
         sum(getproperty.(history, q) .* weights) |> u"W*hr"
     end
     return NamedTuple(zip(names, qinteg))
+end
+
+"""
+    $(SIGNATURES)
+Compute whether the given RF parameters will violate conservation of energy.
+
+Specifically: calls `calc_md_Q(calc_u0(po), po, 0.0)`, and returns true if the 
+`Q_RF_f + Q_RF_vw > po.P_per_vial(0.0)`.
+To be used with the `badprms` keyword argument to [`obj_pd`](@ref) and similar.
+"""
+function rf_lumcap_EM_violate(po::ParamObjRF)
+    u0 = calc_u0(po)
+    (;Q_RF_f, Q_RF_vw) = calc_md_Q(u0, po, 0.0)
+    # Check that total volumetric heating is less than input power
+    return Q_RF_f + Q_RF_vw > po.P_per_vial(0.0)
 end

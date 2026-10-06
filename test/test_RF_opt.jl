@@ -106,7 +106,11 @@ end
 
 @testset "Optimization" begin
     err = @inferred obj_pd(pg, pass)
-    obj = OptimizationFunction(obj_pd, AutoForwardDiff(chunksize=3))
+    # badprms: give optimization a NaN if an energy balance on EM terms is violated 
+    obj = OptimizationFunction(
+        (x, args)->obj_pd(x, args, badprms=LyoPronto.rf_lumcap_EM_violate), 
+        AutoForwardDiff(chunksize=3)
+    )
     opt = solve(OptimizationProblem(obj, pg, pass), optalg;)
     @test SciMLBase.successful_retcode(opt)
     vals = transform(tr, opt.u)

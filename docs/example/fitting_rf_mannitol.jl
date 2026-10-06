@@ -183,7 +183,14 @@ trans_KBB = KBB_transform_bounded(Kvwf, Bf, Bvw)
 ## Create nonlinear least-squares function
 ## nls_M1 = NonlinearFunction{true, SciMLBase.FullSpecialize}(nls_pd!, resid_prototype=zeros(num_errs(fitdat)))
 ## LyoPronto provides a shorthand for this:
-nls_M1 = NonlinearFunction(fitdat)
+nls_M1 = NonlinearFunction(fitdat; badprms=LyoPronto.rf_lumcap_EM_violate)
+# The function [`LyoPronto.rf_lumcap_EM_violate`](@ref) uses a given `ParamObjRF` to compute
+# heat transfer rates and returns `true` if the total absorbed microwave energy exceeds the
+# amoung being fed in `P_per_vial`. The fitting functions [`nls_pd!`](@ref) and [`obj_pd`](@ref)
+# accept such a function as a keyword argument `badprms`, and if the function returns true
+# for a given parameter guess, it will return NaN for the residual so the nonlinear or 
+# optimization solver avoids that parameter region.
+
 ## Guess values for fit parameters, in log space
 ## In practice, these often need tinkering with
 p0 = [3.0, 3.0, 0.3]

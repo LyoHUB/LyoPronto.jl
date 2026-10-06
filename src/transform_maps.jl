@@ -195,8 +195,8 @@ end
 Calculate the errors for fitting parameters to primary drying data.
 This directly calls [`gen_sol_pd`](@ref), then [`err_exp!`](@ref), so see those docstrings.
 """
-function nls_pd!(errs, fitlog, tpf; weights=residual_weighting(), verbose=false)
-    sol = gen_sol_pd(fitlog, tpf...)
+function nls_pd!(errs, fitlog, tpf; badprms=nothing, weights=residual_weighting(), verbose=false)
+    sol = gen_sol_pd(fitlog, tpf...; badprms)
     return err_exp!(errs, sol, tpf[3]; weights, verbose)
 end
 """
@@ -205,18 +205,18 @@ end
 Calculate the errors for fitting parameters to primary drying data.
 This directly calls [`gen_sol_pd`](@ref), then [`err_exp`](@ref), so see those docstrings.
 """
-function nls_pd(fitlog, tpf; weights=residual_weighting(), verbose=false)
-    sol = gen_sol_pd(fitlog, tpf...)
+function nls_pd(fitlog, tpf; badprms=nothing, weights=residual_weighting(), verbose=false)
+    sol = gen_sol_pd(fitlog, tpf...; badprms)
     return err_exp(sol, tpf[3]; weights, verbose)
 end
 
 # Prepare a fitting nonlinear function with some sensible defaults
-function NonlinearFunction(fitdat::ExpFitData; weights=residual_weighting(), verbose=false)
+function NonlinearFunction(fitdat::ExpFitData; weights=residual_weighting(), badprms=nothing, verbose=false)
     if weights == residual_weighting() && verbose == false
         NonlinearFunction{true, SciMLBase.FullSpecialize}(nls_pd!, 
             resid_prototype=zeros(num_errs(fitdat)))
     else
-        f = (e, f, tpf) -> nls_pd!(e, f, tpf; weights, verbose)
+        f = (e, f, tpf) -> nls_pd!(e, f, tpf; badprms, weights, verbose)
         NonlinearFunction{true, SciMLBase.FullSpecialize}(f,
             resid_prototype=zeros(num_errs(fitdat)))
     end
