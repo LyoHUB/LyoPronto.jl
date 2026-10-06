@@ -1,4 +1,5 @@
-# # Imports
+# # Fitting to Microwave Drying
+# ## Imports
 using LyoPronto 
 
 # NonlinearSolve and TransformVariables are used for parameter fitting
@@ -127,7 +128,7 @@ fitdat = @df thm_pd[begin:6:end] ExpFitData(:t, TfData(:T4[begin:iend_T4÷6]),
     TfData(:T1[begin:iend_T1÷6]), TvwSeriesData(:T3), EndTimeData(t_end));
 plot(fitdat)
 
-# # Set up other model parameters
+# ## Set up other model parameters
 ## Vial parameters
 vialsize = "6R"
 rad_i, rad_o = get_vial_radii(vialsize)
@@ -175,7 +176,7 @@ params_base = ParamObjRF((
 # loss of ice is provided as `eppf`, and for glass we provide a more-uncertain 
 # single value of `epp_gl`.
 
-# # Parameter fitting
+# ## Parameter fitting
 # First, we set up the fit problem, and double check that our guess values are close-ish.
 ## Transform variables to map from a 3-component vector to bounded physical values
 trans_KBB = KBB_transform_bounded(Kvwf, Bf, Bvw)
@@ -199,7 +200,7 @@ prof_RF = gen_sol_pd(opt1.u, trans_KBB, params_base)
 ## Get the fitted parameters in parameter space
 transform(trans_KBB, opt1.u)
 
-# Now, we can plot the fit results against the experimental data.
+# ## Plot the fit results
 
 ## Set up the plot
 plT = plot(u"hr", u"°C", xlabel="Time", ylabel="Temperature")
