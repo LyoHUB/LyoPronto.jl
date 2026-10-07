@@ -11,6 +11,7 @@ public extract_ts
 
 public obj_exp_datum
 public AbstractExpDatum, resid_name
+public exp_time_inds, model_time_inds
 public rf_lumcap_EM_violate
 
 public ParamObj

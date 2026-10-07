@@ -399,6 +399,23 @@ struct SolTrim{I <: Integer, T}
     t::T
 end
 
+"""
+    $(SIGNATURES)
+Return the range of time indices for the experimental time points that match up with the model solution.
+"""
+function exp_time_inds(st::SolTrim)
+    return st.ti_m_start:st.ti_m_end
+end
+"""
+    $(SIGNATURES)
+Return the range of time indices for the model solution that match up with the experimental time points.
+"""
+function model_time_inds(st::SolTrim)
+    return 1:st.len
+end
+Base.length(st::SolTrim) = st.len
+
+
 function check_preinterp(sol::ODESolution, t_exp)
     nt = min(length(sol.t) - 1, length(t_exp)) # possible number of valid times
     ti_m_start = searchsortedfirst(t_exp, sol.t[begin]*u"hr")
@@ -477,6 +494,27 @@ function model_result(sol::ODESolution, st::SolTrim; var=nothing, verbose=false)
         return varq
     end
 end
+# TODO: decide whether to provide the following. Probably not worth it, since in the absence
+# of a SolTrim the indexing is pretty trivial.
+# function model_result(sol::ODESolution, idx; unit=u"K", verbose=false)
+#     res = sol[idx, :]*unit 
+#     if first(res) isa Unitful.Temperature && any(res .< 0u"K")
+#         subzero = findall(Vector(res .< 0u"K"))
+#         res[subzero] .= res[subzero[1] - 1]
+#         verbose && @info "bad interpolation" subzero res[subzero]
+#     end
+#     return res
+# end
+# function model_result(sol::ODESolution; var=nothing, verbose=false)
+#     uu = sol.u     
+#     if isnothing(var)
+#         mdq = map((u, t) -> calc_md_Q(u, sol.prob.p, t), uu, sol.t)
+#         return Table(mdq)
+#     else
+#         varq = map((u, t) -> calc_md_Q(u, sol.prob.p, t)[var], uu, t_trim_nd)
+#         return varq
+#     end
+# end
 
 # ---------------
 # Weighting functions for squared-error loss and for residuals. These are used in `obj_exp` and `err_exp`, respectively.
@@ -537,7 +575,7 @@ end
 function obj_Tf(sol::ODESolution, st::SolTrim, dat::TfData; verbose=false)
     Tmd = model_result(sol, st, 2; verbose) # Tf at index 2
     verbose && @info "Tf_model = $Tmd"
-    resid = sum(abs2, (dat.Tf[st.ti_m_start:st.ti_m_end] .- Tmd[begin:st.len]))/(st.len)
+    resid = sum(abs2, (dat.Tf[exp_time_inds(st)] .- Tmd[model_time_inds(st)]))/(length(st))
     verbose && @info "Tf_err = $resid"
     return resid
 end
@@ -548,7 +586,7 @@ function obj_Tvw(sol::ODESolution, obj::TvwSeriesData, t; verbose=false)
 end
 function obj_Tvw(sol::ODESolution, st::SolTrim, dat::TvwSeriesData; verbose=false)
     Tmd = model_result(sol, st, 3; verbose) # Tvw at index 3
-    resid = sum(abs2, (dat.Tvw[st.ti_m_start:st.ti_m_end] .- Tmd[begin:st.len]))/(st.len)
+    resid = sum(abs2, (dat.Tvw[exp_time_inds(st)] .- Tmd[model_time_inds(st)]))/(length(st))
     verbose && @info "Tvw_err = $resid"
     return resid
 end
@@ -682,21 +720,24 @@ const not_avail_err = 0.0 # an error value to return for points where the soluti
 
 function err_Tf!(errs, i0, sol::ODESolution, dat::TfData, st::SolTrim, weight; verbose=false)
     Tmd = model_result(sol, st, 2; verbose=verbose)
-    Tferrs = (dat.Tf[st.ti_m_start:st.ti_m_end] .- Tmd[begin:st.len])/sqrt(st.len)
+    Tferrs = (dat.Tf[exp_time_inds(st)] .- Tmd[model_time_inds(st)])/sqrt(length(st))
     ntf = length(dat.Tf)
-    errs[i0+1:i0+st.ti_m_start] .= not_avail_err
-    errs[i0+st.ti_m_start:i0+st.ti_m_end] .= ustrip.(NoUnits, Tferrs * weight)
-    errs[i0+st.ti_m_end+1:i0+ntf] .= not_avail_err
+    # Broadcast across 1:ntf, not across exp_time_inds
+    not_avail_inds = findall(1:ntf .∉ (exp_time_inds(st),))
+    errs[i0 .+ not_avail_inds] .= not_avail_err
+    errs[i0 .+ exp_time_inds(st)] .= ustrip.(NoUnits, Tferrs * weight)
     return ntf
 end
 
 function err_Tvw_series!(errs, i0, sol::ODESolution, dat::TvwSeriesData, st::SolTrim, weight; verbose=false)
     Tvwmd = model_result(sol, st, 3; verbose=verbose)
-    Tvw_errs = (dat.Tvw[st.ti_m_start:st.ti_m_end] .- Tvwmd[begin:st.len])/sqrt(st.len)
+    Tvw_errs = (dat.Tvw[exp_time_inds(st)] .- Tvwmd[model_time_inds(st)])/sqrt(length(st))
     ntvw = length(dat.Tvw)
-    errs[i0+1:i0+st.ti_m_start] .= not_avail_err
-    errs[i0+st.ti_m_start:i0+st.ti_m_end] .= ustrip.(NoUnits, Tvw_errs * weight)
-    errs[i0+st.ti_m_end+1:i0+ntvw] .= not_avail_err
+    # Broadcast across 1:ntvw, not across exp_time_inds
+    not_avail_inds = findall(1:ntvw .∉ (exp_time_inds(st),)) # C
+    ## Fill those with sentinel value, and fill the rest with the actual error
+    errs[i0 .+ not_avail_inds] .= not_avail_err
+    errs[i0 .+ exp_time_inds(st)] .= ustrip.(NoUnits, Tvw_errs * weight)
     return ntvw
 end
 
