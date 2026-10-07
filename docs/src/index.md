@@ -10,11 +10,14 @@ In the newer [web interface](https://lyopronto2.geddes.rcac.purdue.edu), some of
 
 ## Overview
 
-Some key advantages this has over the original version of LyoPRONTO are:
-- Speed: on my laptop, the regular model can be simulated in about a millisecond. This becomes most relevant when evaluating the model repeatedly in parameter estimation or constructing large design spaces.
-- Numerical reliability: in the original LyoPRONTO, bad parameter values (e.g. if input with wrong units or uninformed guesses) easily lead to infinite loops due to the numerical approach used. As a side effect of using a modern library for fast DAE solution, numerical instability errors out instead of hitting an infinite loop. 
+Some key advantages this has over the original (Python) version of LyoPRONTO are:
+- Speed: on my laptop, the regular model can be simulated in about a millisecond. This becomes most relevant when evaluating the model repeatedly in parameter estimation or constructing large design spaces (both of which take less than a second for a well-posed problem).
+- Numerical reliability: This version uses `OrdinaryDiffEq.jl` for solving the ODEs and DAEs, which is a modern and robust library for fast numerical solution. This provides a lot of bells and whistles which we actively use, on top of being performant. 
 - Units: by using `Unitful.jl`, this package enforces dimensional correctness while being compatible with either SI marks or traditional units in lyophilization (like $cm^2\ hr\ Torr / g$ for $R_p$).
-- Flexibility: the utilities for fitting $K_v$ and $R_p$ can be used together to fit both at once, not just separately.
+- Flexibility: the utilities for fitting parameters like $K_v$ and $R_p$ can be used together to fit both at once, not just separately, and temperature data can be used in conjunction with drying time data to constrain rigorous least-squares fits.
+- Extensibility: the package provides a framework for implementing new physical models for processes similar to freeze drying, and defining new experimental data types for parameter fitting.
+
+As a consequence (and motivating example) of its extensibility, LyoPronto.jl also implements a model for radio frequency-assisted lyophilization, which is not available in the original LyoPRONTO.
 
 ## Installation
 As a Julia package, this code can be easily installed with the Julia package manager. 
@@ -27,27 +30,15 @@ add LyoPronto
 
 ## Dependencies and Reexports
 
-Among the dependencies of LyoPronto are a few packages which provide functionality without which LyoPronto would not be very usable, so those functions are exported by LyoPronto as well (so that `using LyoPronto` makes these functions available). This includes the following:
-- From [OrdinaryDiffEqRosenbrock](https://docs.sciml.ai/DiffEqDocs/stable/) and [OrdinaryDiffEqNonlinearSolve](https://docs.sciml.ai/DiffEqDocs/stable/), `ODEProblem`, `solve` used for solving the DAEs and ODEs inherent here
+Among the dependencies of LyoPronto are a few packages which provide functionality without which LyoPronto would be unusable, so those functions are exported by LyoPronto as well (so that `using LyoPronto` makes these functions available). This includes the following:
+- From [OrdinaryDiffEqRosenbrock](https://docs.sciml.ai/DiffEqDocs/stable/) and [OrdinaryDiffEqNonlinearSolve](https://docs.sciml.ai/DiffEqDocs/stable/), `ODEProblem`, `solve` used for solving the DAEs and ODEs inherent here. The recommended algorithm for LyoPronto's systems is now `Rodas5P(AutoForwardDiff(chunksize=2))`, which is made public as `LyoPronto.odealg_chunk2`.
 - [Unitful](https://juliaphysics.github.io/Unitful.jl/stable/); specifically, the `u""` macro, `ustrip`, `uconvert`, and `NoUnits`, which is all the API surface needed for regular usage of LyoPronto.
 
 Other noteworthy dependencies:
 - [TransformVariables.jl](https://tpapp.github.io/TransformVariables.jl/stable/), which is used to map vector spaces onto realistic parameter values for the inevitable parameter fitting step
 - LyoPronto provides [plot recipes](https://docs.juliaplots.org/stable/recipes/) for [Plots.jl](https://docs.juliaplots.org/stable), although it does not depend on Plots in full.  
 
-Plots.jl is used for plotting in this documentation, with the following defaults:
-```@example plot_defaults
-using Plots # hide
-default(:fontfamily, "Computer Modern")
-default(:framestyle, :box)
-default(:lw, 2)
-default(:markersize, 4)
-default(:markerstrokewidth, 0.5)
-default(:unitformat, :square)
-resetfontsizes(); scalefontsizes(1.2)
-```
-
-
+Plots.jl is used for plotting in this documentation.
 
 ## Authors
 
@@ -57,7 +48,6 @@ This work was supported in part by funding for NIIMBL project PC4.1-307 .
 ## Licensing
 
 This package is released with the MIT license.
-
 
 ## Cited References
 
