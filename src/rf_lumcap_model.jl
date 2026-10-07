@@ -144,7 +144,7 @@ Returns a named tuple with the following fields, all as Unitful quantities:
     Qppp_RF_vw = 2*pi*f_RF*e_0*eppvw*P_per_vial(t)*Bvw # W / m^3
     Q_RF_f = Qppp_RF_f*Ap*h_f |> u"W" # W
     Q_RF_vw = Qppp_RF_vw*V_vial |> u"W"# W
-    Q_sub = mflow*ΔHsub # Sublimation
+    Q_sub = mflow*ΔHsub |> u"W" # Sublimation
     return (; md=mflow, Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw)
 end
 
@@ -217,24 +217,25 @@ Returns a `NamedTuple` with keys which match the result of `calc_md_Q` (`Q_sub, 
 """
 function qrf_integrate(sol, RF_params::ParamObjRF)
 
+    names = (:Q_sub, :Q_shf, :Q_vwf, :Q_RF_f, :Q_RF_vw, :Q_shw)
+    history = Table(map(sol.t) do ti
+        (;Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw) = calc_md_Q(sol(ti), RF_params, ti)
+        return (;Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw)
+    end)
+
     # Using an IntegratingSumCallback would be more elegant, but at last attempt
     # it struggled with unitful values in the arrays.
     # So we do a manual Riemann integration on the solution output
-    history = Table(map(sol.t) do ti
-        calc_md_Q(sol(ti), RF_params, ti)
-    end)
-
     t = sol.t*u"hr"
     weights = fill(first(t), length(sol.t))
     dt = diff(t)
     weights[begin:end-1] += dt./2
     weights[begin+1:end] += dt./2
 
-    names = [:Q_sub, :Q_shf, :Q_vwf, :Q_RF_f, :Q_RF_vw, :Q_shw]
     qinteg = map(names) do q
-        sum(getproperty.(history, q) .* weights) |> u"W*hr"
+        sum((getproperty(history, q) .|>u"W") .* weights) .|> u"W*hr"
     end
-    return NamedTuple{Tuple(names)}(qinteg)
+    return NamedTuple{names}(qinteg)
 end
 
 """
