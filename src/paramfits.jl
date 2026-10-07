@@ -504,27 +504,6 @@ function model_result(sol::ODESolution, st::SolTrim; var=nothing, verbose=false)
         return varq
     end
 end
-# TODO: decide whether to provide the following. Probably not worth it, since in the absence
-# of a SolTrim the indexing is pretty trivial.
-# function model_result(sol::ODESolution, idx; unit=u"K", verbose=false)
-#     res = sol[idx, :]*unit 
-#     if first(res) isa Unitful.Temperature && any(res .< 0u"K")
-#         subzero = findall(Vector(res .< 0u"K"))
-#         res[subzero] .= res[subzero[1] - 1]
-#         verbose && @info "bad interpolation" subzero res[subzero]
-#     end
-#     return res
-# end
-# function model_result(sol::ODESolution; var=nothing, verbose=false)
-#     uu = sol.u     
-#     if isnothing(var)
-#         mdq = map((u, t) -> calc_md_Q(u, sol.prob.p, t), uu, sol.t)
-#         return Table(mdq)
-#     else
-#         varq = map((u, t) -> calc_md_Q(u, sol.prob.p, t)[var], uu, t_trim_nd)
-#         return varq
-#     end
-# end
 
 # ---------------
 # Weighting functions for squared-error loss and for residuals. These are used in `obj_exp` and `err_exp`, respectively.
@@ -578,10 +557,6 @@ end
 # --- Per-data-type objective functions ------------------------------------
 # Each returns a scalar contribution (in K^2 for temperature, hr^2 for time).
 
-function obj_Tf(sol::ODESolution, obj::TfData, t; verbose=false)
-    st = trim_sol(sol, t)
-    obj_Tf(sol, st, obj; verbose)
-end
 function obj_Tf(sol::ODESolution, st::SolTrim, dat::TfData; verbose=false)
     Tmd = model_result(sol, st, 2; verbose) # Tf at index 2
     verbose && @info "Tf_model = $Tmd"
@@ -590,10 +565,6 @@ function obj_Tf(sol::ODESolution, st::SolTrim, dat::TfData; verbose=false)
     return resid
 end
 
-function obj_Tvw(sol::ODESolution, obj::TvwSeriesData, t; verbose=false)
-    st = trim_sol(sol, t)
-    obj_Tvw(sol, st, obj; verbose)
-end
 function obj_Tvw(sol::ODESolution, st::SolTrim, dat::TvwSeriesData; verbose=false)
     Tmd = model_result(sol, st, 3; verbose) # Tvw at index 3
     resid = sum(abs2, (dat.Tvw[exp_time_inds(st)] .- Tmd[model_time_inds(st)]))/(length(st))
@@ -627,8 +598,6 @@ end
 # Function which dispatches to appropriate per-data-type objectives
 obj_exp_datum(sol::ODESolution, st::SolTrim, obj::TfData; verbose=false) = obj_Tf(sol, st, obj; verbose)
 obj_exp_datum(sol::ODESolution, st::SolTrim, obj::TvwSeriesData; verbose=false) = obj_Tvw(sol, st, obj; verbose)
-obj_exp_datum(sol::ODESolution, obj::TfData, t; verbose=false) = obj_Tf(sol, obj, t; verbose)
-obj_exp_datum(sol::ODESolution, obj::TvwSeriesData, t; verbose=false) = obj_Tvw(sol, obj, t; verbose)
 obj_exp_datum(sol::ODESolution, obj::TvwEndData; verbose=false) = obj_Tvw(sol, obj; verbose)
 obj_exp_datum(sol::ODESolution, obj::EndTimeData; verbose=false) = obj_tend(sol, obj; verbose)
 # Catch the case where solution failed
