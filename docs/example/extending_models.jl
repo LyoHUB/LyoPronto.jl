@@ -4,13 +4,14 @@
 # how to implement a new model by walking through an extension of the Pikal model with 
 # microwave heating as an example.
 
-# The core pattern for adding a new model consists of five steps:
+# The core pattern for adding a new model consists of six steps:
 
 # 1. **Define a parameter container** (`ParamObj` subtype)
 # 2. **Implement the ODE right-hand-side function**
 # 3. **Provide an `ODEProblem` constructor** for your parameter type
 # 4. **(Optional) Add `TransformVariables` transforms** for parameter fitting
 # 5. **(Optional) Add plot recipes** for visualization
+# 6. **(Optional) Add additional experimental data types** (see [Adding New Experimental Data Types](@ref))
 
 # Each step leverages Julia's multiple dispatch, so the fitting machinery in 
 # [`gen_sol_pd`](@ref), [`obj_pd`](@ref), [`gen_nsol_pd`](@ref), and [`objn_pd`](@ref) 
@@ -445,6 +446,7 @@ plot(pl1, pl2, link=:x, layout=(2,1))
 # | `ODEProblem` method | Yes | Problem construction for solving and fitting |
 # | `TransformVariables` transforms | Optional | Parameter fitting support |
 # | Plot recipes | Optional | Visualization |
+# | New experimental data types | Optional | Support for new experimental data |
 
 # Once these are in place, the existing functions 
 # [`gen_sol_pd`](@ref), [`obj_pd`](@ref), [`gen_nsol_pd`](@ref), [`objn_pd`](@ref), 
