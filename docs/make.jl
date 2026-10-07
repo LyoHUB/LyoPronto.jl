@@ -41,6 +41,7 @@ makedocs(;
         "Plot recipes" => "generated/all_recipes.md",
         "Equipment capability estimation" => "eqcap.md",
         "Reference" => "alldocstrings.md",
+        "Changelog" => "changelog.md",
     ],
     plugins = [bib, codeblocks],
     format = Documenter.HTML(prettyurls = true),
