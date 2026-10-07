@@ -12,6 +12,11 @@ If you add a new type with this abstract type, you should define the following m
 - `time_bound_data(::MyDatum)`: return `true` if your data type is associated with a time vector, and `false` otherwise. If `true`, you should also define:
   - `has_timevec(md::MyDatum)`: return `true` if the instance `md` has its own time vector, and `false` if it uses the container's time vector.
   - `nontrivial_t_range(md::MyDatum)`: return `true` if the instance `md` has a nontrivial set of time indices (i.e., not starting at 1 and incrementing by 1) into the container's or instance's time vector, and `false` otherwise.
+For fitting with an optimization solver: 
+- `obj_exp_datum(sol, st, dat::MyDatum; verbose=false)` or `obj_exp_datum(sol, dat::MyDatum; verbose=false)`, depending on if `time_bound_data` is true or false
+For fitting with nonlinear least squares solver:
+- `err_exp_datum!(sol, st, dat::MyDatum, weight; verbose=false)` or `err_exp_datum!(sol, dat::MyDatum, weight; verbose=false)`, depending on if `time_bound_data` is true or false
+- `num_errs(md::MyDatum)`: return the number of residuals associated with your data type. This is used to determine the size of the residual vector for nonlinear least squares fitting.  
 
 """
 abstract type AbstractExpDatum end
@@ -44,11 +49,12 @@ resid_name(obj::AbstractExpDatum)::Symbol
 Return a symbol identifying the type of residuals associated with `obj`. This is used to map to a weight in the `weights` NamedTuple passed to [`obj_exp`](@ref) and [`err_exp`](@ref). The default names are:
 - `:Tf` for [`TfData`](@ref)
 - `:Tvw` for [`TvwSeriesData`](@ref) and [`TvwEndData`](@ref)
-- `:endTime` for [`EndTimeData`](@ref)
+- `:t` for [`EndTimeData`](@ref)
 
 If you define your own type of experimental data, you must define `resid_name(::MyDatum)::Symbol`
-to return a unique symbol for your data type, and then map that symbol to a weight in the 
-`weights` NamedTuple passed to [`obj_exp`](@ref) and [`err_exp`](@ref).
+to return a unique symbol for your data type, and then map that symbol to a weight,
+preferably with [`residual_weighting`](@ref) or [`loss_weighting`](@ref), 
+then pass the resulting NamedTuple to [`obj_exp`](@ref) and [`err_exp`](@ref).
 """
 function resid_name end
 
@@ -102,6 +108,7 @@ time_bound_data(::TfData) = true
 has_timevec(td::TfData) = !ismissing(td.t)
 nontrivial_t_range(td::TfData) = first(td.t_range) > 1 || step(td.t_range) != 1
 resid_name(::TfData) = :Tf
+num_errs(td::TfData) = length(td.t_range)
 
 # Provide separate types for Tvw as a full series or as a single endpoint
 """
@@ -155,6 +162,7 @@ time_bound_data(::TvwSeriesData) = true
 has_timevec(td::TvwSeriesData) = !ismissing(td.t)
 nontrivial_t_range(td::TvwSeriesData) = first(td.t_range) > 1 || step(td.t_range) != 1
 resid_name(::TvwSeriesData) = :Tvw
+num_errs(td::TvwSeriesData) = length(td.t_range)
 
 """
     TvwEndData(Tvw_end)
@@ -173,6 +181,7 @@ end
 time_bound_data(::TvwEndData) = false
 has_timevec(::TvwEndData) = false
 resid_name(::TvwEndData) = :Tvw
+num_errs(::TvwEndData) = 1
 
 """
     EndTimeData(t_end)
@@ -202,6 +211,7 @@ end
 time_bound_data(::EndTimeData) = false
 has_timevec(::EndTimeData) = false
 resid_name(::EndTimeData) = :t
+num_errs(::EndTimeData) = 1
 
 # --------
 # Collector struct for all data to be fit, in a single experiment
@@ -692,19 +702,13 @@ function obj_expT(sol, efd;
     weights=loss_weighting(t=tweight*u"hr^-2", Tvw=Tvw_weight*u"K^-2"))
 end
 
-# --- Per-data-type residual counts ----------------------------------------
-
-num_errs(obj::TfData) = length(obj.t_range)
-num_errs(obj::TvwSeriesData) = length(obj.t_range)
-num_errs(obj::TvwEndData) = 1
-num_errs(obj::EndTimeData) = 1
-
 """
     $(SIGNATURES)
 
 Compute the number of data points available in `efd` for comparison to model solution.
 
-This is useful for caching a residual vector for least-squares fitting, e.g. with [`err_exp!`](@ref) and [`nls_pd!`](@ref).
+This function is called on each object in `efd.data` and summed to give the total number of residuals. 
+This is used for caching a residual vector for least-squares fitting, e.g. with [`err_exp!`](@ref) and [`nls_pd!`](@ref).
 """
 function num_errs(efd::ExpFitData)
     nerr = mapreduce(num_errs, +, efd.data, init=0)
@@ -828,7 +832,7 @@ function err_exp!(errs, sol::ODESolution, efd; weights=residual_weighting(), ver
         last_ind += if time_bound_data(dat)
             sep_trim = has_timevec(dat) || nontrivial_t_range(dat)
             ti_m_start = if sep_trim
-                searchsortedfirst(dat.t, sol.t[begin]*u"hr")
+                searchsortedfirst(fit_t(efd, dat), sol.t[begin]*u"hr")
             else
                 ti_m_start_shared
             end

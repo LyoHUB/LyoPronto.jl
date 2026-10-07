@@ -137,7 +137,7 @@ function LyoPronto.err_exp_datum!(err_array, i0, sol, dat::TotalQvwf, weight; ve
     verbose && @info "Total Q_vwf: model = $qinteg, exp = $(dat.Q_vwf)"
     ## The residual is the difference between the model's total Q_vwf and the experimental value
     ## `io` is the last index that was filled into the array
-    err_array[i0+1] = (qinteg - dat.Q_vwf) * weight
+    err_array[i0+1] = ustrip(NoUnits, (qinteg - dat.Q_vwf) * weight)
     ## The number of residuals filled is 1, since this is a single measurement 
     return 1
 end

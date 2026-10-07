@@ -212,7 +212,7 @@ end
 
 # Prepare a fitting nonlinear function with some sensible defaults
 function NonlinearFunction(fitdat::ExpFitData; weights=residual_weighting(), badprms=nothing, verbose=false)
-    if weights == residual_weighting() && verbose == false
+    if weights == residual_weighting() && verbose == false && isnothing(badprms)
         NonlinearFunction{true, SciMLBase.FullSpecialize}(nls_pd!, 
             resid_prototype=zeros(num_errs(fitdat)))
     else

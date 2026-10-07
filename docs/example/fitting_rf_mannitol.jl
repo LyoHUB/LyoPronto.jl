@@ -186,7 +186,7 @@ trans_KBB = KBB_transform_bounded(Kvwf, Bf, Bvw)
 nls_M1 = NonlinearFunction(fitdat; badprms=LyoPronto.rf_lumcap_EM_violate)
 # The function [`LyoPronto.rf_lumcap_EM_violate`](@ref) uses a given `ParamObjRF` to compute
 # heat transfer rates and returns `true` if the total absorbed microwave energy exceeds the
-# amoung being fed in `P_per_vial`. The fitting functions [`nls_pd!`](@ref) and [`obj_pd`](@ref)
+# amount being fed in `P_per_vial`. The fitting functions [`nls_pd!`](@ref) and [`obj_pd`](@ref)
 # accept such a function as a keyword argument `badprms`, and if the function returns true
 # for a given parameter guess, it will return NaN for the residual so the nonlinear or 
 # optimization solver avoids that parameter region.
