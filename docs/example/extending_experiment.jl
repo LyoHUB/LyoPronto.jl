@@ -88,7 +88,7 @@ t = base_sol.t*u"hr"
 
 # We will use this base solution to create some synthetic experimental data.
 
-# First, do a Riemann integration to get total ``Q_\mathrm{vw-f}``:
+# First, do a trapezoidal integration to get total ``Q_\mathrm{vw-f}``:
 t_weights = (vcat(0u"hr", diff(t)) + vcat(diff(t), 0u"hr"))/2
 total_Qvwf = sum(qs.Q_vwf .* t_weights)
 
@@ -270,7 +270,7 @@ efd2 = ExpFitData(t_exp, TimeSeriesQvwf(Q_vwf_exp))
 # so we will adjust ``B_\mathrm{f}`` and ``B_\mathrm{vw}`` to fit the synthetic experimental data.
 
 # We map from dimensionless parameter vector to the named physical parameters
-# using `TransformVariables` so that the optimization solver can work in an unbounded dimensionless space.:
+# using `TransformVariables` so that the optimization solver can work in an unbounded dimensionless space.
 trans = as((; 
     Bf = TVScale(1e9u"Ω/m^2") ∘ TVLogistic(), #Bracket from 0 to 1e9 Ω/m^2
     Bvw = TVScale(1e8u"Ω/m^2") ∘ TVLogistic(), #Bracket from 0 to 1e8 Ω/m^2
@@ -283,7 +283,7 @@ trans = as((;
 # which is a wrapper around the `Optim` package.
 
 # Our optimization functions are as follows, using [`obj_pd`](@ref) to compute the objective function
-# and the `ForwardDiff` package for automatic differentation of the objective function.
+# and the `ForwardDiff` package for automatic differentiation of the objective function.
 obj_single_q = OptimizationFunction((u, p) -> obj_pd(u, p; weights=single_q_loss_weights), AutoForwardDiff())
 obj_multi_q = OptimizationFunction((u, p) -> obj_pd(u, p; weights=multi_q_loss_weights), AutoForwardDiff())
 
@@ -291,7 +291,7 @@ p0 = [-3.0, -3.0] # initial guess in dimensionless space
 transform(trans, p0) # check the values in dimensional space of our initial guess
 
 # It's a good idea at this point to make sure that initial guesses are reasonable.
-# For the microwave model, one quantiative way is to check that the initial guesses
+# For the microwave model, one quantitative way is to check that the initial guesses
 # satisfy an energy balance on electromagnetic terms:
 guessed_po = setproperties(po, transform(trans, p0))
 LyoPronto.rf_lumcap_EM_violate(guessed_po) # should be false to be reasonable
@@ -343,7 +343,7 @@ cases = [opt1, opt2, nls1, nls2]
 markers = [:utriangle :dtriangle :ltriangle :rtriangle]
 guess = transform(trans, p0)
 
-plot(xlabel=L"B_\mathrm{f}", ylabel=L"B_\mathrm{vw}", title="Fit results for total Q_vwf", legend=:topleft)
+plot(xlabel=L"B_\mathrm{f}", ylabel=L"B_\mathrm{vw}", title="Fit results in parameter space", legend=:topleft)
 scatter!([guess.Bf], [guess.Bvw], label="Initial guess", ms=10, shape=:square)
 for (name, opt, marker) in zip(casenames, cases, markers)
     fit = transform(trans, opt.u)
@@ -351,9 +351,10 @@ for (name, opt, marker) in zip(casenames, cases, markers)
 end
 scatter!([Bf], [Bvw], label="\"True\"", ms=8, shape=:star5)
 
-# So the fits which had time series data were able to matching the true parameters closely,
+# So the fits which had time series data were able to match the true parameters closely
+# (indicated by overlapping markers at the "true" values in the plot above),
 # while the fits which only had total ``Q_\mathrm{vw-f}`` did not. The NLS solver did not 
-# even move from the initial guess, which suggests that some tolerances ight need tweaking, but 
+# even move from the initial guess, which suggests that some tolerances might need tweaking, but 
 # of course the more productive approach is to give better data.
 
 # Next, let's compare the values over time of ``Q_\mathrm{vw-f}`` predicted by the model to the synthetic experimental data we created.

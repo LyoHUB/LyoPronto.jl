@@ -225,12 +225,11 @@ function qrf_integrate(sol, RF_params::ParamObjRF)
 
     # Using an IntegratingSumCallback would be more elegant, but at last attempt
     # it struggled with unitful values in the arrays.
-    # So we do a manual Riemann integration on the solution output
+    # So we do a manual trapezoidal integration on the solution output
     t = sol.t*u"hr"
     weights = fill(first(t), length(sol.t))
     dt = diff(t)
-    weights[begin:end-1] += dt./2
-    weights[begin+1:end] += dt./2
+    weights = (vcat(0u"hr", dt) + vcat(dt, 0u"hr")) / 2
 
     qinteg = map(names) do q
         sum((getproperty(history, q) .|>u"W") .* weights) .|> u"W*hr"

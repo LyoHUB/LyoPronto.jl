@@ -11,7 +11,7 @@
 # 3. **Provide an `ODEProblem` constructor** for your parameter type
 # 4. **(Optional) Add `TransformVariables` transforms** for parameter fitting
 # 5. **(Optional) Add plot recipes** for visualization
-# 6. **(Optional) Add additional experimental data types** (see [Adding New Experimental Data Types](@ref))
+# 6. **(Optional) Add additional experimental data types** (see [Extending Fits with New Experimental Data Types](@ref))
 
 # Each step leverages Julia's multiple dispatch, so the fitting machinery in 
 # [`gen_sol_pd`](@ref), [`obj_pd`](@ref), [`gen_nsol_pd`](@ref), and [`objn_pd`](@ref) 

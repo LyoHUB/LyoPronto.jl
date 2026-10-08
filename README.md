@@ -4,7 +4,7 @@
 
 _A Julia package providing common computations for pharmaceutical lyophilization._
 
-This package is a Julia complement to [LyoPRONTO](https://github.com/LyoHUB/LyoPronto), a Python package with a [web interface](https://lyopronto.geddes.rcac.purdue.edu). It is not a one-to-one translation, but rather a reimplementation of the same underlying model, with a much-improved interface for parameter estimation and an interface for extending that infrastructure to new models.
+This package is a Julia complement to [LyoPRONTO](https://github.com/LyoHUB/LyoPronto), a Python package with a [web interface](https://lyopronto.geddes.rcac.purdue.edu). It is not a one-to-one translation, but began as a reimplementation of the same underlying mathematical model, with a much-improved interface for parameter estimation and an interface for extending that infrastructure to new models.
 
 In the newer [web interface](https://lyopronto2.geddes.rcac.purdue.edu), some of the functionality is provided by calling Python and some is provided by this package.
 
