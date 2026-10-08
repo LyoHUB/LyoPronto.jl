@@ -286,3 +286,97 @@ end
     @test pressure_weight[LyoPronto.resid_name(PressureDatum())] == 3.0u"Pa^-2"
     @test LyoPronto.obj_exp(sol_conv, ExpFitData((1:5)u"hr", PressureDatum()); weights=pressure_weight) == 3.0
 end
+
+@testset "Non-overlapping time span" begin
+    # sol_conv spans [0, 10] hr; these experimental times span [20, 30] hr,
+    # so trim_sol finds ti_m_end=0 < ti_m_start=1 and fires the @warn at
+    # paramfits.jl:455. has_overlap(st) is then false, so obj_exp returns Inf
+    # for the datum (mirroring the handling of unsuccessful ODE solves)
+    # instead of evaluating the model at zero time points.
+    t_nonoverlap = collect(range(20.0u"hr", 30.0u"hr", length=5))
+    efd_nonoverlap = ExpFitData(t_nonoverlap, TfData(T1a))
+    @test_logs (:warn, r"time span does not overlap") @test obj_exp(sol_conv, efd_nonoverlap) == Inf
+end
+
+# ============================================================================
+# Correctness of residuals for data objects with their own time vector or a
+# nontrivial t_range. The expected values are written out directly from the
+# documented residual definitions:
+#   obj:  sum(abs2, (dat.T[exp_time_inds(st)] .- Tmd[model_time_inds(st)])) / length(st)
+#   errs: (dat.T[exp_time_inds(st)] .- Tmd[model_time_inds(st)]) / sqrt(length(st))
+# with Tmd = sol.(t_exp, idxs=idx) (sol is not pre-interpolated to the datum's
+# own time vector, so the interpolation path is exercised).
+# ============================================================================
+function expected_T_errs(sol, t_exp, T, idx)
+    # model_result returns calc_md_Q(u, p, t)[var], a Quantity in K; the raw
+    # state is dimensionless, so attach K to match. The residuals are
+    # weighted and ustrip'd before being returned by err_exp, so strip here too.
+    # If the defaults in `loss_weighting` or `residual_weighting` change,
+    # this weight will need to change too.
+    weight = sqrt(LyoPronto.loss_weighting()[:Tf])
+    Tmd = sol.(ustrip.(u"hr", t_exp), idxs=idx) .* u"K"
+    return ustrip.(NoUnits, (T .- Tmd) / sqrt(length(t_exp)) * weight)
+end
+
+@testset "TfData with nontrivial t_range" begin
+    # t_range 2:4 selects t1[2:4] = [2.5, 5, 7.5] hr; the model is evaluated
+    # at exactly those times and compared against T1a[2:4].
+    tf = TfData(T1a[2:4], 2:4)
+    efd = ExpFitData(t1, tf)
+    t_exp = t1[2:4]
+    expected = expected_T_errs(sol_conv, t_exp, T1a[2:4], 2)
+    @test obj_exp(sol_conv, efd) ≈ sum(abs2, expected)
+    @test err_exp(sol_conv, efd) ≈ expected
+end
+
+@testset "TfData with its own time vector" begin
+    # The datum's t is a sub-window of the solution's time points, so the
+    # shared preinterp check does not apply and the model is interpolated
+    # at the datum's own times.
+    t_sub = t1[2:4]
+    tf = TfData(T1a[2:4]; t=t_sub)
+    efd = ExpFitData(t1, tf)
+    expected = expected_T_errs(sol_conv, t_sub, T1a[2:4], 2)
+    @test obj_exp(sol_conv, efd) ≈ sum(abs2, expected)
+    @test err_exp(sol_conv, efd) ≈ expected
+end
+
+@testset "TfData with own time vector and nontrivial t_range" begin
+    # fit_t returns dat.t[dat.t_range], so the model is evaluated at
+    # t_sub[2:3] and compared against T1a[3:4].
+    t_sub = t1[2:4]
+    tf = TfData(T1a[3:4], 2:3; t=t_sub)
+    efd = ExpFitData(t1, tf)
+    expected = expected_T_errs(sol_conv, t_sub[2:3], T1a[3:4], 2)
+    @test obj_exp(sol_conv, efd) ≈ sum(abs2, expected)
+    @test err_exp(sol_conv, efd) ≈ expected
+end
+
+@testset "TvwSeriesData with nontrivial t_range" begin
+    # t_range 2:3 selects t1[2:3]; the model's third state (Tvw) is
+    # evaluated at those times and compared against T2[2:3].
+    tvw = TvwSeriesData(T2[2:3], 2:3)
+    efd = ExpFitData(t1, tvw)
+    t_exp = t1[2:3]
+    expected = expected_T_errs(sol_rf, t_exp, T2[2:3], 3)
+    @test obj_exp(sol_rf, efd) ≈ sum(abs2, expected)
+    @test err_exp(sol_rf, efd) ≈ expected
+end
+
+@testset "TvwSeriesData with its own time vector" begin
+    t_sub = t1[2:4]
+    tvw = TvwSeriesData(T2; t=t_sub)
+    efd = ExpFitData(t1, tvw)
+    expected = expected_T_errs(sol_rf, t_sub, T2, 3)
+    @test obj_exp(sol_rf, efd) ≈ sum(abs2, expected)
+    @test err_exp(sol_rf, efd) ≈ expected
+end
+
+@testset "TvwSeriesData with own time vector and nontrivial t_range" begin
+    t_sub = t1[2:4]
+    tvw = TvwSeriesData(T2[2:3], 2:3; t=t_sub)
+    efd = ExpFitData(t1, tvw)
+    expected = expected_T_errs(sol_rf, t_sub[2:3], T2[2:3], 3)
+    @test obj_exp(sol_rf, efd) ≈ sum(abs2, expected)
+    @test err_exp(sol_rf, efd) ≈ expected
+end

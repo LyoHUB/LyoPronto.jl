@@ -460,6 +460,7 @@ function trim_sol(sol::ODESolution, t_exp, preinterp::Bool, ti_m_start)
     # pass_t = preinterp ? t_exp[1:0] : t_exp[ti_m_start:ti_m_end]
     return SolTrim(preinterp, ti_m_start, ti_m_end, ti_m_end - ti_m_start + 1, t_exp[ti_m_start:ti_m_end])
 end
+has_overlap(st::SolTrim) = st.ti_m_end >= st.ti_m_start
 
 """
     $(SIGNATURES)
@@ -648,7 +649,11 @@ function obj_exp(sol::ODESolution, efd::ExpFitData;
             #   and it probably isn't worth checking
             preinterp = preinterp_shared ? ~sep_trim : false
             st = trim_sol(sol, fit_t(efd, dat), preinterp, ti_m_start)
-            obj_exp_datum(sol, st, dat; verbose)
+            if has_overlap(st) # the common, desired case
+                obj_exp_datum(sol, st, dat; verbose)
+            else # The time points don't overlap at all: warning is emitted by trim_sol
+                return Inf # don't continue to evaluate the weights
+            end
         else
             # If the data is not time-bound, then the solution doesn't need any trimming
             obj_exp_datum(sol, dat; verbose)
@@ -670,6 +675,7 @@ A thin wrapper on [`obj_exp`](@ref), for backwards compatibility.
 """
 function obj_expT(sol, efd;
     tweight=1.0, verbose = false, Tvw_weight=1.0)
+    Base.depwarn("Use the new `obj_exp` function. `obj_expT` is deprecated.", :obj_expT)
     return obj_exp(sol, efd; verbose,
     weights=loss_weighting(t=tweight*u"hr^-2", Tvw=Tvw_weight*u"K^-2"))
 end
@@ -805,7 +811,12 @@ function err_exp!(errs, sol::ODESolution, efd; weights=residual_weighting(), ver
             #   and it probably isn't worth checking
             preinterp = preinterp_shared ? ~sep_trim : false
             st = trim_sol(sol, fit_t(efd, dat), preinterp, ti_m_start)
-            err_exp_datum!(errs, last_ind, sol, st, dat, weights[resid_name(dat)]; verbose)
+            if has_overlap(st) # the common, desired case
+                err_exp_datum!(errs, last_ind, sol, st, dat, weights[resid_name(dat)]; verbose)
+            else
+                errs[last_ind .+ (1:num_errs(dat))] .= Inf
+                num_errs(dat)
+            end
         else
             err_exp_datum!(errs, last_ind, sol, dat, weights[resid_name(dat)]; verbose)
         end
