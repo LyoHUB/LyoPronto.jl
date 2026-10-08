@@ -72,7 +72,7 @@ pass = (tr, po, efd)
     @test haskey(qinteg, :Q_shw)
 
     for v in values(qinteg)
-        @test first(v) isa Unitful.Energy
+        @test v isa Unitful.Energy
     end
 
     # Energy conservation check on the product:

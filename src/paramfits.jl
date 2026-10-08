@@ -427,8 +427,11 @@ Base.length(st::SolTrim) = st.len
 
 
 function check_preinterp(sol::ODESolution, t_exp)
-    nt = min(length(sol.t) - 1, length(t_exp)) # possible number of valid times
     ti_m_start = searchsortedfirst(t_exp, sol.t[begin]*u"hr")
+    if ti_m_start >= lastindex(t_exp) + 1 # If solution starts after last experiment point...
+        return false, lastindex(t_exp) # it's definitely not preinterpolated, and we'll at least pass a valid index
+    end
+    nt = min(length(sol.t) - 1, length(t_exp)+1-ti_m_start) # possible number of valid times >= 1
     # Check if the solution is pre-interpolated to the time points in t
     preinterp = mapreduce(≈, &, sol.t[1:nt]*u"hr", t_exp[ti_m_start:ti_m_start+nt-1])
     return preinterp, ti_m_start
@@ -448,8 +451,8 @@ function trim_sol(sol::ODESolution, t_exp, preinterp::Bool, ti_m_start)
     ti_m_end = searchsortedlast(t_exp, sol.t[end]*u"hr")
 
     # Make sure there is at least one time point overlapping
-    if ti_m_end - ti_m_start < 1
-        throw(ArgumentError("Experimental time vector does not overlap with model solution time points"))
+    if ti_m_end < ti_m_start # at ti_m_end == ti_m_start, one point is available to work with
+        @warn "In residual evaluation, the model solution's time span does not overlap with an experimental series' time span." sol.t[[begin, end]] t_exp[[begin, end]]
     end
         
     #TODO: see if we can avoid allocating a new time vector here, for performance
@@ -742,15 +745,7 @@ end
 function err_exp_datum!(errs, i0, sol::ODESolution, st::SolTrim, obj::TfData, weight; verbose=false)
     return err_Tf!(errs, i0, sol, obj, st, weight; verbose)
 end
-function err_exp_datum!(errs, i0, sol::ODESolution, obj::TfData, t, weight; verbose=false)
-    st = trim_sol(sol, t)
-    return err_Tf!(errs, i0, sol, obj, st, weight; verbose)
-end
 function err_exp_datum!(errs, i0, sol::ODESolution, st::SolTrim, obj::TvwSeriesData, weight; verbose=false)
-    return err_Tvw_series!(errs, i0, sol, obj, st, weight; verbose)
-end
-function err_exp_datum!(errs, i0, sol::ODESolution, obj::TvwSeriesData, t, weight; verbose=false)
-    st = trim_sol(sol, t)
     return err_Tvw_series!(errs, i0, sol, obj, st, weight; verbose)
 end
 function err_exp_datum!(errs, i0, sol::ODESolution, obj::TvwEndData, weight; verbose=false)
