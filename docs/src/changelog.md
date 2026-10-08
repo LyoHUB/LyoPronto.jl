@@ -5,11 +5,12 @@
 ### ️ Breaking Changes
 
 #### Reexports
-- Refactored Re-exports: The package has moved away from heavy use of `@reexport`. Many symbols previously automatically available via `LyoPronto` (specifically from `OrdinaryDiffEqRosenbrock` and `DiffEqCallbacks`, but also some from `Unitful` and other packages) must now be explicitly imported.
-    - `ODEProblem` and `solve` remain explicitly exported.
-    - `ContinuousCallback` and `terminate!` remain explicitly exported.
-    - Other `OrdinaryDiffEqRosenbrock` symbols are no longer re-exported, notably algorithms like `Rodas3()`.
-    - The recommended algorithm for LyoPronto's systems is now `Rodas5P(AutoForwardDiff(chunksize=2))`, which is made public as `LyoPronto.odealg_chunk2`.
+- Refactored Re-exports: The package has moved away from heavy use of `@reexport`. Only the following symbols from other packages are still exported by `LyoPronto`; others (such as from `ConstructionBase`, `DiffEqCallbacks`, and `OrdinaryDiffEqNonlinearSolve`  must now be explicitly imported.
+    - `ODEProblem` and `solve` from `OrdinaryDiffEqRosenbrock` remain explicitly exported.
+        - Other `OrdinaryDiffEqRosenbrock` symbols are no longer re-exported, notably algorithms like `Rodas3()`.
+        - The recommended algorithm for LyoPronto's ODE and DAE systems is now `Rodas5P(AutoForwardDiff(chunksize=2))`, which is made public as `LyoPronto.odealg_chunk2`.
+    - From Unitful, the `u""` macro, `ustrip`, `uconvert`, and `NoUnits` remain explicitly exported.
+
 
 #### Experimental Data & Fitting
 - Experimental Data Handling: The `PrimaryDryFit` structure is now deprecated in favor of a new, modular hierarchy based on `ExpFitData` and `AbstractExpDatum`. 
