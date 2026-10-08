@@ -87,7 +87,8 @@ sols = [solve(ODEProblem(po), LyoPronto.odealg_chunk2) for po in [poA, poB, poC]
 # Next, load our synthetic data into structs that communicate the fitting problem
 t = range(0.0u"hr", stop=minimum([sol.t[end]-10 for sol in sols])*u"hr", step=30u"minute")
 t_ndim = ustrip.(u"hr", t)
-fitdats = [PrimaryDryFit(t, (sol(t_ndim)[2,t_ndim.<sol.t[end]]*u"K",), t_end=sol.t[end]*u"hr") for sol in sols]
+fitdats = [ExpFitData(t, TfData(sol(t_ndim)[2,t_ndim.<sol.t[end]]*u"K"),
+                      EndTimeData(sol.t[end]*u"hr")) for sol in sols]
 
 plot(u"hr", u"°C")
 for (fd, name, color) in zip(fitdats, ["A", "B", "C"], [:blue, :red, :green])
@@ -117,7 +118,7 @@ shared_trans = as((separate = as(Vector, trans_Rp, 3),
       ))
 p0 = zeros(TransformVariables.dimension(shared_trans)) # Initial guess for optimization parameters
 
-objnf_pd = OptimizationFunction((x,y)->LyoPronto.objn_pd(x,y,tweight=5e-2), AutoForwardDiff())
+objnf_pd = OptimizationFunction((x,y)->LyoPronto.objn_pd(x,y;weights=loss_weighting(t=5e-2u"hr^-2")), AutoForwardDiff())
 
 all_po = (poA, poB, poC)
 

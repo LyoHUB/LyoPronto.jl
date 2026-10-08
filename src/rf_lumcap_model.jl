@@ -137,7 +137,6 @@ Returns a named tuple with the following fields, all as Unitful quantities:
     # Evaluate mass flow; positive means drying is progressing. Not forced to be positive
     mflow = Ap/Rp(h_d)*(calc_psub(T_f) - pch(t)) # g/s
     # Evaluate heat transfer from wall
-    # TODO: consider precalculating Bi and shape factor in ParamObjRF constructor
     Bi = uconvert(NoUnits, Kvwf*rad/k_dry)
     Q_vwf = 2π*(Kvwf*rad*h_f + k_dry*(hf0-h_f)*S_interp(Bi)) * (T_vw-T_f) |> u"W"
     # Volumetric heating
@@ -145,11 +144,7 @@ Returns a named tuple with the following fields, all as Unitful quantities:
     Qppp_RF_vw = 2*pi*f_RF*e_0*eppvw*P_per_vial(t)*Bvw # W / m^3
     Q_RF_f = Qppp_RF_f*Ap*h_f |> u"W" # W
     Q_RF_vw = Qppp_RF_vw*V_vial |> u"W"# W
-    Q_sub = mflow*ΔHsub # Sublimation
-    # Check that total volumetric heating is less than input power
-    if Q_RF_f + Q_RF_vw > P_per_vial(t) && t == 0u"hr"
-        @warn "Energy balance of EM terms not satisfied." Q_RF_f Q_RF_vw P_per_vial(t)
-    end
+    Q_sub = mflow*ΔHsub |> u"W" # Sublimation
     return (; md=mflow, Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw)
 end
 
@@ -214,35 +209,44 @@ end
     qrf_integrate(sol, RF_params)
 
 Compute the integral over time of each heat transfer mode in the lumped capacitance model.
+
 RF_params should represent the same parameters used to generate the solution `sol`,
 which (if OrdinaryDiffEq doesn't change) can likely be accessed as `sol.prob.p`.
 
-Returns a Dict{String, Quantity{...}}, with string keys `Qsub, Qshf, Qvwf, QRFf, QRFvw, Qshw`.
+Returns a `NamedTuple` with keys which match the result of `calc_md_Q` (`Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw`).
 """
 function qrf_integrate(sol, RF_params::ParamObjRF)
 
-    # Using an IntegratingSumCallback would be more elegant, but at last attempt
-    # it struggled with unitful values in the arrays.
-    # So we do a manual Riemann integration on the solution output
+    names = (:Q_sub, :Q_shf, :Q_vwf, :Q_RF_f, :Q_RF_vw, :Q_shw)
     history = Table(map(sol.t) do ti
-        calc_md_Q(sol(ti), RF_params, ti)
+        (;Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw) = calc_md_Q(sol(ti), RF_params, ti)
+        return (;Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw)
     end)
 
+    # Using an IntegratingSumCallback would be more elegant, but at last attempt
+    # it struggled with unitful values in the arrays.
+    # So we do a manual trapezoidal integration on the solution output
     t = sol.t*u"hr"
-    weights = fill(first(t), length(sol.t))
     dt = diff(t)
-    weights[begin:end-1] += dt./2
-    weights[begin+1:end] += dt./2
+    weights = (vcat(0u"hr", dt) + vcat(dt, 0u"hr")) / 2
 
-    names = [:Q_sub, :Q_shf, :Q_vwf, :Q_RF_f, :Q_RF_vw, :Q_shw]
     qinteg = map(names) do q
-        sum(getproperty.(history, q) .* weights) |> u"W*hr"
+        sum((getproperty(history, q) .|>u"W") .* weights) .|> u"W*hr"
     end
-    # TODO: consider returning differently
-    return Dict("Qsub"=>qinteg[1], 
-                "Qshf"=>qinteg[2],
-                "Qvwf"=>qinteg[3],
-                "QRFf"=>qinteg[4],
-                "QRFvw"=>qinteg[5],
-                "Qshw"=>qinteg[6])
+    return NamedTuple{names}(qinteg)
+end
+
+"""
+    $(SIGNATURES)
+Compute whether the given RF parameters will violate conservation of energy.
+
+Specifically: calls `calc_md_Q(calc_u0(po), po, 0.0)`, and returns true if the 
+`Q_RF_f + Q_RF_vw > po.P_per_vial(0.0)`.
+To be used with the `badprms` keyword argument to [`obj_pd`](@ref) and similar.
+"""
+function rf_lumcap_EM_violate(po::ParamObjRF)
+    u0 = calc_u0(po)
+    (;Q_RF_f, Q_RF_vw) = calc_md_Q(u0, po, 0.0)
+    # Check that total volumetric heating is less than input power
+    return Q_RF_f + Q_RF_vw > po.P_per_vial(0.0)
 end

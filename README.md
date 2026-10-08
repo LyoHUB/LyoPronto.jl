@@ -2,12 +2,29 @@
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://LyoHUB.github.io/LyoPronto.jl/dev)
 [![](https://zenodo.org/badge/DOI/10.5281/zenodo.17373491.svg)](http://doi.org/10.5281/zenodo.17373491)
 
-This package is a Julia complement to [LyoPRONTO](https://github.com/LyoHUB/LyoPronto), an open source Python package.
+_A Julia package providing common computations for pharmaceutical lyophilization._
+
+This package is a Julia complement to [LyoPRONTO](https://github.com/LyoHUB/LyoPronto), a Python package with a [web interface](https://lyopronto.geddes.rcac.purdue.edu). It is not a one-to-one translation, but began as a reimplementation of the same underlying mathematical model, with a much-improved interface for parameter estimation and an interface for extending that infrastructure to new models.
+
+In the newer [web interface](https://lyopronto2.geddes.rcac.purdue.edu), some of the functionality is provided by calling Python and some is provided by this package.
+
+## Overview
+
 It has some overlapping functionality with LyoPRONTO, especially simulation of primary drying for conventional lyophilization.
 LyoPRONTO (the Python version) also has functionality for generating a design space, estimating time to freeze, and picking optimal drying conditions.
-On the other hand, this package has much more advanced utilities for fitting empirical parameters (such as $R_p$ and $K_v$) to experimental data, and can be extended to other models (see the documentation for more details), such as an included model for microwave-assisted lyophilization.
+
+Some key advantages this has over the original (Python) version of LyoPRONTO are:
+- Speed: on my laptop, the regular model can be simulated in about a millisecond. This becomes most relevant when evaluating the model repeatedly in parameter estimation or constructing large design spaces (both of which take less than a second for a well-posed problem).
+- Numerical reliability: This version uses `OrdinaryDiffEq.jl` for solving the ODEs and DAEs, which is a modern and robust library for fast numerical solution. This provides a lot of bells and whistles which we actively use, on top of being performant. 
+- Units: by using `Unitful.jl`, this package enforces dimensional correctness while being compatible with either SI marks or traditional units in lyophilization (like $cm^2\ hr\ Torr / g$ for $R_p$).
+- Flexibility: the utilities for fitting parameters like $K_v$ and $R_p$ can be used together to fit both at once, not just separately, and temperature data can be used in conjunction with drying time data to constrain rigorous least-squares fits.
+- Extensibility: the package provides a framework for implementing new physical models for processes similar to freeze drying, and defining new experimental data types for parameter fitting.
+
+As a consequence (and motivating example) of its extensibility, LyoPronto.jl also implements a model for radio frequency-assisted lyophilization, which is not available in the original LyoPRONTO.
 
 ## Installation
+
+As a Julia package, this code can be easily installed with the Julia package manager. 
 
 From the Julia REPL's Pkg mode (open a REPL and type `]` so that the prompt turns blue), add this package from the General registry with:
 ```

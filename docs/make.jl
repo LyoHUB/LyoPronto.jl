@@ -14,6 +14,7 @@ for file in [
     "utilities.jl", 
     "multi_exp_fit.jl",
     "extending_models.jl",
+    "extending_experiment.jl",
     ]
     Literate.markdown((@__DIR__)*"/example/$file", (@__DIR__)*"/src/generated", documenter=true)
 end
@@ -35,10 +36,12 @@ makedocs(;
         "Example, microwave-assisted lyo" => "generated/fitting_rf_mannitol.md",
         "Example, multi-experiment fitting" => "generated/multi_exp_fit.md",
         "Extending to new models" => "generated/extending_models.md",
+        "Extending with new experimental data types" => "generated/extending_experiment.md",
         "Other tools" => "generated/utilities.md",
         "Plot recipes" => "generated/all_recipes.md",
         "Equipment capability estimation" => "eqcap.md",
         "Reference" => "alldocstrings.md",
+        "Changelog" => "changelog.md",
     ],
     plugins = [bib, codeblocks],
     format = Documenter.HTML(prettyurls = true),

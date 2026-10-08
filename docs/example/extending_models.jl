@@ -4,13 +4,14 @@
 # how to implement a new model by walking through an extension of the Pikal model with 
 # microwave heating as an example.
 
-# The core pattern for adding a new model consists of five steps:
+# The core pattern for adding a new model consists of six steps:
 
 # 1. **Define a parameter container** (`ParamObj` subtype)
 # 2. **Implement the ODE right-hand-side function**
 # 3. **Provide an `ODEProblem` constructor** for your parameter type
 # 4. **(Optional) Add `TransformVariables` transforms** for parameter fitting
 # 5. **(Optional) Add plot recipes** for visualization
+# 6. **(Optional) Add additional experimental data types** (see [Extending Fits with New Experimental Data Types](@ref))
 
 # Each step leverages Julia's multiple dispatch, so the fitting machinery in 
 # [`gen_sol_pd`](@ref), [`obj_pd`](@ref), [`gen_nsol_pd`](@ref), and [`objn_pd`](@ref) 
@@ -389,7 +390,7 @@ trans_K = K_transform_basic(5.0u"W/m^2/K")
 # 2. Call `setproperties(po, fitprm)` to merge fitted params into the base `ParamObj`.
 # 3. Use the `fitdats` to choose points at which the ODE solve will be interpolated (affecting returned results, not internal numerical timestepping).
 # 4. Call `ODEProblem(new_po)` to construct the ODE, then solve the ODE.
-# 5. Compare the solution to data in a `PrimaryDryFit` .
+# 5. Compare the solution to data in an `ExpFitData` .
 
 # Because `setproperties` (from `ConstructionBase`) works on any struct, and `ODEProblem` 
 # dispatches on your `ParamObj` subtype, **no additional code is needed** for fitting to work.
@@ -445,6 +446,7 @@ plot(pl1, pl2, link=:x, layout=(2,1))
 # | `ODEProblem` method | Yes | Problem construction for solving and fitting |
 # | `TransformVariables` transforms | Optional | Parameter fitting support |
 # | Plot recipes | Optional | Visualization |
+# | New experimental data types | Optional | Support for new experimental data |
 
 # Once these are in place, the existing functions 
 # [`gen_sol_pd`](@ref), [`obj_pd`](@ref), [`gen_nsol_pd`](@ref), [`objn_pd`](@ref), 
