@@ -51,3 +51,9 @@ Pages = ["physical_properties.jl"]
 Modules = [LyoPronto, LyoPronto.ECCURT]
 Pages = ["eq_cap_ECCURT.jl"]
 ```
+
+## Design Spaces
+```@autodocs
+Modules = [LyoPronto]
+Pages = ["design_space.jl"]
+```

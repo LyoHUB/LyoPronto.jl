@@ -10,6 +10,7 @@ ENV["GKSwstype"] = 100
 for file in [
     "fitting_mannitol.jl", 
     "fitting_rf_mannitol.jl", 
+    "design_space.jl",
     "all_recipes.jl", 
     "utilities.jl", 
     "multi_exp_fit.jl",
@@ -35,6 +36,7 @@ makedocs(;
         "Example, conventional lyo" => "generated/fitting_mannitol.md",
         "Example, microwave-assisted lyo" => "generated/fitting_rf_mannitol.md",
         "Example, multi-experiment fitting" => "generated/multi_exp_fit.md",
+        "Example, conventional design space" => "generated/design_space.md",
         "Extending to new models" => "generated/extending_models.md",
         "Extending with new experimental data types" => "generated/extending_experiment.md",
         "Other tools" => "generated/utilities.md",
