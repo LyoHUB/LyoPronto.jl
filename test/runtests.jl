@@ -124,43 +124,10 @@ end
 
 end
 
-@testset "PrimaryDryFit: API for construction" begin
-    t1 = collect(range(0.0u"hr", 10.0u"hr", length=5))
-    T1a = collect(range(220.0u"K", 230.0u"K", length = length(t1)))
-    T1b = collect(range(220.0u"K", 230.0u"K", length = length(t1)-1))
-    T2 = collect(range(220.0u"K", 230.0u"K", length = length(t1)-2))
-    t_end = 12.0u"hr"
-    T1_iend = [length(T1a), length(T1b)]
-    T2_iend = [length(T2)]
-    # First, check that all constructors work as desired
-    master1 = PrimaryDryFit(t1, (T1a, T1b), T1_iend, (T2,), T2_iend, t_end)
-    @test PrimaryDryFit(t1, (T1a, T1b); Tvws=T2, t_end) == master1
-    master2 = PrimaryDryFit(t1, (T1a, T1b), T1_iend, (T2,), T2_iend, missing)
-    @test PrimaryDryFit(t1, (T1a, T1b); Tvws=T2,) == master2
-    master3 = PrimaryDryFit(t1, (T1a, T1b), T1_iend, T2[end], missing, missing)
-    @test PrimaryDryFit(t1, (T1a, T1b); Tvws=T2[end]) == master3
-    master4 = PrimaryDryFit(t1, (T1a, T1b), T1_iend, T2[end], missing, t_end)
-    @test PrimaryDryFit(t1, (T1a, T1b), T2[end], t_end) == master4
-    master5 = PrimaryDryFit(t1, (T1a, T1b), T1_iend, missing, missing, t_end)
-    @test PrimaryDryFit(t1, (T1a, T1b); t_end) == master5
-    master6 = PrimaryDryFit(t1, (T1a,), [length(T1a)], missing, missing, missing)
-    @test PrimaryDryFit(t1, (T1a,)) == master6
-    @test PrimaryDryFit(t1, T1a) == master6
-
-    # Check that wrong constructions error
-    @test_throws ArgumentError PrimaryDryFit(T1a, t_end)
-    @test_throws ArgumentError PrimaryDryFit(t1, t_end)
-    @test_throws MethodError PrimaryDryFit(t1, T1a, T2, T1b, t_end)
-
-    # Check that i_end has correct length
-    for pdfit in (master1, master2, master3, master4, master5, master6)
-        @test length(pdfit.Tfs) == length(pdfit.Tf_iend)
-        if !ismissing(pdfit.Tvw_iend)
-            @test length(pdfit.Tvws) == length(pdfit.Tvw_iend)
-        end
-    end
-
+@testset "ExpFitData" begin
+    include("test_expfitdata.jl")
 end
+
 
 @testset "End of primary drying" begin
     synth_t = range(0.0u"hr", 100u"hr", length=101)
@@ -205,12 +172,30 @@ po = ParamObjPikal((
     sol = solve(ODEProblem(po), LyoPronto.odealg_chunk2)
     t = sol.t*u"hr"
     T = sol[2,1:end-2]*u"K"
-    pdfit = PrimaryDryFit(t, T; t_end = t[end])
+    efd = ExpFitData(t, TfData(T), EndTimeData(t[end]))
 
-    hd, Rpvals = calc_hRp_T(po, pdfit)
+    # Single
+    hd, Rpvals = calc_hRp_T(po, efd)
     @test length(hd) == length(Rpvals) > 0
 
     @test all(.≈(Rpvals, Rp.(hd), atol=1e-2u"cm^2*Torr*hr/g"))
+
+    # Multiple
+    po2 = @set po.Rp.A1 = 30.0u"cm*Torr*hr/g"
+    sol2 = solve(ODEProblem(po2), LyoPronto.odealg_chunk2)
+    t2 = sol2.t*u"hr"
+    T2 = sol2[2,1:end-2]*u"K"
+    efd2 = ExpFitData(t, TfData(T), TfData(T2; t=t2))
+
+    using Logging
+    # Check that a warning is issue if no index is passed for multiple Tf
+    h1, R1 = @test_logs (:warn, r"Index needed") calc_hRp_T(po, efd2)
+    # Check that the result is the same if i=1 is passed
+    @test (h1, R1) == @test_logs min_level=Logging.Error calc_hRp_T(po, efd2, i=1)
+    h2, R2 = calc_hRp_T(po, efd2, i=2)
+    @test all(.≈(R1, Rp.(h1), atol=1e-2u"cm^2*Torr*hr/g"))
+    Rp2 = po2.Rp
+    @test all(.≈(R2, Rp2.(h2), atol=1e-2u"cm^2*Torr*hr/g"))
 end
 
 @testset "Vial geometry helpers" begin

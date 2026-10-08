@@ -19,9 +19,13 @@ set_default(labelformat=:square) # Sets a Latexify default
 
 # # Example Process Data
 
+# Follow along with the [example data](2024-06-04-10_MFD_AH.csv).
+
 ## Data start at 8th row of CSV file.
-## This needs to point to the right file, which for documentation is kinda wonky
-procdata_raw = CSV.read(joinpath(@__DIR__, "..", "..", "example", "2024-06-04-10_MFD_AH.csv"), Table, header=7)
+doc_file_loc = joinpath(@__DIR__, "..", "..", "example", "2024-06-04-10_MFD_AH.csv") # md #hide
+file_loc = "./2024-06-04-10_MFD_AH.csv"
+cp(doc_file_loc, file_loc, force=true); #md #hide
+procdata_raw = CSV.read(file_loc, Table, header=7)
 t = uconvert.(u"hr", procdata_raw.CycleTime .- procdata_raw.CycleTime[1])
 ## At midnight, timestamps revert to zero, so catch that case
 for i in eachindex(t)[begin+1:end]
@@ -85,14 +89,14 @@ Kshf = ConstPhysProp(13.9u"W/m^2/K")
 Vfill = 3u"mL"
 hf0 = Vfill / Ap
 
-po = ParamObjPikal([
+po = ParamObjPikal((
     (Rp, hf0, csolid, ρsolution),
     (Kshf, Av, Ap),
     (pch, Tsh)
-]);
+));
 
 prob = ODEProblem(po)
-sol_conv = solve(prob, Rodas3());
+sol_conv = solve(prob, LyoPronto.odealg_chunk2);
 
 # # System setpoints and conditions with `RampedVariable`s
 
@@ -131,22 +135,22 @@ plot!(Tsh3, lw=3, label="2 ramps")
 
 # To do so, we need to know about the experimental conditions; for that purpose, we pass a 
 # `ParamObjPikal` containing that information.
-# To deal with the actual temperature series, we use a `PrimaryDryFit` object, which allows
+# To deal with the actual temperature series, we use an `ExpFitData` object, which allows
 # us to encode the way that, at some point, each temperature series deviates from the 
 # regular pseudosteady behavior governed by this model.
 # (Strictly speaking, there are a variety of phenomena involved, but for here it is enough 
 # to say that at some point in time each temperature series experiences a sharp rise that is
 # not described by the model.)
 
-## The PrimaryDryFit:
-fitdat_all = @df pd_data PrimaryDryFit(:t, (:T1[:t .< 15u"hr"],
-                                    :T2[:t .< 13u"hr"],
-                                    :T3[:t .< 16u"hr"]),)
+## The ExpFitData:
+fitdat_all = @df pd_data ExpFitData(:t, TfData(:T1[:t .< 15u"hr"]),
+                                    TfData(:T2[:t .< 13u"hr"]),
+                                    TfData(:T3[:t .< 16u"hr"]))
 plot(fitdat_all, nmarks=30, showline=true)
 
 # Note that in this plot, T1 rises after 13 hours--I have deliberately included that
 # to show what this will do in $R_p(h_d)$ space.
-# Now, with the `ParamObjPikal` and `PrimaryDryFit` defined, we can calculate $R_p(h_d)$:
+# Now, with the `ParamObjPikal` and `ExpFitData` defined, we can calculate $R_p(h_d)$:
 
 ## Compute just for the first temperature series
 calc_hRp_T(po, fitdat_all, i=1)

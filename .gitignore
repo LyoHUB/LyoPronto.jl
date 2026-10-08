@@ -11,9 +11,10 @@
 /.CondaPkg
 
 # Ignore the state of packages 
-Manifest.toml
-# Ignore the state of packages in docs directory
-docs/Manifest.toml
+Manifest*.toml
+# Ignore the state of packages in docs and test directory
+docs/Manifest*.toml
+test/Manifest*.toml
 
 ################################################################################
 #                                    Julia                                     #

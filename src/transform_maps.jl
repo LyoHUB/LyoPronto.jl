@@ -63,13 +63,19 @@ end
 """
     $(SIGNATURES)
 
-Simulate primary drying, given a vector of parameter guesses, a mapping `tr` from `fitlog` to named coefficients, and other parameters in `po`.
+Solve a model for the conditions `po` with `tr(fitlog)` mapped on top.
+
+These models will typically be for primary drying, with a flat dimensionless vector `fitlog` for fitted parameter values, a mapping `tr` from `fitlog` to named coefficients, and other parameters in `po`.
+
+If given, `fitdat` is used to set `saveat` for the ODE solution.
 
 The equations used are determined by the type of `po`, which (with the magic of dispatch)
 is used to set up an ODE system.
 
-`tr` should be a `TransformTuple` object, from TransformVariables, which maps e.g. a vector of 3
-real numbers to a NamedTuple with `R0, A1, A2` as keys and appropriate Unitful dimensions on the values.
+`tr` should be a `TransformTuple` object, from TransformVariables, which maps a plain 
+Vector{Float64} to a `NamedTuple` with fields matching the properties and units of the `po` object.
+To construct callable functions, have the transform map to callable structs.
+
 This small function runs 
 ```
 fitprm = transform(tr, fitlog)
@@ -80,11 +86,9 @@ sol = solve(prob, Rodas4(autodiff=AutoForwardDiff(chunksize=2)); saveat, kwargs.
 ```
 which is wrapped to avoid code duplication.
 
-So, to choose which parameters to fitting, all that is necessary is to provide an appropriate transform `tr`
-and add a method of `setproperties` for the desired parameters.
+So, to choose which parameters to fitting, all that is necessary is to provide an appropriate transform `tr`.
 Therefore this function can be used for both K-Rp fitting, or just Rp, or just a subset of the 3 Rp coefficients.
 
-If given, `fitdat` is used to set `saveat` for the ODE solution.
 
 Other `kwargs` are passed directly (as is) to the ODE `solve` call.
 """
@@ -96,7 +100,6 @@ function gen_sol_pd(fitlog, tr, po; saveat=[], badprms=nothing, kwargs...)
     sol = solve(prob, odealg_chunk2; saveat, kwargs...)
     return sol
 end
-"$(SIGNATURES)"
 function gen_sol_pd(fitlog, tr, po, fitdat; badprms=nothing, kwargs...)
     sol = gen_sol_pd(fitlog, tr, po; saveat=ustrip.(u"hr", fitdat.t), badprms, kwargs...)
     return sol
@@ -150,23 +153,38 @@ end
     $(SIGNATURES)
 
 Calculate the sum of squared error (objective function) for fitting parameters to primary drying data.
-This directly calls [`gen_sol_pd`](@ref), then [`obj_expT`](@ref), so see those docstrings.
+This directly calls [`gen_sol_pd`](@ref), then [`obj_exp`](@ref), so see those docstrings.
 """
-function obj_pd(fitlog, tpf; tweight=1.0, Tvw_weight=1.0, badprms=nothing, verbose=false)
+function obj_pd(fitlog, tpf; weights=loss_weighting(), badprms=nothing, verbose=false)
     sol = gen_sol_pd(fitlog, tpf...; badprms)
-    return obj_expT(sol, tpf[3]; tweight, Tvw_weight, verbose)
+    return obj_exp(sol, tpf[3]; verbose, weights)
+end
+
+# TODO: consider this sketch for a fleshed-out public API
+# that makes it easier to serialize the objective function
+@concrete terse struct ObjPdFixedWeights
+    badprms
+    weights
+    verbose
+end
+function obj_pd_fixedweights(;weights=loss_weighting(), badprms=nothing, verbose=false)
+    return ObjPdFixedWeights(badprms, weights, verbose)
+end
+function (obj::ObjPdFixedWeights)(fitlog, tpf, verbose=false)
+    sol = gen_sol_pd(fitlog, tpf...; badprms=obj.badprms)
+    return obj_exp(sol, tpf[3]; weights=obj.weights, verbose)
 end
 
 """
     $(SIGNATURES)
 
 Calculate the sum of squared error (objective function) for fitting parameters to primary drying data.
-This directly calls [`gen_nsol_pd`](@ref), then [`obj_expT`](@ref), so see those docstrings.
+This directly calls [`gen_nsol_pd`](@ref), then [`obj_exp`](@ref), so see those docstrings.
 """
-function objn_pd(fitlog, tpf; tweight=1.0, Tvw_weight=1.0, badprms=nothing, verbose=false)
+function objn_pd(fitlog, tpf; weights=loss_weighting(), badprms=nothing, verbose=false)
     sols = gen_nsol_pd(fitlog, tpf...; badprms)
     obj = mapreduce(+, sols, tpf[3]) do sol, fitdat
-        obj_expT(sol, fitdat; tweight, Tvw_weight, verbose)
+        obj_exp(sol, fitdat; weights, verbose)
     end
     return obj
 end
@@ -175,30 +193,30 @@ end
     $(SIGNATURES)
 
 Calculate the errors for fitting parameters to primary drying data.
-This directly calls [`gen_sol_pd`](@ref), then [`err_expT!`](@ref), so see those docstrings.
+This directly calls [`gen_sol_pd`](@ref), then [`err_exp!`](@ref), so see those docstrings.
 """
-function nls_pd!(errs, fitlog, tpf; tweight=1.0, verbose=false)
-    sol = gen_sol_pd(fitlog, tpf...)
-    return err_expT!(errs, sol, tpf[3]; tweight, verbose)
+function nls_pd!(errs, fitlog, tpf; badprms=nothing, weights=residual_weighting(), verbose=false)
+    sol = gen_sol_pd(fitlog, tpf...; badprms)
+    return err_exp!(errs, sol, tpf[3]; weights, verbose)
 end
 """
     $(SIGNATURES)
 
 Calculate the errors for fitting parameters to primary drying data.
-This directly calls [`gen_sol_pd`](@ref), then [`err_expT`](@ref), so see those docstrings.
+This directly calls [`gen_sol_pd`](@ref), then [`err_exp`](@ref), so see those docstrings.
 """
-function nls_pd(fitlog, tpf; tweight=1.0, verbose=false)
-    sol = gen_sol_pd(fitlog, tpf...)
-    return err_expT(sol, tpf[3]; tweight, verbose)
+function nls_pd(fitlog, tpf; badprms=nothing, weights=residual_weighting(), verbose=false)
+    sol = gen_sol_pd(fitlog, tpf...; badprms)
+    return err_exp(sol, tpf[3]; weights, verbose)
 end
 
 # Prepare a fitting nonlinear function with some sensible defaults
-function NonlinearFunction(fitdat::PrimaryDryFit; tweight=1.0, verbose=false)
-    if tweight == 1.0 && verbose == false
+function NonlinearFunction(fitdat::ExpFitData; weights=residual_weighting(), badprms=nothing, verbose=false)
+    if weights == residual_weighting() && verbose == false && isnothing(badprms)
         NonlinearFunction{true, SciMLBase.FullSpecialize}(nls_pd!, 
             resid_prototype=zeros(num_errs(fitdat)))
     else
-        f = (e, f, tpf) -> nls_pd!(e, f, tpf; tweight, verbose)
+        f = (e, f, tpf) -> nls_pd!(e, f, tpf; badprms, weights, verbose)
         NonlinearFunction{true, SciMLBase.FullSpecialize}(f,
             resid_prototype=zeros(num_errs(fitdat)))
     end

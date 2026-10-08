@@ -1,6 +1,8 @@
 CI = get(ENV, "CI", nothing) == "true" || get(ENV, "GITHUB_TOKEN", nothing) !== nothing
 using LyoPronto
 using Documenter
+using DocumenterCitations
+using DocumenterCodeBlocks
 using Literate
 ENV["GKSwstype"] = 100
 
@@ -10,10 +12,17 @@ for file in [
     "fitting_rf_mannitol.jl", 
     "all_recipes.jl", 
     "utilities.jl", 
-    "multi_exp_fit.jl"
+    "multi_exp_fit.jl",
+    "extending_models.jl",
+    "extending_experiment.jl",
     ]
     Literate.markdown((@__DIR__)*"/example/$file", (@__DIR__)*"/src/generated", documenter=true)
 end
+
+bib = CitationBibliography("src/refs.bib"; style=:numeric)
+codeblocks = CodeBlocks(;
+    line_counter = :named,
+)
 
 @info "Building Documentation"
 makedocs(;
@@ -26,13 +35,16 @@ makedocs(;
         "Example, conventional lyo" => "generated/fitting_mannitol.md",
         "Example, microwave-assisted lyo" => "generated/fitting_rf_mannitol.md",
         "Example, multi-experiment fitting" => "generated/multi_exp_fit.md",
+        "Extending to new models" => "generated/extending_models.md",
+        "Extending with new experimental data types" => "generated/extending_experiment.md",
         "Other tools" => "generated/utilities.md",
         "Plot recipes" => "generated/all_recipes.md",
         "Equipment capability estimation" => "eqcap.md",
         "Reference" => "alldocstrings.md",
+        "Changelog" => "changelog.md",
     ],
-    # Don't worry about what `CI` does in this line.
-    format = Documenter.HTML(prettyurls = CI),
+    plugins = [bib, codeblocks],
+    format = Documenter.HTML(prettyurls = true),
 )
 
 @info "Deploying Documentation"

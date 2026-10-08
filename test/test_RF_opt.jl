@@ -1,6 +1,8 @@
 using TransformVariables
 using OptimizationOptimJL
+using NonlinearSolve
 using LineSearches
+using Unitful
 optalg = Optim.BFGS(linesearch=LineSearches.BackTracking())
 
 vialsize = "6R"
@@ -51,17 +53,64 @@ t = base_sol.t[keep]*u"hr"
 Tf = base_sol[2,keep]*u"K"
 Tvw = base_sol[3,keep]*u"K"
 t_end = t[end]
-pdfit = PrimaryDryFit(t, Tf, Tvw, t_end)
+efd = ExpFitData(t, TfData(Tf), TvwSeriesData(Tvw), EndTimeData(t_end))
 
 tr = KBB_transform_basic(Kvwf*0.5, Bf*0.5, 0.5*Bvw)
 pg = fill(1.0, 3)
 sol = @inferred gen_sol_pd(pg, tr, po)
 @test sol != base_sol
-pass = (tr, po, pdfit)
+pass = (tr, po, efd)
+
+@testset "qrf_integrate" begin
+    qinteg = @inferred qrf_integrate(base_sol, po)
+
+    @test haskey(qinteg, :Q_sub)
+    @test haskey(qinteg, :Q_shf)
+    @test haskey(qinteg, :Q_vwf)
+    @test haskey(qinteg, :Q_RF_f)
+    @test haskey(qinteg, :Q_RF_vw)
+    @test haskey(qinteg, :Q_shw)
+
+    for v in values(qinteg)
+        @test v isa Unitful.Energy
+    end
+
+    # Energy conservation check on the product:
+    #   d(mf*cpf*Tf)/dt = Q_shf + Q_vwf + Q_RF_f - Q_sub
+    # Integrating:  ∫(Q_shf+Q_vwf+Q_RF_f) dt = ∫Q_sub dt + Δ(mf*cpf*Tf)
+    m_f = base_sol[1, :] * u"g"
+    T_f = base_sol[2, :] * u"K"
+    cpf = po.cpf
+
+    Δinternal = cpf * (m_f[end] * T_f[end] - m_f[begin] * T_f[begin]) |> u"W*hr"
+    energy_in = qinteg[:Q_shf] + qinteg[:Q_vwf] + qinteg[:Q_RF_f]
+    energy_out = qinteg[:Q_sub] + Δinternal
+
+    @test isapprox(energy_in, energy_out; rtol=1e-2)
+
+    # Energy conservation check on the vial wall:
+    #   dTvw/dt = (Q_shw - Q_vwf + Q_RF_vw) / (mv*cpv)
+    #   => mv*cpv*dTvw/dt = Q_shw - Q_vwf + Q_RF_vw
+    # Integrating:  ∫(Q_shw - Q_vwf + Q_RF_vw) dt = Δ(mv*cpv*Tvw)
+    T_vw = base_sol[3, :] * u"K"
+    mv = po.mv
+    cpv = po.cpv
+
+    Δinternal_vw = mv * cpv * (T_vw[end] - T_vw[begin]) |> u"W*hr"
+    energy_in_vw = qinteg[:Q_shw] + qinteg[:Q_RF_vw]
+    energy_out_vw = qinteg[:Q_vwf] + Δinternal_vw
+
+    @test isapprox(energy_in_vw, energy_out_vw; rtol=1e-2)
+end
+
 
 @testset "Optimization" begin
     err = @inferred obj_pd(pg, pass)
-    obj = OptimizationFunction(obj_pd, AutoForwardDiff(chunksize=3))
+    # badprms: give optimization a NaN if an energy balance on EM terms is violated 
+    obj = OptimizationFunction(
+        (x, args)->obj_pd(x, args, badprms=LyoPronto.rf_lumcap_EM_violate), 
+        AutoForwardDiff(chunksize=3)
+    )
     opt = solve(OptimizationProblem(obj, pg, pass), optalg;)
     @test SciMLBase.successful_retcode(opt)
     vals = transform(tr, opt.u)
@@ -71,7 +120,7 @@ pass = (tr, po, pdfit)
 end
 
 @testset "Least squares" begin
-    lsq = NonlinearFunction(pdfit)
+    lsq = NonlinearFunction(efd)
     opt = @inferred solve(NonlinearLeastSquaresProblem(lsq, pg, pass), LevenbergMarquardt())
     @test SciMLBase.successful_retcode(opt)
     vals = transform(tr, opt.u)
@@ -79,6 +128,5 @@ end
     @test vals.Bf ≈ Bf rtol=0.2
     @test vals.Bvw ≈ Bvw rtol=0.2
 end
-
 
 

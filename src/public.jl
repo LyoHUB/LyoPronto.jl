@@ -8,4 +8,10 @@ public e_0, ϵppf, eppf, εppf, ϵpp_gl, epp_gl, εpp_gl
 public ρ_sucrose, k_sucrose
 
 public extract_ts
-public calc_md_Q
+
+public obj_exp_datum
+public AbstractExpDatum, resid_name
+public exp_time_inds, model_time_inds
+public rf_lumcap_EM_violate
+
+public ParamObj

@@ -26,9 +26,9 @@ params = ParamObjRF((
     (Rp, hf0, cSolid, ρsolution),
     (Kshf_f, Av, Ap),
     (pch, Tsh, P_per_vial),
-    (mf0, cpf, mv, cpv, Arad),
+    (mf0, cpf, mv, cpv),
     (f_RF, eppf, eppvw),
-    (Kvwf, Bf, Bvw, alpha),
+    (Kvwf, Bf, Bvw),
 ))
 ```
 
@@ -41,6 +41,59 @@ See [`RpFormFit`](@ref) and [`RampedVariable`](@ref) for convenience types that 
 - `Arad` and `alpha` were used in a prior version of the model, and are not used in the 
     current version; they will be removed in a future version.
 """
+
+
+@concrete terse struct ParamObjRF <: ParamObj
+    Rp
+    hf0
+    csolid
+    ρsolution
+    Kshf
+    Av
+    Ap
+    pch
+    Tsh
+    P_per_vial
+    mf0
+    cpf
+    mv
+    cpv
+    f_RF
+    eppf
+    eppvw
+    Kvwf
+    Bf
+    Bvw
+end
+
+@doc """
+    $(TYPEDEF)
+
+The `ParamObjRF` type is a container for the parameters used in the RF model.
+
+
+Since it has many fields, the recommended constructor accepts a tuple of tuples, 
+as follows, to help avoid ordering mistakes:
+
+$(RF_PARAMS_DOC)
+"""
+ParamObjRF
+
+function ParamObjRF(tuptup::Tuple) 
+    # Check the proper number of fields
+    length.(tuptup) == (4, 3, 3, 4, 3, 3) || error("ParamObjRF tuple-of-tuple structure is wrong.")
+    # Create the object
+    po = ParamObjRF(tuptup[1]..., tuptup[2]...,
+                tuptup[3]..., tuptup[4]...,
+                tuptup[5]..., tuptup[6]...,)
+    # Check that callables return proper outputs
+    po.Kshf(1u"Torr") * u"m^2"*u"K" isa Unitful.Power || error("Kshf does not return heat transfer coeff")
+    # Note that, odd though it sounds, Rp does have dimensions of velocity
+    po.Rp(1u"cm") isa Unitful.Velocity || error("Rp does not return a mass transfer resistance")
+    po.pch(1.0u"hr") isa Unitful.Pressure || error("pch does not return a pressure")
+    po.Tsh(1.0u"hr") isa Unitful.Temperature || error("Tsh does not return an absolute temperature")
+    return po 
+end
 
 
 """
@@ -56,23 +109,14 @@ Returns a named tuple with the following fields, all as Unitful quantities:
 - `Q_RF_vw`: volumetric heating of vial wall (W)
 - `Q_shw`: heat transfer from shelf to vial wall (W)
 """
-@inline function calc_md_Q_rf(u, params, tn)
+@inline function calc_md_Q(u, po::ParamObjRF, tn)
     # Unpack all the parameters
-    if params isa ParamObjRF
-        (;Rp, hf0, csolid, ρsolution,
-        Kshf, Av, Ap,
-        pch, Tsh, P_per_vial, 
-        mf0, cpf, mv, cpv,
-        f_RF, eppf, eppvw,
-        Kvwf, Bf, Bvw) = params
-    else
-        Rp, hf0, csolid, ρsolution = params[1]
-        Kshf, Av, Ap, = params[2]
-        pch, Tsh, P_per_vial = params[3] 
-        mf0, cpf, mv, cpv = params[4]
-        f_RF, eppf, eppvw = params[5]
-        Kvwf, Bf, Bvw = params[6]
-    end
+    (;Rp, hf0, csolid, ρsolution,
+    Kshf, Av, Ap,
+    pch, Tsh, P_per_vial, 
+    mf0, mv,
+    f_RF, eppf, eppvw,
+    Kvwf, Bf, Bvw) = po
     # Dimensionalize the state variables
     t = tn*u"hr" 
     m_f = u[1]*u"g"
@@ -93,7 +137,6 @@ Returns a named tuple with the following fields, all as Unitful quantities:
     # Evaluate mass flow; positive means drying is progressing. Not forced to be positive
     mflow = Ap/Rp(h_d)*(calc_psub(T_f) - pch(t)) # g/s
     # Evaluate heat transfer from wall
-    # TODO: consider precalculating Bi and shape factor in ParamObjRF constructor
     Bi = uconvert(NoUnits, Kvwf*rad/k_dry)
     Q_vwf = 2π*(Kvwf*rad*h_f + k_dry*(hf0-h_f)*S_interp(Bi)) * (T_vw-T_f) |> u"W"
     # Volumetric heating
@@ -101,11 +144,8 @@ Returns a named tuple with the following fields, all as Unitful quantities:
     Qppp_RF_vw = 2*pi*f_RF*e_0*eppvw*P_per_vial(t)*Bvw # W / m^3
     Q_RF_f = Qppp_RF_f*Ap*h_f |> u"W" # W
     Q_RF_vw = Qppp_RF_vw*V_vial |> u"W"# W
-    # Check that total volumetric heating is less than input power
-    if Q_RF_f + Q_RF_vw > P_per_vial(t) && t == 0u"hr"
-        @warn "Energy balance of EM terms not satisfied." Q_RF_f Q_RF_vw P_per_vial(t)
-    end
-    return (; md=mflow, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw)
+    Q_sub = mflow*ΔHsub |> u"W" # Sublimation
+    return (; md=mflow, Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw)
 end
 
 """
@@ -113,7 +153,7 @@ end
 
 Compute the right-hand-side function for the ODEs making up the lumped-capacitance microwave-assisted model.
 
-To access the values of the various heat transfer terms, use `[calc_md_Q_rf](@ref)` to compute them; that function is used internally by this function.
+To access the values of the various heat transfer terms, use `[calc_md_Q](@ref)` to compute them; that function is used internally by this function.
 
 `du` refers to `[dmf/dt, dTf/dt, dTvw/dt]`, with `u = [mf, Tf, Tvw]`.
 `u` is taken without units but assumed to have the units of `[g, K, K]` (which is internally added).
@@ -123,10 +163,10 @@ Use the `ParamObjRF` type to hold the parameters.
 $(RF_PARAMS_DOC)
 
 """
-function lumped_cap_rf!(du, u, params, tn, qret = Val(false))
+function lumped_cap_rf!(du, u, params::ParamObjRF, tn)
 
     # Compute heat transfer rates
-    (; md, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw) = calc_md_Q_rf(u, params, tn)
+    (; md, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw) = calc_md_Q(u, params, tn)
     mflow = md
 
     (; csolid, ρsolution,
@@ -147,85 +187,6 @@ function lumped_cap_rf!(du, u, params, tn, qret = Val(false))
     du[1] = ustrip(u"g/hr", dm_f)
     du[2] = ustrip(u"K/hr", dT_f)
     du[3] = ustrip(u"K/hr", dT_vw)
-    
-    if qret isa Val{true}
-        return uconvert.(u"W", [Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw])
-    else
-        return nothing
-    end
-end
-
-@concrete terse struct ParamObjRF <: ParamObj
-    Rp
-    hf0
-    csolid
-    ρsolution
-    Kshf
-    Av
-    Ap
-    pch
-    Tsh
-    P_per_vial
-    mf0
-    cpf
-    mv
-    cpv
-    Arad
-    f_RF
-    eppf
-    eppvw
-    Kvwf
-    Bf
-    Bvw
-    alpha
-end
-
-@doc """
-    $(TYPEDEF)
-
-The `ParamObjRF` type is a container for the parameters used in the RF model.
-
-
-Since it has many fields, the recommended constructor accepts a tuple of tuples, 
-as follows, to help avoid ordering mistakes:
-
-$(RF_PARAMS_DOC)
-"""
-ParamObjRF
-
-function ParamObjRF(tuptup::Tuple) 
-    if (length(tuptup[4]) == 4 && length(tuptup[6]) == 3)
-        return ParamObjRF(tuptup[1]..., tuptup[2]...,
-                    tuptup[3]..., tuptup[4]..., missing,
-                    tuptup[5]..., tuptup[6]..., missing,)
-    elseif length(tuptup[6]) == 3
-        return ParamObjRF(tuptup[1]..., tuptup[2]...,
-                    tuptup[3]..., tuptup[4]...,
-                    tuptup[5]..., tuptup[6]..., missing,)
-    else
-        return ParamObjRF(tuptup[1]..., tuptup[2]...,
-                    tuptup[3]..., tuptup[4]...,
-                    tuptup[5]..., tuptup[6]...,)
-    end
-end
-Base.size(po::ParamObjRF) = (6,)
-
-function Base.getindex(po::ParamObjRF, i)
-    if i == 1
-        return (po.Rp, po.hf0, po.csolid, po.ρsolution)
-    elseif i == 2
-        return (po.Kshf, po.Av, po.Ap)
-    elseif i==3 
-        return (po.pch, po.Tsh, po.P_per_vial)
-    elseif i == 4
-        return (po.mf0, po.cpf, po.mv, po.cpv, po.Arad)
-    elseif i == 5
-        return (po.f_RF, po.eppf, po.eppvw)
-    elseif i == 6
-        return (po.Kvwf, po.Bf, po.Bvw, po.alpha)
-    else
-        error(BoundsError, "Attempt to access LyoPronto.ParamsObjRF at index $i. Only indices 1 to 6 allowed")
-    end
 end
 
 function calc_u0(po::ParamObjRF)
@@ -241,4 +202,51 @@ function ODEProblem(po::ParamObjRF; u0 = calc_u0(po), tspan=(0.0, 400.0))
     tstops = get_tstops(po)
     return ODEProblem{true, SciMLBase.FullSpecialize}(lumped_cap_rf!, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback, dt=0.1)
+end
+
+
+@doc raw"""
+    qrf_integrate(sol, RF_params)
+
+Compute the integral over time of each heat transfer mode in the lumped capacitance model.
+
+RF_params should represent the same parameters used to generate the solution `sol`,
+which (if OrdinaryDiffEq doesn't change) can likely be accessed as `sol.prob.p`.
+
+Returns a `NamedTuple` with keys which match the result of `calc_md_Q` (`Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw`).
+"""
+function qrf_integrate(sol, RF_params::ParamObjRF)
+
+    names = (:Q_sub, :Q_shf, :Q_vwf, :Q_RF_f, :Q_RF_vw, :Q_shw)
+    history = Table(map(sol.t) do ti
+        (;Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw) = calc_md_Q(sol(ti), RF_params, ti)
+        return (;Q_sub, Q_shf, Q_vwf, Q_RF_f, Q_RF_vw, Q_shw)
+    end)
+
+    # Using an IntegratingSumCallback would be more elegant, but at last attempt
+    # it struggled with unitful values in the arrays.
+    # So we do a manual trapezoidal integration on the solution output
+    t = sol.t*u"hr"
+    dt = diff(t)
+    weights = (vcat(0u"hr", dt) + vcat(dt, 0u"hr")) / 2
+
+    qinteg = map(names) do q
+        sum((getproperty(history, q) .|>u"W") .* weights) .|> u"W*hr"
+    end
+    return NamedTuple{names}(qinteg)
+end
+
+"""
+    $(SIGNATURES)
+Compute whether the given RF parameters will violate conservation of energy.
+
+Specifically: calls `calc_md_Q(calc_u0(po), po, 0.0)`, and returns true if the 
+`Q_RF_f + Q_RF_vw > po.P_per_vial(0.0)`.
+To be used with the `badprms` keyword argument to [`obj_pd`](@ref) and similar.
+"""
+function rf_lumcap_EM_violate(po::ParamObjRF)
+    u0 = calc_u0(po)
+    (;Q_RF_f, Q_RF_vw) = calc_md_Q(u0, po, 0.0)
+    # Check that total volumetric heating is less than input power
+    return Q_RF_f + Q_RF_vw > po.P_per_vial(0.0)
 end
