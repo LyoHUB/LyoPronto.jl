@@ -24,16 +24,36 @@ bibliography: paper.bib
 
 # Summary
 
-`LyoPronto.jl` is a Julia package for simulating and optimizing pharmaceutical lyophilization (freeze-drying) processes. It provides tools for modeling the heat and mass transfer during lyophilization and fitting model parameters to experimental data.
+`LyoPronto.jl` is a Julia package for simulating and optimizing pharmaceutical lyophilization (freeze-drying) processes. It provides an efficient implementation of the most common model, and tools for working with new heat and mass transfer models and fitting model parameters to experimental data.
 These parameters, measured at laboratory scale, are used to optimize process conditions and to carry out scale-up and tech transfer activities. 
 
 # Statement of Need
 
-Best practice in lyophilization uses a model published in 1985 [@pikal1985; @tchessalov2022; @tchessalov2023] for process development, scale-up, and tech transfer. This model is formally a differential-algebraic equation (DAE) system, although few practitioners explicitly recognize it as such. 
+Lyophilization, better known as freeze drying, is widely used in the pharmaceutical industry 
+to stabilize drug products which have a short shelf life in the liquid state.
+The number of lyophilized drugs approved by the US FDA has increased significantly in recent decades.
+Best practice in lyophilization uses a model published in 1985 [@pikalUseLaboratoryData1985; @tchessalovBestPracticesGuidelines2022; @tchessalovPracticalAdviceScientific2023] for process development, scale-up, and tech transfer. This model is formally a differential-algebraic equation (DAE) system, although few practitioners explicitly recognize it as such. 
+
+Additionally, due to the inherent physical limitations of conventional lyophilization 
+(a batch process which may last as much as a week for some products), 
+a variety of novel processes are being actively researched which bear broad similarity.
+These include (but are not limited to):
+
+- microwave-assisted lyophililization (and similar processes sometimes called microwave vacuum drying) [@hardterMicrowaveAssistedFreezeDrying2023]
+- thin-film freeze drying [@southardMechanisticModelingPrimary2026]
+- single-vial continuous freeze drying [@schaalOptimizationContinuousSpinfreezedrying2025]
+- spin freeze drying [@capozziBatchContinuousFreezeDrying2019]
+- spray freeze drying [@borgessebastiaoAtmosphericSprayFreezeDrying2017]
+- "lyobeads", millimeter-scale droplets frozen and dried
+
+For process design and optimization, these novel processes will require new physical models, 
+which in many cases will be broadly similar to that for conventional freeze drying.
+`LyoPronto.jl` is designed both for practitioners of conventional lyophilization 
+and to facilitate research in models for novel processes.
 
 `LyoPronto.jl` was built in Julia to leverage its capabilities for scientific computing.
 First, the solvers for differential-algebraic equations (DAEs) provided by `OrdinaryDiffEq.jl` [@rackauckas2017differentialequations; @steinebachConstructionRosenbrockWanner2023], particularly the `Rodas5P()` method, are a much more natural fit than plain ODE solvers for the typical model of lyophilization, which is a DAE. This allows for more efficient simulation of the process without requiring custom implementation of the DAE solver.
-Second, automatic differentiation (AD), particularly the `ForwardDiff.jl` package [@RevelsLubinPapamarkou2016], allows for efficient and accurate computation of gradients, which is important for parameter fitting. 
+Second, automatic differentiation (AD), particularly the `ForwardDiff.jl` package [@revelsForwardModeAutomaticDifferentiation2016], allows for efficient and accurate computation of gradients, which is important for parameter fitting. 
 Third, `Unitful.jl` checks for correct physical dimensionals and efficiently computes physical quantities with units, which is important for a field that frequently reports quantities such as $14.0 \mathrm{cm^2\,Torr\,hr/g}$ (equal to $6.71 \times 10^5 \mathrm{m/s}$)  for the mass transfer resistance $R_p$.
 Fourth, `Plots.jl` [@tombreloffPlotsjl2026] provides a natural way to provide sensible default visualizations of experiment and simulation results, while allowing for significant customization.
 Finally, Julia's performance characteristics allow for faster simulation and optimization than would be possible with interpreted languages like Python.
@@ -41,9 +61,10 @@ Finally, Julia's performance characteristics allow for faster simulation and opt
 # State of the Field
 
 Several other tools exist for solving this model lyophilization:                                                     
+
 - The term "LyoCalculator" is often used to refer to any of several Excel templates which implement the most common model for lyophilization. [One such template](paper-resources/Lyocycle_design_and_transfer_template_Breckenridge_workshop--Pfizer_Original.xls) is still [distributed by LyoHUB](https://pharmahub.org/groups/lyo/tools) at Purdue University. By using Excel, these tools are made accessible to a wide audience (particularly to non-engineers), but it is painstaking to verify correctness if a new model is developed (and impossible to extend for the digital twins of the future).
-- A software tool was announced with a paper in 2021 by @bogner2021. This tool is not open source, and the journal article does not make clear a title of the software or how to obtain it, short of contacting the authors directly.
-- LyoPRONTO (note the all-caps), a Python package, was previously developed by other researchers at LyoHUB [@shivkumar2019]. This package is still partially maintained, but employs very simplistic numerical approaches to simulation and optimization (which motivated the development of `LyoPronto.jl`).
+- A software tool was announced with a paper in 2021 by @bognerSoftwareToolLyophilization2021. This tool is not open source, and the journal article does not make clear a title of the software or how to obtain it, short of contacting the authors directly.
+- LyoPRONTO (note the all-caps), a Python package, was previously developed by other researchers at LyoHUB [@shivkumarLyoPRONTOOpenSourceLyophilization2019]. This package is still partially maintained, but employs very simplistic numerical approaches to simulation and optimization (which motivated the development of `LyoPronto.jl`).
 - A web interface to LyoPRONTO was hosted at launch, and currently is made available at [https://lyopronto.geddes.rcac.purdue.edu](https://lyopronto.geddes.rcac.purdue.edu). This interface exposes all the main functionality available in LyoPRONTO at its release, but does not allow deep inspection of results (such as intermediate calculations) or extension of the code base. All that could be found of its web interface source is minified JavaScript, which makes maintenance difficult.
 - A revised web interface to LyoPRONTO which adds some functionality was recently made available at [https://lyopronto2.geddes.rcac.purdue.edu](https://lyopronto2.geddes.rcac.purdue.edu) (note the 2). This interface is written in Python using Streamlit, which should make it more maintainable for scientists. This interface also exposes some functionality from `LyoPronto.jl`.
 - Several pharmaceutical companies maintain internal software tools for lyophilization, but these are not publicly available.
