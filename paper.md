@@ -33,7 +33,7 @@ Best practice in lyophilization uses a model published in 1985 [@pikal1985; @tch
 
 `LyoPronto.jl` was built in Julia to leverage its capabilities for scientific computing.
 First, the solvers for differential-algebraic equations (DAEs) provided by `OrdinaryDiffEq.jl` [@rackauckas2017differentialequations; @steinebachConstructionRosenbrockWanner2023], particularly the `Rodas5P()` method, are a much more natural fit than plain ODE solvers for the typical model of lyophilization, which is a DAE. This allows for more efficient simulation of the process without requiring custom implementation of the DAE solver.
-Second, automatic differentiation (AD), particularly the `ForwardDiff.jl` package [@Revels2016ForwardDiff], allows for efficient and accurate computation of gradients, which is important for parameter fitting. 
+Second, automatic differentiation (AD), particularly the `ForwardDiff.jl` package [@RevelsLubinPapamarkou2016], allows for efficient and accurate computation of gradients, which is important for parameter fitting. 
 Third, `Unitful.jl` checks for correct physical dimensionals and efficiently computes physical quantities with units, which is important for a field that frequently reports quantities such as $14.0 \mathrm{cm^2\,Torr\,hr/g}$ (equal to $6.71 \times 10^5 \mathrm{m/s}$)  for the mass transfer resistance $R_p$.
 Fourth, `Plots.jl` [@tombreloffPlotsjl2026] provides a natural way to provide sensible default visualizations of experiment and simulation results, while allowing for significant customization.
 Finally, Julia's performance characteristics allow for faster simulation and optimization than would be possible with interpreted languages like Python.
