@@ -1,7 +1,7 @@
 ---
 # see https://joss.readthedocs.io/en/latest/example_paper.html
 # Use plain text in the title; do not use backticks for code formatting.
-title: 'LyoPronto.jl: A Julia package for pharmaceutical lyophilization'
+title: 'LyoPronto.jl: A Julia package for pharmaceutical lyophilization simulation and parameter fitting'
 tags:
   - Julia
   - pharmaceutics
@@ -14,8 +14,9 @@ authors:
     corresponding: true
     affiliation: 1 
 affiliations:
- - name: Davidson School of Chemical Engineering, Purdue University, United States
-   index: 1
+  - name: Purdue University, United States
+    ror: 02dqehb95
+    index: 1
 date: 13 August 2017
 bibliography: paper.bib
 
@@ -30,6 +31,15 @@ These parameters, measured at laboratory scale, are used to optimize process con
 
 Best practice in lyophilization uses a model published in 1985 [@pikal1985; @tchessalov2022; @tchessalov2023] for process development, scale-up, and tech transfer. This model is formally a differential-algebraic equation (DAE) system, although few practitioners explicitly recognize it as such. 
 
+`LyoPronto.jl` was built in Julia to leverage its capabilities for scientific computing.
+First, the solvers for differential-algebraic equations (DAEs) provided by `OrdinaryDiffEq.jl` [@rackauckas2017differentialequations; @steinebachConstructionRosenbrockWanner2023], particularly the `Rodas5P()` method, are a much more natural fit than plain ODE solvers for the typical model of lyophilization, which is a DAE. This allows for more efficient simulation of the process without requiring custom implementation of the DAE solver.
+Second, automatic differentiation (AD), particularly the `ForwardDiff.jl` package [@Revels2016ForwardDiff], allows for efficient and accurate computation of gradients, which is important for parameter fitting. 
+Third, `Unitful.jl` checks for correct physical dimensionals and efficiently computes physical quantities with units, which is important for a field that frequently reports quantities such as $14.0 \mathrm{cm^2\,Torr\,hr/g}$ (equal to $6.71 \times 10^5 \mathrm{m/s}$)  for the mass transfer resistance $R_p$.
+Fourth, `Plots.jl` [@tombreloffPlotsjl2026] provides a natural way to provide sensible default visualizations of experiment and simulation results, while allowing for significant customization.
+Finally, Julia's performance characteristics allow for faster simulation and optimization than would be possible with interpreted languages like Python.
+
+# State of the Field
+
 Several other tools exist for solving this model lyophilization:                                                     
 - The term "LyoCalculator" is often used to refer to any of several Excel templates which implement the most common model for lyophilization. [One such template](paper-resources/Lyocycle_design_and_transfer_template_Breckenridge_workshop--Pfizer_Original.xls) is still [distributed by LyoHUB](https://pharmahub.org/groups/lyo/tools) at Purdue University. By using Excel, these tools are made accessible to a wide audience (particularly to non-engineers), but it is painstaking to verify correctness if a new model is developed (and impossible to extend for the digital twins of the future).
 - A software tool was announced with a paper in 2021 by @bogner2021. This tool is not open source, and the journal article does not make clear a title of the software or how to obtain it, short of contacting the authors directly.
@@ -38,14 +48,8 @@ Several other tools exist for solving this model lyophilization:
 - A revised web interface to LyoPRONTO which adds some functionality was recently made available at [https://lyopronto2.geddes.rcac.purdue.edu](https://lyopronto2.geddes.rcac.purdue.edu) (note the 2). This interface is written in Python using Streamlit, which should make it more maintainable for scientists. This interface also exposes some functionality from `LyoPronto.jl`.
 - Several pharmaceutical companies maintain internal software tools for lyophilization, but these are not publicly available.
                                                                                                                                         
-`LyoPronto.jl` was built in Julia to leverage its capabilities for scientific computing.
-First, the solvers for differential-algebraic equations (DAEs) provided by `OrdinaryDiffEq.jl` [@rackauckas2017differentialequations; @steinebachConstructionRosenbrockWanner2023], particularly the `Rodas5P()` method, are a much more natural fit than pure ODE solvers for the typical model of lyophilization, which is a DAE. This allows for more efficient simulation of the process without requiring custom implementation of the DAE solver.
-Second, automatic differentiation (AD), particularly the `ForwardDiff.jl` package [@Revels2016ForwardDiff], allows for efficient and accurate computation of gradients, which is important for parameter fitting. 
-Third, `Unitful.jl` checks for correct physical dimensionals and efficiently computes physical quantities with units, which is important for a field that frequently reports quantities such as $14.0 \mathrm{cm^2\,Torr\,hr/g}$ (equal to $6.71 \times 10^5 \mathrm{m/s}$)  for the mass transfer resistance $R_p$.
-Fourth, `Plots.jl` [@tombreloffPlotsjl2026] provides a natural way to provide sensible default visualizations of experiment and simulation results, while allowing for significant customization.
-Finally, Julia's performance characteristics allow for faster simulation and optimization than would be possible with interpreted languages like Python.
 
-## New Models and New Parameter Fitting
+# Research Impact Statement
 
 `LyoPronto.jl` is designed to be flexible and extensible, 
 including for new models of processes which are similar but not identical to conventional lyophilization. 
