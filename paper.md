@@ -44,7 +44,7 @@ These include (but are not limited to):
 - single-vial continuous freeze drying [@schaalOptimizationContinuousSpinfreezedrying2025]
 - spin freeze drying [@capozziBatchContinuousFreezeDrying2019]
 - spray freeze drying [@borgessebastiaoAtmosphericSprayFreezeDrying2017]
-- "lyobeads", millimeter-scale droplets frozen and dried
+- "lyobeads", millimeter-scale droplets frozen and dried, which are the subject of ongoing work at LyoHUB 
 
 For process design and optimization, these novel processes will require new physical models, 
 which in many cases will be broadly similar to that for conventional freeze drying.
@@ -58,43 +58,95 @@ Third, `Unitful.jl` checks for correct physical dimensionals and efficiently com
 Fourth, `Plots.jl` [@tombreloffPlotsjl2026] provides a natural way to provide sensible default visualizations of experiment and simulation results, while allowing for significant customization.
 Finally, Julia's performance characteristics allow for faster simulation and optimization than would be possible with interpreted languages like Python.
 
+
 # State of the Field
 
-Several other tools exist for solving this model lyophilization:                                                     
+Several other tools exist for solving the main literature model for conventional lyophilization:                                                     
 
-- The term "LyoCalculator" is often used to refer to any of several Excel templates which implement the most common model for lyophilization. [One such template](paper-resources/Lyocycle_design_and_transfer_template_Breckenridge_workshop--Pfizer_Original.xls) is still [distributed by LyoHUB](https://pharmahub.org/groups/lyo/tools) at Purdue University. By using Excel, these tools are made accessible to a wide audience (particularly to non-engineers), but it is painstaking to verify correctness if a new model is developed (and impossible to extend for the digital twins of the future).
+- The term "LyoCalculator" is often used to refer to any of several Excel templates which implement the most common model for lyophilization. [One such template](https://pharmahub.org/groups/lyo/File:Lyocycle_design_and_transfer_template_Breckenridge_workshop--Pfizer_Original.xls) is still [distributed by LyoHUB](https://pharmahub.org/groups/lyo/tools) at Purdue University. By using Excel, these tools are made accessible to a wide audience (particularly to non-engineers), but it is painstaking to verify correctness if a new model is developed (and impossible to extend for the digital twins of the future).
 - A software tool was announced with a paper in 2021 by @bognerSoftwareToolLyophilization2021. This tool is not open source, and the journal article does not make clear a title of the software or how to obtain it, short of contacting the authors directly.
 - LyoPRONTO (note the all-caps), a Python package, was previously developed by other researchers at LyoHUB [@shivkumarLyoPRONTOOpenSourceLyophilization2019]. This package is still partially maintained, but employs very simplistic numerical approaches to simulation and optimization (which motivated the development of `LyoPronto.jl`).
 - A web interface to LyoPRONTO was hosted at launch, and currently is made available at [https://lyopronto.geddes.rcac.purdue.edu](https://lyopronto.geddes.rcac.purdue.edu). This interface exposes all the main functionality available in LyoPRONTO at its release, but does not allow deep inspection of results (such as intermediate calculations) or extension of the code base. All that could be found of its web interface source is minified JavaScript, which makes maintenance difficult.
 - A revised web interface to LyoPRONTO which adds some functionality was recently made available at [https://lyopronto2.geddes.rcac.purdue.edu](https://lyopronto2.geddes.rcac.purdue.edu) (note the 2). This interface is written in Python using Streamlit, which should make it more maintainable for scientists. This interface also exposes some functionality from `LyoPronto.jl`.
 - Several pharmaceutical companies maintain internal software tools for lyophilization, but these are not publicly available.
-                                                                                                                                        
+
+
+
+# Software Design
+
+`LyoPronto.jl` is designed to be flexible and extensible, particularly along three axes:
+
+1. Adding new models for the lyophilization process or for similar processes, such as microwave-assisted lyophilization. 
+2. In fitting, comparing different types or amounts of experimental data to simulation, such as such as product temperatures, vial wall temperatures, and drying times. Some of these are not always available in a single dataset, but including as many as are available will improve the quality of the fit.
+3. Allowing different sets of model parameters to be fit to without redefining the entire model and experimental datasets. 
+
+To achieve this flexibility,
+the loss function for parameter fitting is defined
+to take a plain vector of numbers as input, along with a 
+transform, a struct of base model parameters, and the set of experimental data.
+
+The transform is used to map the input vector 
+to a named tuple of model parameters with physical units
+using `TransformVariables.jl`.
+The named parameters are then used to create a copy of the full set of simulation parameters with the new values, leaving the others unchanged. 
+This struct of parameters is then passed to the simulation function, which returns a 
+completed simulation. 
+The residuals between the simulation and experiment
+are squared and then reduced to a dimensionless form by user-defined weights 
+(e.g., divide temperature loss by $1 \mathrm{K}^2$ and divide the drying time loss by $1 \mathrm{hr}^2$) 
+and then summed to yield the loss function value as a plain scalar.
+
+Thus, to change the set of parameters to be fit (or the range of their allowed values), it is enough to change the transform; to change the experimental data, one only needs to change the dataset; to change the model, provide a new struct of parameters (to match a new model structure). The loss function itself does not need to be redefined, and the simulation code does not need to be modified.
+
+The documentation provides a tutorial for adding new models and for adding new types of experimental data. 
+There is also a demonstration of how to extend the transform framework  
+to fit multiple experiments at once with some fit parameters in common and others separate for each experiment, 
+such as if three experiments are expected to share heat transfer behavior
+but have different mass transfer behavior.
+
 
 # Research Impact Statement
 
-`LyoPronto.jl` is designed to be flexible and extensible, 
-including for new models of processes which are similar but not identical to conventional lyophilization. 
-For example, in microwave-assisted lyophilization, 
-new heat transfer mechanisms are present, 
-and the model must be modified to account for these.
-`LyoPronto.jl` natively provides one such model for microwave-assisted lyophilization [@wheelerMechanisticModelsExperimental2026],
-which is not available in any of the other tools mentioned above.
-In developing this type of model, 
-it is often desirable to fit varying sets of model parameters to available experimental data. 
-`LyoPronto.jl` allows the user to specify which parameters to fit, 
-and which to hold constant, 
-in a straightforward manner by using `TransformVariables.jl`. 
-This is a feature that is not available in the original LyoPRONTO package or any of the other tools mentioned above.
+Our prior work on microwave-assisted lyophilization
+[@alexeenkoRandomizedfieldMicrowaveassistedPharmaceutical2025] 
+used an implementation in Python of a model for microwave-assisted lyophilization, 
+but least-squares fitting with that framework was sufficiently difficult
+In [@wheelerMechanisticModelsExperimental2026], 
+we usually had access to temperature measurement of the product in at least one vial,
+but only sometimes had corresponding measurements of the vial wall.
+We were able to determine that product temperature at the end of drying tends to match the final vial wall temperature, 
+adding another type of experimental data to the the fitting process.
+With `LyoPronto.jl`, we could apply all of the available data to each experimental fit without redefining the loss function or modify the simulation code.
 
-This extensibility is exploited in other work, such as a population-balance model which
-accounts for dynamic changes in the pore size distribution of the frozen cake during lyophilization [@wheelerDirectModelingPore2026], 
-and ongoing work developing a model for "lyobeads" (millimeter-scale beads of frozen solution which are lyophilized outside a vial).
+Likewise, in [@wheelerMechanisticModelsExperimental2026], we usually fit only the microwave-related parameters of the model
+to the microwave experimental data,
+with mass transfer parameters fit to conventional lyophilization data.
+However, in some cases, other evidence suggested that the mass transfer parameters
+would be different in the microwave experiments, and `LyoPronto.jl` could fit both microwave and mass transfer parameters to a single experiment with only minor modifications to the analysis script.
+
+In work on a population-balance model for pore size evolution during lyophilization [@wheelerDirectModelingPore2026], we were able to use `LyoPronto.jl` to fit a new model with new kinds of parameters to experimental data, including direct comparisons to the conventional model.
+
+Ongoing work on a model for the lyophilization of "lyobeads" 
+(millimeter-scale beads of frozen solution)
+has already begun, extending `LyoPronto.jl` with a new model 
+and fitting that model to experimental data.
+
+Although not the primary focus of this software, the equipment capability model constructed by 
+@kazarinCompactModelLyophilizer2022 
+(originally provided as a MATLAB script in the supplementary material) 
+is also implemented in `LyoPronto.jl` as an `ECCURT` module,
+which now runs part of the backend for the web tool at [lyopronto2.geddes.rcac.purdue.edu](http://lyopronto2.geddes.rcac.purdue.edu).
+This web interface is provided to the public by LyoHUB, and is used by researchers doing process design and optimization for conventional lyophilization. 
+`LyoPronto.jl` is actively being incorporated to provide other functionality for that web interface, especially for parameter fitting, 
+where it is much more robust than the previous Python implementation.
 
 # AI usage disclosure
 
 For most of its history, `LyoPronto.jl` has been developed without the use of generative AI tools.
-Recent development has used autocomplete from GitHub Copilot, and some PRs were authored
-with assistance from Qwen3.8 running on university servers; all code was reviewed and edited by the authors. 
+Recent development has used autocomplete from GitHub Copilot, 
+and some PRs were authored
+with assistance from Qwen3.8 running on university servers; 
+all code was reviewed and revised by the authors. 
 This manuscript was written without the use of generative AI tools.
 
 # Acknowledgements
