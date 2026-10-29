@@ -104,6 +104,8 @@ end
 function RampedVariable(hold)
     RampedVariable{false}(hold, nothing, nothing, nothing)
 end
+# This method helps make Accessors work better on a RampedVariable
+RampedVariable(setpt, ::Nothing, ::Nothing, ::Nothing) =  RampedVariable(setpt)
 
 function RampedVariable(setpts, ramprate)
 
@@ -116,9 +118,9 @@ function RampedVariable(setpts, ramprate)
     if length(setpts) != 2
         @error "Number of set points should be 1 more than ramps, since initial is included"
     end
-    timestops = fill(0.0*setpts[1]/ramprate[1], 2)
-    timestops[2] = timestops[1] + abs((setpts[2]-setpts[1])/ramprate)
-    RampedVariable{true}(setpts, [ramprate], nothing, timestops)
+    t0 = 0.0*setpts[1]/ramprate[1]
+    t1 = t0 + abs((setpts[2]-setpts[1])/ramprate)
+    RampedVariable{true}(setpts, SA[ramprate], nothing, SA[t0, t1])
 end
 
 function RampedVariable(setpts, ramprates, holds)
@@ -144,8 +146,12 @@ function RampedVariable(setpts, ramprates, holds)
             timestops[2i+2] = timestops[2i+1] + (timestops[2i+1]-timestops[2i+2])
         end
     end
-    RampedVariable{true}(setpts, ramprates, holds, timestops)
+    sa = x-> Sarray{Tuple{length(x)}}(x)
+    RampedVariable{true}(sa(setpts), sa(ramprates), sa(holds), sa(timestops))
 end
+
+# This method helps make Accessors work better on a RampedVariable
+RampedVariable(s, rr, h, ts) = RampedVariable{true}(s, rr, h, ts)
 
 function Base.hash(rv::RampedVariable, h::UInt)
     hash(rv.setpts, hash(rv.ramprates, hash(rv.holds, hash(rv.timestops, hash(:RampedVariable, h)))))
