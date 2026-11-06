@@ -146,7 +146,7 @@ function RampedVariable(setpts, ramprates, holds)
             timestops[2i+2] = timestops[2i+1] + (timestops[2i+1]-timestops[2i+2])
         end
     end
-    sa = x-> Sarray{Tuple{length(x)}}(x)
+    sa = x-> SArray{Tuple{length(x)}}(x)
     RampedVariable{true}(sa(setpts), sa(ramprates), sa(holds), sa(timestops))
 end
 
