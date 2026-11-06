@@ -109,7 +109,30 @@ function lyo_1d_dae!(du, u, params, t)
     return nothing
 end
 
-const lyo_1d_mm = Diagonal([1.0, 0.0])
+@doc raw"""
+    lyo_1d_dae(u, params, t)
+
+Internal implementation of the Pikal model.
+See [`lyo_1d_dae_f`](@ref) for the wrapped version, which is more fully documented.
+"""
+function lyo_1d_dae(u, params, t)
+    
+    # Need a handful of parameters in this function.
+    (; csolid, ρsolution, Ap) = params
+    # This logic is carried out in a separate function,
+    # so that it can be reused after the fact for computing mass flow.
+    (; md, Q_shf) = calc_md_Q(u, params, t)
+    dmdt = -md
+    if isnan(dmdt)
+        return SA[NaN, NaN]
+    end
+    Q_sub = uconvert(u"W", dmdt*ΔHsub)
+
+    dhf_dt = min(0.0u"cm/hr", dmdt/(ρsolution-csolid)/Ap |> u"cm/hr") # Cap dhf_dt at 0: no desublimation
+
+    du = SA[ustrip(u"cm/hr", dhf_dt), ustrip(u"W", Q_sub + Q_shf)]
+    return du
+end
 
 """
     lyo_1d_dae_f = ODEFunction(lyo_1d_dae!, mass_matrix=Diagonal([1.0, 0.0]))
@@ -125,7 +148,7 @@ The unitless time is taken to be in hours, so derivatives are given in unitless 
 
 $(PIKAL_PARAM_DOC)
 """
-const lyo_1d_dae_f = ODEFunction{true, SciMLBase.AutoSpecialize}(lyo_1d_dae!, mass_matrix=lyo_1d_mm)
+const lyo_1d_dae_f = ODEFunction{false, SciMLBase.AutoSpecialize}(lyo_1d_dae, mass_matrix=Diagonal(SA[1.0, 0.0]))
 
 
 
@@ -134,7 +157,7 @@ const lyo_1d_dae_f = ODEFunction{true, SciMLBase.AutoSpecialize}(lyo_1d_dae!, ma
 
 # Define how u0, tstops, and initial time should be calculated for a given ParamObjPikal
 function calc_u0(po::ParamObjPikal)
-    return [ustrip(u"cm", po.hf0), ustrip(u"K", float(po.Tsh(0u"s")))]
+    return SA[ustrip(u"cm", po.hf0), ustrip(u"K", float(po.Tsh(0u"s")))]
 end
 function get_tstops(po::ParamObjPikal)
     get_tstops((po.Tsh, po.pch))
@@ -145,7 +168,7 @@ function ODEProblem(po::ParamObjPikal; u0=calc_u0(po), tspan=(0.0, 1000.0))
     tstops = get_tstops(po)
     t0 = get_t0(po)
     @reset tspan[1] = t0 
-    return ODEProblem{true, SciMLBase.FullSpecialize}(lyo_1d_dae_f, u0, tspan, po; 
+    return ODEProblem{false, SciMLBase.FullSpecialize}(lyo_1d_dae_f, u0, tspan, po; 
         tstops = tstops, callback=end_drying_callback, initializealg=BrownFullBasicInit(),
         dt=0.1)
 end

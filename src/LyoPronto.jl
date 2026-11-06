@@ -31,6 +31,7 @@ using ADTypes: AutoForwardDiff
 using ConstructionBase: setproperties
 using DocStringExtensions
 using LinearAlgebra: Diagonal
+using StaticArrays
 
 
 abstract type ParamObj end
